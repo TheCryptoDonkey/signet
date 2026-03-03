@@ -164,6 +164,7 @@ On top of discrete tiers, a continuous trust score (0-100%) provides nuanced rep
 | Signal | Weight | Notes |
 |--------|--------|-------|
 | Professional verification (Tier 3/4) | Heavy | Single event, large impact |
+| Identity bridge (kind 30476) | Medium | Ring-sig proof linking anon account to verified identity, scaled by ring min tier |
 | In-person peer signature | Strong | Met in person, signed keys face-to-face |
 | Online vouch from verified user | Light | Accumulates — many light vouches add up |
 | Account age | Passive | Time on the network adds weight gradually |
@@ -174,7 +175,7 @@ On top of discrete tiers, a continuous trust score (0-100%) provides nuanced rep
 The exact algorithm is implementation-defined (clients can weight signals differently), but the protocol specifies the **signal types and their relative ordering**:
 
 ```
-professional verification > in-person vouch > online vouch > account age
+professional verification > identity bridge > in-person vouch > online vouch > account age
 ```
 
 Clients MUST respect this ordering. A single professional verification always outweighs any number of online vouches. This prevents gaming through vouch farms.
@@ -566,6 +567,58 @@ A replaceable event published when a community confirms a challenge. Supersedes 
 2. Reduce the trust score contribution of those credentials to zero
 3. Notify affected users that re-verification is recommended
 4. Do not automatically invalidate credentials — the community policy decides whether to require re-verification or grandfather existing ones
+
+### Kind 30476 — Identity Bridge
+
+A replaceable event published by an anonymous account to prove it is controlled by a verified identity, without revealing which one. Uses SAG ring signatures over secp256k1.
+
+**Use case:** A user has a real-name account (verified at Tier 3 by a professional) and an anonymous account. The identity bridge lets the anonymous account prove "I am a real verified person" without revealing which verified person. This enables anonymous participation with trust.
+
+```jsonc
+{
+  "kind": 30476,
+  "pubkey": "<anon_pubkey>",              // the anonymous account publishing this
+  "tags": [
+    ["d", "identity-bridge"],
+    ["ring-min-tier", "3"],                // minimum verification tier of ring members
+    ["ring-size", "10"],                   // number of pubkeys in the ring
+    ["L", "signet"],
+    ["l", "identity-bridge", "signet"]
+  ],
+  "content": "{\"ringSig\":{\"ring\":[...],\"c0\":\"...\",\"responses\":[...],\"message\":\"signet:identity-bridge:<anon_pubkey>:<timestamp>\"},\"timestamp\":...}"
+}
+```
+
+**Ring signature construction:**
+
+1. The real verified account's pubkey is placed at a random position in a ring of N verified pubkeys (minimum N=5).
+2. The binding message is `signet:identity-bridge:<anon_pubkey>:<timestamp>`.
+3. The real account's private key signs this message using a SAG ring signature, proving one of the N ring members also controls the anon account.
+4. The Nostr event itself is signed by the anonymous account's private key.
+
+**Verification:**
+
+1. Verify the Nostr event signature (anon account signed the event).
+2. Parse the ring signature from content.
+3. Verify the binding message format matches `signet:identity-bridge:<event.pubkey>:<timestamp>`.
+4. Verify the ring signature (one of the ring members signed the binding message).
+5. Verify ring size >= 5 (anonymity threshold).
+
+**Trust score contribution:**
+
+- Base weight: 25 points (between professional verification and in-person vouch).
+- Scaled by ring minimum tier: `weight = 25 × (ringMinTier / 4)`.
+- Tier 3 ring → 18.75 points. Tier 4 ring → 25 points.
+- Only one bridge per account is counted.
+
+**Trust compounding:** When bridged anonymous accounts vouch for each other, each vouch is weighted by the voucher's score (which includes bridge points). This creates natural trust compounding without a special mechanism.
+
+**Privacy guarantees:**
+
+- The ring signature reveals only that *one of N* verified accounts controls the anon account, not which one.
+- Minimum ring size of 5 provides meaningful anonymity (1-in-5 or better).
+- Larger rings provide stronger anonymity at no additional cost to the verifier.
+- The binding message prevents ring signature reuse across different anon accounts.
 
 ---
 
@@ -962,5 +1015,48 @@ The progress bar shows time until the next word rotation. The user sees the word
 - For high-value transactions, combine signet words with other verification (video call, previously agreed code phrase).
 
 ---
+
+---
+
+## 16. Identity Bridge
+
+### 16.1 Overview
+
+The identity bridge allows users to maintain separate anonymous and real-name accounts while cryptographically proving their anonymous account is backed by a verified identity. This is essential for privacy-respecting participation in communities that require trust.
+
+**Example flow:**
+
+1. Alice has a real-name account verified at Tier 3 by her solicitor.
+2. Alice creates an anonymous account for participating in communities where she wants privacy.
+3. Alice creates an identity bridge: her real account signs a ring signature (among 10 other verified accounts) proving "one of these 11 people also controls this anon account."
+4. The bridge event (kind 30476) is published from Alice's anon account.
+5. Community members see Alice's anon account has a trust score of ~19 (from the bridge alone), indicating a verified person is behind it.
+6. When other bridged anonymous accounts vouch for Alice's anon account, trust compounds naturally.
+
+### 16.2 Ring Construction
+
+The ring must contain at least 5 verified pubkeys (the `MIN_BRIDGE_RING_SIZE` constant). The user's real pubkey is placed at a random position among decoys selected from the pool of verified accounts on the relay.
+
+Decoy selection:
+- Query the relay for pubkeys with kind 30470 credentials at or above the desired minimum tier.
+- Exclude the user's real pubkey from the candidate pool.
+- Randomly select `ringSize - 1` decoys.
+- Insert the real pubkey at a random index.
+
+### 16.3 nsec Import
+
+Users may import existing Nostr accounts via nsec (NIP-19 bech32-encoded private keys). nsec-imported accounts:
+- Have no mnemonic (cannot use Shamir backup).
+- Can fully participate in the protocol (vouch, receive credentials, create bridges).
+- Are clearly indicated in the UI as nsec-imported.
+
+### 16.4 Multi-Account Management
+
+A device may hold multiple accounts (real-name + anonymous, or multiple identities). Each account:
+- Is identified by its pubkey (not a singleton key).
+- Has its own connections, credentials, and trust score.
+- Can be switched between in the app UI.
+
+Connections are scoped to the owning account. Credentials and vouches are naturally scoped by pubkey in the Nostr protocol.
 
 *This specification is a living document. It will evolve through community feedback and implementation experience.*

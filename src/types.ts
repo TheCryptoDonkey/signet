@@ -135,7 +135,7 @@ export interface RevocationParams {
 // --- Trust Score ---
 
 export interface TrustSignal {
-  type: 'professional-verification' | 'in-person-vouch' | 'online-vouch' | 'account-age';
+  type: 'professional-verification' | 'in-person-vouch' | 'online-vouch' | 'account-age' | 'identity-bridge';
   weight: number;
   source?: string; // pubkey of signal source
   score?: number;  // source's own score (for vouch multiplier)
@@ -220,4 +220,14 @@ export interface ParsedRevocation {
   bondAction: BondAction;
   scope: RevocationScope;
   effectiveAt: number;
+}
+
+// --- Kind 30476: Identity Bridge ---
+
+export interface ParsedIdentityBridge {
+  anonPubkey: string;
+  ringMinTier: SignetTier;
+  ringSize: number;
+  ring: string[];
+  timestamp: number;
 }

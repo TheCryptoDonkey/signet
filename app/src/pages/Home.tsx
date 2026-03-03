@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { computeTrustScore, type NostrEvent } from 'signet-protocol';
 import type { StoredIdentity } from '../lib/db';
 import { createQRPayload, serializeQRPayload } from '../lib/signet';
 import { QRCode } from '../components/QRCode';
@@ -7,6 +8,9 @@ import { TrustScore } from '../components/TrustScore';
 
 interface HomeProps {
   identity: StoredIdentity;
+  credentials?: NostrEvent[];
+  vouches?: NostrEvent[];
+  bridges?: NostrEvent[];
 }
 
 const roleLabels: Record<StoredIdentity['role'], string> = {
@@ -20,8 +24,15 @@ function truncateKey(key: string): string {
   return key.slice(0, 8) + '...' + key.slice(-8);
 }
 
-export function Home({ identity }: HomeProps) {
+export function Home({ identity, credentials = [], vouches = [], bridges = [] }: HomeProps) {
   const [copied, setCopied] = useState(false);
+
+  const trustBreakdown = useMemo(
+    () => computeTrustScore(identity.publicKey, credentials, vouches, identity.createdAt, bridges),
+    [identity.publicKey, identity.createdAt, credentials, vouches, bridges],
+  );
+
+  const hasBridge = bridges.length > 0;
 
   const qrData = useMemo(() => {
     const payload = createQRPayload(identity.publicKey, {
@@ -104,7 +115,22 @@ export function Home({ identity }: HomeProps) {
         >
           {roleLabels[identity.role]}
         </span>
-        <TierBadge tier={1} size="md" />
+        <TierBadge tier={trustBreakdown.tier} size="md" />
+        {identity.importMethod === 'nsec' && (
+          <span
+            style={{
+              display: 'inline-block',
+              padding: '4px 8px',
+              borderRadius: 999,
+              fontSize: 10,
+              fontWeight: 600,
+              background: 'var(--warning)',
+              color: '#000',
+            }}
+          >
+            nsec
+          </span>
+        )}
       </div>
 
       {/* QR Code card */}
@@ -166,6 +192,32 @@ export function Home({ identity }: HomeProps) {
         </button>
       </div>
 
+      {/* Bridge indicator */}
+      {hasBridge && (
+        <div
+          className="card"
+          style={{
+            width: '100%',
+            marginBottom: 16,
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            background: 'var(--bg-card)',
+          }}
+        >
+          <span style={{ fontSize: 18 }}>&#128279;</span>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+              Linked to verified identity
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Ring signature bridge active (+{trustBreakdown.signals.find(s => s.type === 'identity-bridge')?.weight.toFixed(0) ?? '0'} trust)
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Trust score card */}
       <div
         className="card"
@@ -174,7 +226,7 @@ export function Home({ identity }: HomeProps) {
           marginBottom: 16,
         }}
       >
-        <TrustScore score={0} showBreakdown={false} />
+        <TrustScore score={trustBreakdown.score} showBreakdown={credentials.length > 0 || vouches.length > 0 || bridges.length > 0} />
       </div>
 
       {/* Share button */}

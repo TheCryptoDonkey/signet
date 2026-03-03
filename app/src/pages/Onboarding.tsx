@@ -6,9 +6,12 @@ import { WordGrid } from '../components/WordGrid';
 interface OnboardingProps {
   onCreate: (role: StoredIdentity['role'], displayName: string) => Promise<void>;
   onImport: (mnemonic: string, role: StoredIdentity['role'], displayName: string) => Promise<void>;
+  onImportNsec?: (nsec: string, role: StoredIdentity['role'], displayName: string) => Promise<void>;
+  isAddingAccount?: boolean;
+  onCancel?: () => void;
 }
 
-type Flow = 'create' | 'import';
+type Flow = 'create' | 'import' | 'nsec';
 type Role = StoredIdentity['role'];
 
 // Step numbers:
@@ -18,12 +21,13 @@ type Role = StoredIdentity['role'];
 // 4 = Verify words (create flow only)
 // 5 = Set display name
 
-export function Onboarding({ onCreate, onImport }: OnboardingProps) {
+export function Onboarding({ onCreate, onImport, onImportNsec, isAddingAccount, onCancel }: OnboardingProps) {
   const [step, setStep] = useState(1);
   const [flow, setFlow] = useState<Flow | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   const [mnemonic, setMnemonic] = useState('');
   const [importText, setImportText] = useState('');
+  const [nsecText, setNsecText] = useState('');
   const [importRole, setImportRole] = useState<Role>('adult');
   const [writtenDown, setWrittenDown] = useState(false);
   const [displayName, setDisplayName] = useState('');
@@ -36,6 +40,8 @@ export function Onboarding({ onCreate, onImport }: OnboardingProps) {
     setFlow(chosen);
     if (chosen === 'create') {
       setStep(2);
+    } else if (chosen === 'nsec') {
+      setStep(3);
     } else {
       setStep(3);
     }
@@ -89,6 +95,8 @@ export function Onboarding({ onCreate, onImport }: OnboardingProps) {
     try {
       if (flow === 'create') {
         await onCreate(role, displayName.trim());
+      } else if (flow === 'nsec') {
+        await onImportNsec?.(nsecText.trim(), role, displayName.trim());
       } else {
         await onImport(mnemonic, role, displayName.trim());
       }
@@ -96,21 +104,21 @@ export function Onboarding({ onCreate, onImport }: OnboardingProps) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setSubmitting(false);
     }
-  }, [role, displayName, flow, mnemonic, onCreate, onImport]);
+  }, [role, displayName, flow, mnemonic, nsecText, onCreate, onImport, onImportNsec]);
 
   // ── Back handler ──────────────────────────────
 
   const handleBack = useCallback(() => {
     if (step === 5 && flow === 'create') {
       setStep(4);
-    } else if (step === 5 && flow === 'import') {
+    } else if (step === 5 && (flow === 'import' || flow === 'nsec')) {
       setStep(3);
     } else if (step === 4) {
       setWrittenDown(false);
       setStep(3);
     } else if (step === 3 && flow === 'create') {
       setStep(2);
-    } else if (step === 3 && flow === 'import') {
+    } else if (step === 3 && (flow === 'import' || flow === 'nsec')) {
       setStep(1);
     } else if (step === 2) {
       setStep(1);
@@ -191,8 +199,28 @@ export function Onboarding({ onCreate, onImport }: OnboardingProps) {
           style={{ maxWidth: 320 }}
           onClick={() => handleFlowChoice('import')}
         >
-          Import Identity
+          Import via Mnemonic
         </button>
+
+        {onImportNsec && (
+          <button
+            className="btn btn-secondary"
+            style={{ maxWidth: 320 }}
+            onClick={() => handleFlowChoice('nsec')}
+          >
+            Import via nsec
+          </button>
+        )}
+
+        {isAddingAccount && onCancel && (
+          <button
+            className="btn btn-secondary"
+            style={{ maxWidth: 320, marginTop: 8, opacity: 0.7 }}
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        )}
       </div>
     );
   }
@@ -476,6 +504,122 @@ export function Onboarding({ onCreate, onImport }: OnboardingProps) {
           style={{ marginTop: 24 }}
           disabled={!importValid}
           onClick={handleImportContinue}
+        >
+          Continue
+        </button>
+      </div>
+    );
+  }
+
+  // ── STEP 3c: Import via nsec ──
+
+  if (step === 3 && flow === 'nsec') {
+    const nsecValid = nsecText.trim().startsWith('nsec1') && nsecText.trim().length > 50;
+
+    return (
+      <div style={containerStyle}>
+        <div style={headerStyle}>
+          <button style={backBtnStyle} onClick={handleBack} aria-label="Back">
+            &#8592;
+          </button>
+        </div>
+
+        <h2
+          style={{
+            fontSize: 22,
+            fontWeight: 700,
+            color: 'var(--text-primary)',
+            marginBottom: 8,
+          }}
+        >
+          Import via nsec
+        </h2>
+        <p
+          style={{
+            fontSize: 14,
+            color: 'var(--text-secondary)',
+            marginBottom: 20,
+            lineHeight: 1.5,
+          }}
+        >
+          Paste your Nostr private key (nsec format). Note: nsec-imported accounts cannot use Shamir backup.
+        </p>
+
+        <input
+          className="input"
+          type="password"
+          value={nsecText}
+          onChange={(e) => setNsecText(e.target.value)}
+          placeholder="nsec1..."
+          autoFocus
+          style={{
+            fontFamily: 'monospace',
+            fontSize: 14,
+          }}
+        />
+
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: 13,
+            color: nsecText.trim().length === 0
+              ? 'var(--text-muted)'
+              : nsecValid
+                ? 'var(--success)'
+                : 'var(--danger)',
+          }}
+        >
+          {nsecText.trim().length === 0
+            ? 'Enter your nsec key'
+            : nsecValid
+              ? '\u2713 Valid nsec format'
+              : '\u2717 Must start with nsec1'}
+        </div>
+
+        {/* Account type selector */}
+        <div style={{ marginTop: 24 }}>
+          <p
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              marginBottom: 10,
+            }}
+          >
+            Account type
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {(['adult', 'child', 'verifier'] as Role[]).map((r) => (
+              <button
+                key={r}
+                onClick={() => { setImportRole(r); setRole(r); }}
+                style={{
+                  flex: 1,
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: `2px solid ${importRole === r ? 'var(--accent)' : 'var(--border)'}`,
+                  background: importRole === r ? 'var(--accent)' : 'var(--bg-input)',
+                  color: importRole === r ? 'var(--accent-text)' : 'var(--text-primary)',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  minHeight: 44,
+                  textTransform: 'capitalize',
+                  transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          className="btn btn-primary"
+          style={{ marginTop: 24 }}
+          disabled={!nsecValid}
+          onClick={() => { setRole(importRole); setStep(5); }}
         >
           Continue
         </button>

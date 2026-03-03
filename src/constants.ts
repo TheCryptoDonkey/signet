@@ -8,6 +8,7 @@ export const SIGNET_KINDS = {
   VERIFIER: 30473,
   CHALLENGE: 30474,
   REVOCATION: 30475,
+  IDENTITY_BRIDGE: 30476,
 } as const;
 
 /** Protocol namespace label */
@@ -38,7 +39,11 @@ export const TRUST_WEIGHTS = {
   ONLINE_VOUCH: 2,
   ACCOUNT_AGE_PER_YEAR: 5,
   ACCOUNT_AGE_MAX: 15,
+  IDENTITY_BRIDGE: 25,
 } as const;
+
+/** Minimum ring size for identity bridges (anonymity threshold) */
+export const MIN_BRIDGE_RING_SIZE = 5;
 
 /** Maximum trust score */
 export const MAX_TRUST_SCORE = 100;
@@ -46,6 +51,7 @@ export const MAX_TRUST_SCORE = 100;
 /** Signal ordering (protocol-mandated) */
 export const SIGNAL_PRIORITY = [
   'professional-verification',
+  'identity-bridge',
   'in-person-vouch',
   'online-vouch',
   'account-age',

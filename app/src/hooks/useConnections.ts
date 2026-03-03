@@ -1,23 +1,33 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getConnections, saveConnection, deleteConnection as dbDeleteConnection, type StoredConnection } from '../lib/db';
+import {
+  getConnectionsForAccount,
+  saveConnection,
+  deleteConnection as dbDeleteConnection,
+  type StoredConnection,
+} from '../lib/db';
 
-export function useConnections() {
+export function useConnections(ownerPubkey: string | undefined) {
   const [connections, setConnections] = useState<StoredConnection[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
-    const conns = await getConnections();
+    if (!ownerPubkey) {
+      setConnections([]);
+      return;
+    }
+    const conns = await getConnectionsForAccount(ownerPubkey);
     setConnections(conns);
-  }, []);
+  }, [ownerPubkey]);
 
   useEffect(() => {
     reload().then(() => setLoading(false));
   }, [reload]);
 
-  const addConnection = useCallback(async (connection: StoredConnection) => {
-    await saveConnection(connection);
+  const addConnection = useCallback(async (connection: Omit<StoredConnection, 'ownerPubkey'>) => {
+    if (!ownerPubkey) return;
+    await saveConnection({ ...connection, ownerPubkey });
     await reload();
-  }, [reload]);
+  }, [ownerPubkey, reload]);
 
   const removeConnection = useCallback(async (pubkey: string) => {
     await dbDeleteConnection(pubkey);

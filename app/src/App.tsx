@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { useIdentity } from './hooks/useIdentity';
 import { usePreferences } from './hooks/usePreferences';
 import { useConnections } from './hooks/useConnections';
+import { useRelay } from './hooks/useRelay';
+import { useNostrEvents } from './hooks/useNostrEvents';
 import { Layout } from './components/Layout';
 import { Onboarding } from './pages/Onboarding';
 import { Home } from './pages/Home';
@@ -11,20 +13,35 @@ import { Scan } from './pages/Scan';
 import { Backup } from './pages/Backup';
 import { Verifier } from './pages/Verifier';
 import { Settings } from './pages/Settings';
+import { LinkAccounts } from './pages/LinkAccounts';
 import { saveIdentity, type StoredIdentity, type StoredConnection } from './lib/db';
 
 export function App() {
-  const { identity, loading: identityLoading, create, importMnemonic, deleteIdentity } = useIdentity();
+  const {
+    identity,
+    identities,
+    activeIdentity,
+    loading: identityLoading,
+    create,
+    importMnemonic,
+    importNsec,
+    switchAccount,
+    deleteIdentity,
+  } = useIdentity();
   const { preferences, loading: prefsLoading, setTheme } = usePreferences();
-  const { connections, loading: connsLoading, addConnection, removeConnection } = useConnections();
+  const { connections, loading: connsLoading, addConnection, removeConnection } = useConnections(activeIdentity?.publicKey);
+  const relay = useRelay();
+  const nostrEvents = useNostrEvents(activeIdentity?.publicKey);
 
   const [activePage, setActivePage] = useState('home');
   const [selectedContact, setSelectedContact] = useState<string | null>(null);
+  const [addingAccount, setAddingAccount] = useState(false);
 
   // ── Handlers ──
 
   const handleCreate = useCallback(async (role: StoredIdentity['role'], displayName: string) => {
     await create(role, displayName);
+    setAddingAccount(false);
   }, [create]);
 
   const handleImport = useCallback(async (
@@ -33,9 +50,19 @@ export function App() {
     displayName: string,
   ) => {
     await importMnemonic(mnemonic, role, displayName);
+    setAddingAccount(false);
   }, [importMnemonic]);
 
-  const handleConnect = useCallback(async (connection: StoredConnection) => {
+  const handleImportNsec = useCallback(async (
+    nsec: string,
+    role: StoredIdentity['role'],
+    displayName: string,
+  ) => {
+    await importNsec(nsec, role, displayName);
+    setAddingAccount(false);
+  }, [importNsec]);
+
+  const handleConnect = useCallback(async (connection: Omit<StoredConnection, 'ownerPubkey'>) => {
     await addConnection(connection);
     setActivePage('connections');
   }, [addConnection]);
@@ -57,7 +84,6 @@ export function App() {
     if (!identity) return;
     const updated = { ...identity, role };
     await saveIdentity(updated);
-    // Force reload by navigating
     window.location.reload();
   }, [identity]);
 
@@ -68,6 +94,14 @@ export function App() {
   const handleNavigate = useCallback((page: string) => {
     setSelectedContact(null);
     setActivePage(page);
+  }, []);
+
+  const handleAddAccount = useCallback(() => {
+    setAddingAccount(true);
+  }, []);
+
+  const handleCancelAddAccount = useCallback(() => {
+    setAddingAccount(false);
   }, []);
 
   // ── Loading ──
@@ -104,10 +138,18 @@ export function App() {
     );
   }
 
-  // ── Onboarding ──
+  // ── Onboarding (no identity yet or adding account) ──
 
-  if (!identity) {
-    return <Onboarding onCreate={handleCreate} onImport={handleImport} />;
+  if (!identity || addingAccount) {
+    return (
+      <Onboarding
+        onCreate={handleCreate}
+        onImport={handleImport}
+        onImportNsec={handleImportNsec}
+        isAddingAccount={addingAccount}
+        onCancel={addingAccount ? handleCancelAddAccount : undefined}
+      />
+    );
   }
 
   // ── Contact Detail (sub-page of Connections) ──
@@ -116,9 +158,18 @@ export function App() {
     const connection = connections.find(c => c.pubkey === selectedContact);
     if (connection) {
       return (
-        <Layout activePage={activePage} onNavigate={handleNavigate} role={identity.role}>
+        <Layout
+          activePage={activePage}
+          onNavigate={handleNavigate}
+          role={identity.role}
+          identities={identities}
+          activeIdentity={identity}
+          onSwitchAccount={switchAccount}
+          onAddAccount={handleAddAccount}
+        >
           <ContactDetail
             connection={connection}
+            identity={identity}
             onBack={handleBackFromContact}
             onRemove={handleRemoveConnection}
           />
@@ -132,7 +183,14 @@ export function App() {
   function renderPage() {
     switch (activePage) {
       case 'home':
-        return <Home identity={identity!} />;
+        return (
+          <Home
+            identity={identity!}
+            credentials={nostrEvents.credentials}
+            vouches={nostrEvents.vouches}
+            bridges={nostrEvents.bridges}
+          />
+        );
       case 'connections':
         return (
           <Connections
@@ -150,26 +208,59 @@ export function App() {
       case 'backup':
         return <Backup identity={identity!} onBack={() => handleNavigate('settings')} />;
       case 'verify':
-        return <Verifier identity={identity!} />;
+        return (
+          <Verifier
+            identity={identity!}
+            relay={relay}
+          />
+        );
       case 'settings':
         return (
           <Settings
             identity={identity!}
+            identities={identities}
             preferences={preferences}
             connections={connections}
+            relay={relay}
             onSetTheme={setTheme}
             onChangeRole={handleChangeRole}
             onDeleteIdentity={handleDeleteIdentity}
             onNavigate={handleNavigate}
+            onSwitchAccount={switchAccount}
+            onAddAccount={handleAddAccount}
+          />
+        );
+      case 'link-accounts':
+        return (
+          <LinkAccounts
+            identity={identity!}
+            identities={identities}
+            relay={relay}
+            onBack={() => handleNavigate('settings')}
           />
         );
       default:
-        return <Home identity={identity!} />;
+        return (
+          <Home
+            identity={identity!}
+            credentials={nostrEvents.credentials}
+            vouches={nostrEvents.vouches}
+            bridges={nostrEvents.bridges}
+          />
+        );
     }
   }
 
   return (
-    <Layout activePage={activePage} onNavigate={handleNavigate} role={identity.role}>
+    <Layout
+      activePage={activePage}
+      onNavigate={handleNavigate}
+      role={identity.role}
+      identities={identities}
+      activeIdentity={identity}
+      onSwitchAccount={switchAccount}
+      onAddAccount={handleAddAccount}
+    >
       {renderPage()}
     </Layout>
   );

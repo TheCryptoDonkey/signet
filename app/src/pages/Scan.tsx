@@ -7,7 +7,7 @@ import { QRScanner } from '../components/QRScanner';
 
 interface ScanProps {
   identity: StoredIdentity;
-  onConnect: (connection: StoredConnection) => Promise<void>;
+  onConnect: (connection: Omit<StoredConnection, 'ownerPubkey'>) => Promise<void>;
 }
 
 type Step = 'scanner' | 'preview' | 'success';
@@ -81,7 +81,7 @@ export function Scan({ identity, onConnect }: ScanProps) {
       if (shareSelection.email) ourInfo.email = '';
       if (shareSelection.address) ourInfo.address = '';
 
-      const connection: StoredConnection = {
+      const connection: Omit<StoredConnection, 'ownerPubkey'> = {
         pubkey: scannedPayload.pubkey,
         sharedSecret: secret,
         theirInfo: scannedPayload.info ?? {},

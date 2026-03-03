@@ -10,12 +10,13 @@ import type {
   SignetTier,
 } from './types.js';
 
-/** Compute trust score for a subject from their credentials and vouches */
+/** Compute trust score for a subject from their credentials, vouches, and bridges */
 export function computeTrustScore(
   subjectPubkey: string,
   credentials: NostrEvent[],
   vouches: NostrEvent[],
-  accountCreatedAt?: number
+  accountCreatedAt?: number,
+  bridges?: NostrEvent[]
 ): TrustScoreBreakdown {
   const signals: TrustSignal[] = [];
   let rawScore = 0;
@@ -81,6 +82,25 @@ export function computeTrustScore(
         source: vouch.pubkey,
         score: voucherScore,
       });
+    }
+  }
+
+  // Process identity bridges (kind 30476)
+  if (bridges) {
+    for (const bridge of bridges) {
+      if (bridge.kind !== SIGNET_KINDS.IDENTITY_BRIDGE) continue;
+      if (bridge.pubkey !== subjectPubkey) continue;
+
+      const ringMinTier = parseInt(getTagValue(bridge, 'ring-min-tier') || '1') as SignetTier;
+      const weight = TRUST_WEIGHTS.IDENTITY_BRIDGE * (ringMinTier / 4);
+      rawScore += weight;
+      signals.push({
+        type: 'identity-bridge',
+        weight,
+        source: bridge.pubkey,
+      });
+      // Only count one bridge per account
+      break;
     }
   }
 

@@ -18,6 +18,9 @@ import {
   getSignetDisplay,
   getJurisdictionCodes,
   getJurisdiction,
+  decodeNsec,
+  encodeNsec,
+  encodeNpub,
   type ContactInfo,
   type QRPayload,
   type ShamirShare,
@@ -44,6 +47,9 @@ export {
   getSignetDisplay,
   getJurisdictionCodes,
   getJurisdiction,
+  decodeNsec,
+  encodeNsec,
+  encodeNpub,
 };
 
 export type { ContactInfo, QRPayload, ShamirShare };
@@ -55,13 +61,14 @@ export function createNewIdentity(
   const mnemonic = generateMnemonic();
   const { privateKey, publicKey } = deriveNostrKeyPair(mnemonic);
   return {
-    id: 'current',
+    id: publicKey,
     mnemonic,
     publicKey,
     privateKey,
     role,
     displayName,
     createdAt: Math.floor(Date.now() / 1000),
+    importMethod: 'mnemonic',
   };
 }
 
@@ -75,12 +82,30 @@ export function importIdentity(
   }
   const { privateKey, publicKey } = deriveNostrKeyPair(mnemonic);
   return {
-    id: 'current',
+    id: publicKey,
     mnemonic,
     publicKey,
     privateKey,
     role,
     displayName,
     createdAt: Math.floor(Date.now() / 1000),
+    importMethod: 'mnemonic',
+  };
+}
+
+export function importFromNsec(
+  nsec: string,
+  role: StoredIdentity['role'],
+  displayName: string,
+): StoredIdentity {
+  const { privateKey, publicKey } = decodeNsec(nsec);
+  return {
+    id: publicKey,
+    publicKey,
+    privateKey,
+    role,
+    displayName,
+    createdAt: Math.floor(Date.now() / 1000),
+    importMethod: 'nsec',
   };
 }

@@ -31,6 +31,7 @@ export type {
   ParsedVerifier,
   ParsedChallenge,
   ParsedRevocation,
+  ParsedIdentityBridge,
 } from './types.js';
 
 // Constants
@@ -45,6 +46,7 @@ export {
   TRUST_WEIGHTS,
   MAX_TRUST_SCORE,
   SIGNAL_PRIORITY,
+  MIN_BRIDGE_RING_SIZE,
 } from './constants.js';
 
 // Crypto
@@ -142,6 +144,15 @@ export {
 } from './ring-signature.js';
 
 export type { RingSignature } from './ring-signature.js';
+
+// Identity Bridge (kind 30476)
+export {
+  createIdentityBridge,
+  verifyIdentityBridge,
+  parseIdentityBridge,
+  selectDecoyRing,
+  computeBridgeWeight,
+} from './identity-bridge.js';
 
 // Range Proofs (Pedersen Commitments)
 export {
@@ -274,7 +285,7 @@ export {
   generateMnemonic,
 } from './mnemonic.js';
 
-// Key Derivation (BIP-32 / NIP-06)
+// Key Derivation (BIP-32 / NIP-06) & nsec/npub encoding (NIP-19)
 export {
   NIP06_DERIVATION_PATH,
   parsePath,
@@ -282,6 +293,9 @@ export {
   deriveNostrKeyPair,
   createIdentityFromMnemonic,
   deriveChildAccount,
+  encodeNsec,
+  encodeNpub,
+  decodeNsec,
 } from './key-derivation.js';
 
 // Shamir's Secret Sharing

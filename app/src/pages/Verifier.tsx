@@ -1,9 +1,21 @@
 import { useState, useMemo, useCallback } from 'react';
+import {
+  createProfessionalCredential,
+  createChildSafetyCredential,
+  createVerifierCredential,
+  hashString,
+} from 'signet-protocol';
 import type { StoredIdentity } from '../lib/db';
 import { getJurisdictionCodes, getJurisdiction } from '../lib/signet';
 
+interface RelayHook {
+  state: string;
+  publish: (event: import('signet-protocol').NostrEvent) => Promise<{ ok: boolean; message: string }>;
+}
+
 interface VerifierProps {
   identity: StoredIdentity;
+  relay?: RelayHook;
 }
 
 interface VerifierRegistration {
@@ -40,7 +52,7 @@ function formatTimestamp(ts: number): string {
   });
 }
 
-export function Verifier({ identity }: VerifierProps) {
+export function Verifier({ identity, relay }: VerifierProps) {
   // -- Registration state --
   const [regName, setRegName] = useState(identity.displayName);
   const [regProfession, setRegProfession] = useState('');
@@ -66,11 +78,28 @@ export function Verifier({ identity }: VerifierProps) {
   }, []);
 
   // -- Handlers --
-  const handleRegister = useCallback(() => {
+  const handleRegister = useCallback(async () => {
     if (!regName.trim() || !regProfession.trim() || !regJurisdiction || !regLicenceId.trim()) {
       return;
     }
     const j = getJurisdiction(regJurisdiction);
+
+    // Publish kind 30473 to relay
+    if (relay && relay.state === 'connected') {
+      try {
+        const verifierEvent = await createVerifierCredential(identity.privateKey, {
+          profession: regProfession.trim(),
+          jurisdiction: regJurisdiction,
+          licenceHash: hashString(regLicenceId.trim()),
+          professionalBody: regProfession.trim(),
+          statement: `${regName.trim()} registered as ${regProfession.trim()} verifier`,
+        });
+        await relay.publish(verifierEvent);
+      } catch {
+        // Still save registration locally even if relay publish fails
+      }
+    }
+
     setRegistration({
       name: regName.trim(),
       profession: regProfession.trim(),
@@ -79,11 +108,41 @@ export function Verifier({ identity }: VerifierProps) {
       licenceId: regLicenceId.trim(),
       registeredAt: Math.floor(Date.now() / 1000),
     });
-  }, [regName, regProfession, regJurisdiction, regLicenceId]);
+  }, [regName, regProfession, regJurisdiction, regLicenceId, relay, identity.privateKey]);
 
-  const handleIssueCredential = useCallback(() => {
+  const handleIssueCredential = useCallback(async () => {
     if (!subjectPubkey.trim()) return;
     if (tier === 4 && !ageRange.trim()) return;
+
+    // Publish kind 30470 credential to relay
+    if (relay && relay.state === 'connected') {
+      try {
+        let credEvent;
+        if (tier === 4) {
+          credEvent = await createChildSafetyCredential(
+            identity.privateKey,
+            subjectPubkey.trim(),
+            {
+              profession: registration?.profession ?? '',
+              jurisdiction: registration?.jurisdiction ?? '',
+              ageRange: ageRange.trim(),
+            },
+          );
+        } else {
+          credEvent = await createProfessionalCredential(
+            identity.privateKey,
+            subjectPubkey.trim(),
+            {
+              profession: registration?.profession ?? '',
+              jurisdiction: registration?.jurisdiction ?? '',
+            },
+          );
+        }
+        await relay.publish(credEvent);
+      } catch {
+        // Still record locally
+      }
+    }
 
     const cred: IssuedCredential = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -100,7 +159,7 @@ export function Verifier({ identity }: VerifierProps) {
     setNotes('');
     setIssueSuccess(true);
     setTimeout(() => setIssueSuccess(false), 3000);
-  }, [subjectPubkey, tier, ageRange, notes]);
+  }, [subjectPubkey, tier, ageRange, notes, relay, identity.privateKey, registration]);
 
   // -- Can submit checks --
   const canRegister = regName.trim() && regProfession.trim() && regJurisdiction && regLicenceId.trim();

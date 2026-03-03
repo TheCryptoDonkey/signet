@@ -1,9 +1,15 @@
 import type { ReactNode } from 'react';
+import type { StoredIdentity } from '../lib/db';
+import { AccountSwitcher } from './AccountSwitcher';
 
 interface LayoutProps {
   activePage: string;
   onNavigate: (page: string) => void;
   role: 'adult' | 'child' | 'verifier';
+  identities: StoredIdentity[];
+  activeIdentity: StoredIdentity;
+  onSwitchAccount: (pubkey: string) => void;
+  onAddAccount: () => void;
   children: ReactNode;
 }
 
@@ -22,13 +28,33 @@ const baseTabs: TabDef[] = [
 
 const verifierTab: TabDef = { key: 'verify', label: 'Verify', icon: '\u{1F6E1}' };
 
-export function Layout({ activePage, onNavigate, role, children }: LayoutProps) {
+export function Layout({ activePage, onNavigate, role, identities, activeIdentity, onSwitchAccount, onAddAccount, children }: LayoutProps) {
   const tabs = role === 'verifier'
     ? [...baseTabs, verifierTab]
     : baseTabs;
 
   return (
     <div className="app">
+      {/* Header with account switcher */}
+      {identities.length > 1 && (
+        <header
+          style={{
+            padding: '8px 16px',
+            borderBottom: '1px solid var(--border-subtle)',
+            background: 'var(--bg)',
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          <AccountSwitcher
+            identities={identities}
+            activeIdentity={activeIdentity}
+            onSwitch={onSwitchAccount}
+            onAddAccount={onAddAccount}
+          />
+        </header>
+      )}
+
       <main className="page">
         {children}
       </main>

@@ -1,16 +1,29 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { StoredIdentity, StoredConnection, StoredPreferences } from '../lib/db';
 import { getConnections } from '../lib/db';
 import { ThemeToggle } from '../components/ThemeToggle';
+import type { RelayState } from 'signet-protocol';
+
+interface RelayHook {
+  state: RelayState;
+  url: string;
+  connect: () => Promise<void>;
+  disconnect: () => void;
+  changeUrl: (url: string) => void;
+}
 
 interface SettingsProps {
   identity: StoredIdentity;
+  identities: StoredIdentity[];
   preferences: StoredPreferences;
   connections: StoredConnection[];
+  relay?: RelayHook;
   onSetTheme: (theme: 'system' | 'light' | 'dark') => void;
   onChangeRole: (role: StoredIdentity['role']) => void;
   onDeleteIdentity: () => void;
   onNavigate?: (page: string) => void;
+  onSwitchAccount?: (pubkey: string) => void;
+  onAddAccount?: () => void;
 }
 
 const roleOptions: { value: StoredIdentity['role']; label: string }[] = [
@@ -86,13 +99,41 @@ interface ImportPreview {
 
 export function Settings({
   identity,
+  identities,
   preferences,
   connections,
+  relay,
   onSetTheme,
   onChangeRole,
   onDeleteIdentity,
   onNavigate,
+  onSwitchAccount,
+  onAddAccount,
 }: SettingsProps) {
+  const [relayUrlInput, setRelayUrlInput] = useState(relay?.url ?? 'ws://localhost:7777');
+  const [relayConnecting, setRelayConnecting] = useState(false);
+
+  useEffect(() => {
+    if (relay) setRelayUrlInput(relay.url);
+  }, [relay?.url]);
+
+  const handleRelayConnect = useCallback(async () => {
+    if (!relay) return;
+    setRelayConnecting(true);
+    try {
+      if (relayUrlInput !== relay.url) {
+        relay.changeUrl(relayUrlInput);
+      }
+      await relay.connect();
+    } catch {
+      // Ignore - state will show error
+    }
+    setRelayConnecting(false);
+  }, [relay, relayUrlInput]);
+
+  const handleRelayDisconnect = useCallback(() => {
+    relay?.disconnect();
+  }, [relay]);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
   const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -225,6 +266,121 @@ export function Settings({
         <div style={sectionHeaderStyle}>Theme</div>
         <ThemeToggle current={preferences.theme} onChange={onSetTheme} />
       </div>
+
+      {/* ── Section: Accounts ── */}
+      <div style={sectionStyle}>
+        <div style={sectionHeaderStyle}>Accounts</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+          {identities.map((id) => {
+            const isActive = id.publicKey === identity.publicKey;
+            return (
+              <button
+                key={id.publicKey}
+                onClick={() => onSwitchAccount?.(id.publicKey)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 14px',
+                  background: isActive ? 'var(--bg-input)' : 'var(--bg-card)',
+                  border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  minHeight: 44,
+                  WebkitTapHighlightColor: 'transparent',
+                  width: '100%',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: isActive ? 'var(--accent)' : 'var(--border)',
+                  color: isActive ? 'var(--accent-text)' : 'var(--text-secondary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 700, flexShrink: 0,
+                }}>
+                  {id.displayName.charAt(0).toUpperCase()}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {id.displayName}
+                    {id.importMethod === 'nsec' ? ' (nsec)' : ''}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                    {id.publicKey.slice(0, 8)}...{id.publicKey.slice(-4)}
+                  </div>
+                </div>
+                {isActive && <span style={{ color: 'var(--accent)', fontSize: 14 }}>&#10003;</span>}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          className="btn btn-secondary"
+          onClick={onAddAccount}
+          style={{ minHeight: 44 }}
+        >
+          Add Account
+        </button>
+        {identities.length >= 2 && (
+          <button
+            className="btn btn-secondary"
+            onClick={() => onNavigate?.('link-accounts')}
+            style={{ minHeight: 44, marginTop: 8 }}
+          >
+            Link Accounts (Identity Bridge)
+          </button>
+        )}
+      </div>
+
+      {/* ── Section: Relay ── */}
+      {relay && (
+        <div style={sectionStyle}>
+          <div style={sectionHeaderStyle}>Relay</div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span
+                style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: relay.state === 'connected' ? 'var(--success)' : relay.state === 'connecting' ? 'var(--warning)' : 'var(--danger)',
+                  flexShrink: 0,
+                }}
+              />
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
+                {relay.state}
+              </span>
+            </div>
+            <input
+              className="input"
+              type="text"
+              value={relayUrlInput}
+              onChange={(e) => setRelayUrlInput(e.target.value)}
+              placeholder="ws://localhost:7777"
+              style={{ width: '100%', fontFamily: 'monospace', fontSize: 13, marginBottom: 8 }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              {relay.state !== 'connected' ? (
+                <button
+                  className="btn btn-primary"
+                  style={{ minHeight: 44, flex: 1 }}
+                  onClick={handleRelayConnect}
+                  disabled={relayConnecting}
+                >
+                  {relayConnecting ? 'Connecting...' : 'Connect'}
+                </button>
+              ) : (
+                <button
+                  className="btn btn-secondary"
+                  style={{ minHeight: 44, flex: 1 }}
+                  onClick={handleRelayDisconnect}
+                >
+                  Disconnect
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Section 2: Account Type ── */}
       <div style={sectionStyle}>
@@ -405,23 +561,38 @@ export function Settings({
       {/* ── Section 4: Shamir Backup ── */}
       <div style={sectionStyle}>
         <div style={sectionHeaderStyle}>Recovery Backup</div>
-        <p
-          style={{
-            fontSize: 13,
-            color: 'var(--text-muted)',
-            marginBottom: 10,
-            lineHeight: 1.5,
-          }}
-        >
-          Split your recovery phrase into shares using Shamir's Secret Sharing. Distribute to trusted people.
-        </p>
-        <button
-          className="btn btn-secondary"
-          onClick={() => onNavigate?.('backup')}
-          style={{ minHeight: 44 }}
-        >
-          Manage Backup Shares
-        </button>
+        {identity.importMethod === 'nsec' ? (
+          <p
+            style={{
+              fontSize: 13,
+              color: 'var(--warning)',
+              marginBottom: 10,
+              lineHeight: 1.5,
+            }}
+          >
+            nsec-imported accounts cannot use Shamir backup. Back up your nsec key separately.
+          </p>
+        ) : (
+          <>
+            <p
+              style={{
+                fontSize: 13,
+                color: 'var(--text-muted)',
+                marginBottom: 10,
+                lineHeight: 1.5,
+              }}
+            >
+              Split your recovery phrase into shares using Shamir's Secret Sharing. Distribute to trusted people.
+            </p>
+            <button
+              className="btn btn-secondary"
+              onClick={() => onNavigate?.('backup')}
+              style={{ minHeight: 44 }}
+            >
+              Manage Backup Shares
+            </button>
+          </>
+        )}
       </div>
 
       {/* ── Section 5: Export Data ── */}

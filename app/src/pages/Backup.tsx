@@ -39,7 +39,7 @@ function CreateShares({ identity }: { identity: StoredIdentity }) {
   const [shares, setShares] = useState<{ words: string[]; share: ShamirShare }[] | null>(null);
   const [expandedShare, setExpandedShare] = useState<number | null>(null);
 
-  const words = identity.mnemonic.split(' ');
+  const words = (identity.mnemonic ?? '').split(' ');
 
   const handleReveal = useCallback(() => {
     setShowMnemonic(true);
@@ -47,7 +47,7 @@ function CreateShares({ identity }: { identity: StoredIdentity }) {
 
   const handleGenerateShares = useCallback(() => {
     const config = SCHEMES[scheme];
-    const entropy = mnemonicToEntropy(identity.mnemonic);
+    const entropy = mnemonicToEntropy(identity.mnemonic!);
     const shamirShares = splitSecret(entropy, config.threshold, config.total);
     const result = shamirShares.map((s) => ({
       share: s,

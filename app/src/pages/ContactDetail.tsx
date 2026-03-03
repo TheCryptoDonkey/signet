@@ -1,9 +1,12 @@
-import { useCallback } from 'react';
-import type { StoredConnection } from '../lib/db';
+import { useState, useCallback } from 'react';
+import { createVouch } from 'signet-protocol';
+import type { StoredConnection, StoredIdentity } from '../lib/db';
 import { SignetWords } from '../components/SignetWords';
+import { publishEvent } from '../lib/relay-service';
 
 interface ContactDetailProps {
   connection: StoredConnection;
+  identity?: StoredIdentity;
   onBack: () => void;
   onRemove: (pubkey: string) => void;
 }
@@ -87,8 +90,27 @@ function InfoSection({
   );
 }
 
-export function ContactDetail({ connection, onBack, onRemove }: ContactDetailProps) {
+export function ContactDetail({ connection, identity, onBack, onRemove }: ContactDetailProps) {
   const displayName = connection.theirInfo.name || truncatePubkey(connection.pubkey);
+  const [vouched, setVouched] = useState(false);
+  const [vouchError, setVouchError] = useState<string | null>(null);
+
+  const handleVouch = useCallback(async () => {
+    if (!identity) return;
+    try {
+      const vouch = await createVouch(identity.privateKey, {
+        subjectPubkey: connection.pubkey,
+        method: 'in-person',
+        voucherTier: 1,
+        voucherScore: 50,
+        context: `Vouched via Signet app connection`,
+      });
+      await publishEvent(vouch);
+      setVouched(true);
+    } catch (err) {
+      setVouchError(err instanceof Error ? err.message : 'Failed to publish vouch');
+    }
+  }, [identity, connection.pubkey]);
 
   const handleRemove = useCallback(() => {
     const confirmed = window.confirm(
@@ -207,6 +229,41 @@ export function ContactDetail({ connection, onBack, onRemove }: ContactDetailPro
           {connection.pubkey}
         </div>
       </div>
+
+      {/* Vouch button */}
+      {identity && (
+        <div style={{ marginBottom: 12 }}>
+          {vouched ? (
+            <div
+              style={{
+                padding: '12px 16px',
+                background: 'var(--bg-input)',
+                border: '1px solid var(--success)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--success)',
+                textAlign: 'center',
+              }}
+            >
+              Vouch published
+            </div>
+          ) : (
+            <button
+              className="btn btn-primary"
+              style={{ width: '100%', minHeight: 48 }}
+              onClick={handleVouch}
+            >
+              Vouch for {displayName}
+            </button>
+          )}
+          {vouchError && (
+            <div style={{ fontSize: 13, color: 'var(--danger)', marginTop: 6 }}>
+              {vouchError}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Remove connection */}
       <button
