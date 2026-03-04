@@ -741,7 +741,75 @@ Occasionally someone may want to retire one Persona and create a new one while c
 
 **Trust does not transfer between Personas** — this is deliberate. If it did, de-anonymisation would be trivial (follow the trust transfer to link old and new Personas). The cost of Persona migration is rebuilding social trust. This incentivises identity stability.
 
-### 10.13 Summary: What Changes, What Stays
+### 10.13 Nostr Early Adopter Migration
+
+**The scenario:** Someone has been on Nostr for years. Their npub is widely known — they have followers, NIP-05 verification, relay subscriptions, zaps, a social graph, published notes, long-form content. Signet launches. They want professional verification without losing any of that.
+
+#### 10.13.1 The Simple Case: Sign the Existing Keypair
+
+The two-credential ceremony (§9) does NOT require a new keypair. The subject brings their **existing** Nostr keypair to the professional:
+
+1. Early adopter generates no new keys — they present their existing pubkey (keypair A)
+2. Professional verifies identity against documents
+3. Professional issues a kind 30470 credential on the **existing pubkey**
+4. Optionally, the subject generates a separate keypair B for a Persona
+5. Result: all followers, relay subscriptions, NIP-05, published content, zaps, reputation — completely untouched. They just gained a Signet credential on top.
+
+**This is the expected path for most early adopters.** Nothing migrates because nothing moves.
+
+#### 10.13.2 The Reverse Case: Existing npub Becomes the Persona
+
+Some early adopters may have built their Nostr presence pseudonymously — they don't use their real name, and they want to keep it that way. Their existing npub IS their Persona. They want a new keypair for their real-name identity.
+
+1. Subject generates a NEW keypair A (for their real-name Natural Person)
+2. Subject brings keypair A + their existing npub (keypair B, the Persona) to the professional
+3. Professional verifies identity and issues:
+   - Natural Person credential on keypair A (new, real-name)
+   - Persona credential on keypair B (existing, pseudonymous)
+4. Subject optionally creates an identity bridge (kind 30476) linking keypair A to keypair B with ring signature privacy
+5. Result: existing Nostr identity continues as a verified Persona. New real-name identity exists separately.
+
+#### 10.13.3 Forwarding and Linking
+
+What about web-style forwarding — "this old identity points to this new one"?
+
+**Within Nostr, this is already handled:**
+- **NIP-05 redirect:** Update `_@domain/.well-known/nostr.json` to point to the new pubkey
+- **Kind 0 metadata:** Update the old account's profile to reference the new one
+- **Relay list:** Publish the same relay list on both keys
+
+**Within Signet, the mechanisms already exist:**
+- **Identity bridge (kind 30476):** Cryptographically links two keypairs with ring signature privacy — proves they're controlled by the same verified person without revealing which person
+- **Credential chain:** If migrating from one keypair to another, a professional can issue a new credential that references the old one via `["supersedes", "<old_credential_id>"]`
+
+**What Signet does NOT do (deliberately):**
+- Automatic trust transfer between keypairs. If someone's Tier 2 vouches are on keypair A and they want to move to keypair B, those vouches stay on A. People who vouched for A would need to re-vouch for B. This prevents impersonation attacks where someone claims "my new key is X, transfer everything."
+- Follower migration. Nostr followers follow a specific pubkey. Signet doesn't and shouldn't try to redirect followers — that's a social layer concern, not an identity layer concern.
+
+#### 10.13.4 The NIP-05 to Signet Upgrade Path
+
+Many early adopters have NIP-05 verification (`alice@example.com`). This is identification, not verification — it proves domain ownership, not identity. But it's a useful stepping stone:
+
+1. **NIP-05 gives a human-readable name** — Signet credentials add cryptographic identity proof behind that name
+2. **No conflict** — NIP-05 and Signet credentials coexist on the same pubkey
+3. **Additive trust signal** — Clients can show both: "alice@example.com (NIP-05) + Verified Person (Signet Tier 3)"
+4. **Long-standing NIP-05** — an account that has had the same NIP-05 for years is itself a trust signal (account age contributes to trust score)
+
+#### 10.13.5 What Early Adopters Keep vs What They Gain
+
+| Already have (Nostr) | Gain (Signet) | Lose |
+|---|---|---|
+| Pubkey + followers | Professional verification credential | Nothing |
+| NIP-05 identification | Cryptographic identity proof | Nothing |
+| Social graph (follows/followers) | Trust score based on verification tier | Nothing |
+| Published content (notes, articles) | Merkle-bound verified name (optional disclosure) | Nothing |
+| Relay subscriptions | Selective disclosure of attributes | Nothing |
+| Zap history | Persona credential (anonymous verified identity) | Nothing |
+| Existing reputation | Nullifier-based duplicate prevention | Nothing |
+
+**The answer is: they lose nothing.** Signet is purely additive for existing Nostr users.
+
+### 10.14 Summary: What Changes, What Stays
 
 | Event | Pubkey changes? | Credential changes? | Nullifier changes? | Vouches preserved? | Persona affected? |
 |---|---|---|---|---|---|
@@ -757,6 +825,8 @@ Occasionally someone may want to retire one Persona and create a new one while c
 | Tier upgrade | No | Yes (superseded) | No | Yes | No |
 | Key rotation | Yes (new keypair) | Yes (rotated) | No | Partial (re-vouch) | No (new bridge) |
 | Persona migration | Yes (new Persona key) | New bridge | No | **Lost** (on Persona) | Yes (new Persona) |
+| Nostr early adopter (sign existing key) | No | Yes (new credential on existing key) | No | Yes (all preserved) | N/A (new Persona optional) |
+| Nostr early adopter (existing key becomes Persona) | New keypair A created | Yes (new Natural Person + Persona on existing) | No | Yes (on Persona key) | No (existing key becomes verified Persona) |
 
 ## 11. Inclusivity: Entry Without Standard Documents
 
