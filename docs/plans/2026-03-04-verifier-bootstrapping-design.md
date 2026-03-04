@@ -521,7 +521,244 @@ But Signet doesn't need to be perfect — it needs to be *better than the status
 
 The goal is economic deterrence, not cryptographic impossibility. And the real win is the Persona layer — verified anonymity that governments cannot provide and cannot easily surveil.
 
-## 10. Open Questions (Revised)
+## 10. Credential Lifecycle: Changes After Verification
+
+### 10.1 Core Mechanism — Credential Chains
+
+When real-world attributes change, a professional issues a NEW credential that **supersedes** the old one. The pubkey stays the same — all vouches, trust score, and social graph carry forward. Only the attestation changes.
+
+```jsonc
+// New credential includes:
+["supersedes", "<old_credential_event_id>"]
+
+// Issuer updates old credential with:
+["superseded-by", "<new_credential_event_id>"]
+```
+
+Clients resolve the chain: follow `superseded-by` links to find the current credential. Old credentials in the chain remain visible for audit history.
+
+**Critical rule:** Only the ORIGINAL ISSUER (or another professional who independently re-verifies the subject) can issue a superseding credential. The subject cannot self-supersede.
+
+### 10.2 Name Changes
+
+**Triggers:** Marriage, divorce, deed poll, gender transition, religious conversion, cultural adoption.
+
+**Mechanism:**
+1. Subject visits a professional (can be the original verifier or a new one) with updated documents (e.g. marriage certificate + updated passport, deed poll + updated passport)
+2. Professional verifies the new documents against the subject (same person, new name)
+3. Professional issues a new kind 30470 credential with:
+   - Updated Merkle tree (new name in leaf 0)
+   - Same pubkey (keypair A unchanged)
+   - New nullifier if passport number changed, plus a `["nullifier-chain", "<old_nullifier>"]` tag linking old and new nullifiers
+   - `["supersedes", "<old_credential_id>"]` tag
+4. Old credential gets `["superseded-by", "<new_credential_id>"]`
+
+**Persona impact:** None. The Persona (keypair B) has no verified name. A name change in real life does not affect the Persona at all. If someone built a great Persona reputation as "SuperDad" and then changed their real name from John Smith to Jane Smith after marriage, "SuperDad" continues uninterrupted.
+
+**The key insight:** The Persona layer makes name changes painless. Your real-world identity changes; your digital pseudonym does not. This is one of the strongest arguments for the two-credential model.
+
+### 10.3 Titles and Qualifications
+
+**Titles earned after verification:** Dr. (PhD, MD), Prof., KC/QC, Lord, Dame, Sir, OBE, etc.
+
+**Design decision: titles are SEPARATE credentials, not name changes.**
+
+A title is an attribute, not a name. "Dr. John Smith" is "John Smith" (name, in the Natural Person credential) + "Dr." (qualification, in a separate attestation). Conflating them creates problems:
+- You'd need a new credential every time you earn a qualification
+- Multiple qualifications (Dr. Prof. Sir John Smith KC) would require constant reissuance
+- The name credential would become fragile
+
+**Mechanism:**
+1. The awarding body (university, professional body, Crown, etc.) issues a **separate kind 30470 credential** attesting to the qualification:
+   ```jsonc
+   ["qualification", "PhD"],
+   ["awarding-body", "University of Oxford"],
+   ["field", "Physics"]
+   ```
+2. Or a professional who can verify the qualification (e.g. a notary who has seen the degree certificate) issues the attestation
+3. The qualification credential is linked to the same pubkey
+4. Clients compose the display: name from the Natural Person credential + titles from qualification credentials
+
+**Title lost (struck off):**
+When a professional is struck off the register, the professional body (if they're on Signet) or another professional issues a kind 30475 revocation against the qualification credential. The base identity credential remains valid — you're still a person, you're just no longer a doctor.
+
+### 10.4 Children
+
+**The challenge:** Children are Natural Persons but cannot independently consent to verification. The existing Tier 4 (Professional + Child Safety) with Bulletproof age range proofs handles the crypto. The questions are about ceremony, guardianship, and transition to adulthood.
+
+#### 10.4.1 Child Verification Ceremony
+
+1. **Parent/guardian brings the child** to a professional (typically a doctor or social worker — the same professionals who already certify children's identities for passport applications)
+2. **Professional verifies:**
+   - Child's birth certificate or passport
+   - Parent/guardian's identity (their own Signet Natural Person credential, or passport)
+   - Parental authority (birth certificate, court order, adoption certificate)
+3. **Professional issues credentials to the child's keypair:**
+
+   **Natural Person credential:**
+   ```jsonc
+   ["entity-type", "natural_person"],
+   ["tier", "4"],
+   ["age-range", "8-12"],  // Bulletproof range proof, not exact age
+   ["guardian", "<parent_pubkey>"],
+   ["nullifier", "<child_document_nullifier>"]
+   ```
+
+   **Persona credential (for the child's online identity):**
+   ```jsonc
+   ["entity-type", "persona"],
+   ["tier", "4"],
+   ["age-range", "8-12"],
+   // NO nullifier, NO verified name — child protection
+   ```
+
+4. **The child's real name is NEVER published on-chain.** It exists only in the Merkle tree leaves, held by the child (or parent on their behalf) and the professional. Child protection takes priority.
+
+#### 10.4.2 Guardian Link
+
+The `["guardian", "<parent_pubkey>"]` tag on the child's credential:
+- Is signed by the professional (immutable)
+- Identifies who has parental authority
+- Can be updated via a superseding credential if custody changes (divorce, adoption, fostering)
+- Clients can enforce parental controls: "this account is a child with guardian X"
+
+**Multiple guardians:** Multiple `["guardian", "..."]` tags for joint custody.
+
+**Foster children / looked-after children:** The local authority's pubkey can appear as guardian instead of (or alongside) a parent's.
+
+#### 10.4.3 Child → Adult Transition
+
+When the child turns 18 (or the age of majority in their jurisdiction):
+
+1. The age range proof in the existing credential expires naturally — the Bulletproof proof that "age is in range 8-12" is no longer valid when they're 18
+2. The young adult visits a professional **independently** (no parent required)
+3. Professional issues a new credential:
+   - `["tier", "3"]` (adult, no longer child safety tier)
+   - No `["guardian", "..."]` tag
+   - No `["age-range", "..."]` tag
+   - `["supersedes", "<child_credential_id>"]`
+4. The young adult now has a standard adult Natural Person credential
+5. They keep the same keypair — all trust, vouches, and connections built during childhood carry forward
+
+**The Persona carries through seamlessly.** A teenager's Persona identity — their online reputation, their connections, their creative work — survives the transition to adulthood without interruption.
+
+#### 10.4.4 Age-Appropriate Tiers
+
+| Age | Tier | Guardian Required | Age Range Proof | Notes |
+|---|---|---|---|---|
+| 0-12 | 4 | Yes | Required | Full child protection |
+| 13-15 | 4 | Yes (but child can consent to some things depending on jurisdiction) | Required | Digital consent age varies: 13 (US COPPA), 16 (UK GDPR) |
+| 16-17 | 4 or 3 | Jurisdiction-dependent | Optional | Some jurisdictions treat 16+ as near-adult |
+| 18+ | 3 | No | No | Standard adult credential |
+
+### 10.5 Document Renewal
+
+**The problem:** Passport expires → new passport number → new nullifier → old and new credentials look like different people.
+
+**Mechanism:**
+1. Subject visits a professional with both old (expired) and new passport
+2. Professional verifies: same person, same photo, old passport → new passport
+3. Professional issues a new credential with:
+   - New nullifier (from new passport number)
+   - `["nullifier-chain", "<old_nullifier>"]` — links old and new nullifiers
+   - `["supersedes", "<old_credential_id>"]`
+4. Old credential is superseded
+
+**The `nullifier-chain` tag** creates a verifiable link between old and new nullifiers. Anyone scanning for duplicates can follow the chain: "these two nullifiers belong to the same person because a professional attested to the continuity."
+
+**This is distinct from the duplicate attack** (§9.6) because:
+- The old credential is superseded (inactive)
+- Only one active credential exists at any time
+- The chain is attested by a professional, not self-declared
+
+### 10.6 Death
+
+1. A professional with access to death records (doctor who certified death, registrar, solicitor handling probate) issues a kind 30475 revocation against the deceased's credential
+2. The revocation includes `["reason", "death"]`
+3. Clients mark the identity as deceased
+4. The Persona credential can optionally be left active (for memorial purposes) or revoked
+
+### 10.7 Key Compromise / Identity Theft Recovery
+
+If someone's private key is stolen:
+
+1. Subject visits a professional with their passport (proving they're the real person)
+2. Professional issues a revocation (kind 30475) against ALL credentials on the compromised pubkey
+3. Subject generates a NEW keypair
+4. Professional issues fresh credentials on the new keypair
+5. New credential includes `["replaces-compromised", "<old_pubkey>"]`
+6. Nullifier stays the same (same passport) — ensuring the new credential is recognised as the same person
+
+**Vouches and trust score are lost** — this is a deliberate security property. If the attacker could transfer trust to a new key, they could steal someone's reputation. The subject must rebuild their web of trust. This is painful but safe.
+
+### 10.8 Incapacitation / Guardianship
+
+When a court appoints a guardian for an incapacitated adult:
+
+1. The guardian (or their solicitor) presents the court order to a professional
+2. Professional issues a superseding credential on the incapacitated person's pubkey with `["guardian", "<guardian_pubkey>"]`
+3. The guardian can act on behalf of the incapacitated person (using the delegation system, kind 30477)
+4. If capacity is restored, a professional issues a new credential removing the guardian tag
+
+### 10.9 Emigration / Jurisdiction Change
+
+1. Subject obtains residency/citizenship documents in new jurisdiction
+2. A professional in the new jurisdiction verifies the documents
+3. Professional issues a new credential with updated jurisdiction
+4. Old credential can be superseded or left active (dual nationality = dual credentials)
+5. Nullifier from the new country's documents is added; old nullifier linked via `nullifier-chain`
+
+### 10.10 Tier Upgrade
+
+When someone gains a professional qualification and moves from Tier 2 (web-of-trust) to Tier 3 (professionally verified):
+
+1. The newly qualified professional gets verified by a peer professional (as per the standard ceremony)
+2. New Tier 3 credential supersedes the old Tier 2 credential
+3. Same pubkey — all existing trust carries forward
+4. The old Tier 2 vouches remain valid and continue contributing to trust score
+
+### 10.11 Key Rotation (Without Compromise)
+
+Security best practice is periodic key rotation. This is harder than compromise recovery because we want to PRESERVE trust:
+
+1. Subject generates a new keypair
+2. Subject signs a **key rotation declaration** with BOTH the old and new keys: "old pubkey X is being replaced by new pubkey Y"
+3. A professional verifies the subject's identity and co-signs the rotation
+4. New credentials are issued on the new pubkey
+5. Vouches: existing vouchers are notified and can re-vouch for the new key (or clients can accept the professionally-attested rotation as sufficient)
+
+**This is an open design question.** Automatic trust transfer during key rotation is convenient but creates an attack surface (compromise old key → rotate to attacker's key). Requiring professional attestation for rotation is safer but adds friction. The right balance may depend on the tier: Tier 1-2 could self-rotate, Tier 3-4 should require professional attestation.
+
+### 10.12 Persona Migration
+
+Occasionally someone may want to retire one Persona and create a new one while carrying forward their verified status:
+
+1. Subject creates a new keypair C (new Persona)
+2. Subject creates a NEW identity bridge (kind 30476) from their Natural Person credential to keypair C
+3. The old Persona (keypair B) is left active, deprecated, or revoked — subject's choice
+4. Trust and vouches on the old Persona do NOT transfer (they're tied to keypair B)
+5. The new Persona starts fresh but with "Verified Alias" status from day one
+
+**Trust does not transfer between Personas** — this is deliberate. If it did, de-anonymisation would be trivial (follow the trust transfer to link old and new Personas). The cost of Persona migration is rebuilding social trust. This incentivises identity stability.
+
+### 10.13 Summary: What Changes, What Stays
+
+| Event | Pubkey changes? | Credential changes? | Nullifier changes? | Vouches preserved? | Persona affected? |
+|---|---|---|---|---|---|
+| Name change | No | Yes (superseded) | Maybe (if passport number changed) | Yes | No |
+| Title gained | No | No (separate credential) | No | Yes | No |
+| Title lost | No | No (title credential revoked) | No | Yes | No |
+| Child → adult | No | Yes (superseded) | No | Yes | No |
+| Document renewal | No | Yes (superseded) | Yes (nullifier-chain) | Yes | No |
+| Death | No | Revoked | N/A | N/A | Optional |
+| Key compromise | Yes (new keypair) | Yes (fresh issuance) | No | **Lost** | **Lost** |
+| Incapacitation | No | Yes (guardian added) | No | Yes | Yes (guardian controls) |
+| Emigration | No | Yes (new jurisdiction) | Maybe (new country docs) | Yes | No |
+| Tier upgrade | No | Yes (superseded) | No | Yes | No |
+| Key rotation | Yes (new keypair) | Yes (rotated) | No | Partial (re-vouch) | No (new bridge) |
+| Persona migration | Yes (new Persona key) | New bridge | No | **Lost** (on Persona) | Yes (new Persona) |
+
+## 11. Open Questions
 
 1. **Should domain proof be REQUIRED or just weighted?** If required, it blocks professionals without websites. If optional, the Sybil mesh attack still works for the cross-verification-only path.
 
@@ -539,7 +776,7 @@ The goal is economic deterrence, not cryptographic impossibility. And the real w
 
    **Tentative answer:** Conservative. Flag for human review, don't auto-block. The anomaly signals produce warnings that communities and clients can act on. Better to let a few suspicious verifiers through (with low confidence scores) than to block legitimate professionals.
 
-## 11. Original Adoption Roadmap
+## 12. Original Adoption Roadmap
 
 **Phase 1 (Now — launch):**
 - Domain proof mechanism implemented
@@ -560,7 +797,7 @@ The goal is economic deterrence, not cryptographic impossibility. And the real w
 - Domain proof remains as supplementary signal
 - Advanced graph analysis with historical pattern detection
 
-## 12. Why This Works (Threat Model Revisited)
+## 13. Why This Works (Threat Model Revisited)
 
 **Against simple impersonation:**
 Domain proof raises the cost from "look up a public licence number" to "hack a professional's website." Registry cross-check catches non-existent licence numbers. Body attestation eliminates impersonation entirely.
@@ -576,15 +813,15 @@ Domain proof works without body participation. Cross-jurisdiction verifiers prov
 
 **The key insight:** Each layer doesn't need to be perfect. It needs to make the attack *more expensive* than the alternative (impersonating someone in the physical world, which has its own costs and risks). The goal is not cryptographic certainty — it's economic deterrence through layered defence.
 
-## 13. Professional Directory Verification (Additional Signal)
+## 14. Professional Directory Verification (Additional Signal)
 
-### 13.1 The Opportunity
+### 14.1 The Opportunity
 
 Professionals are already listed in directories that publish their credentials, websites, and affiliations. Many of these directories have editable profile fields where a Nostr pubkey or Signet verification URL could be added. This creates an additional corroboration signal: if a professional's pubkey appears on their listing in an established directory, it's harder to impersonate them.
 
 This is similar to the domain proof (Signal 2) but doesn't require the professional to own a website — just a profile on an existing directory.
 
-### 13.2 Directories With Self-Editable URL Fields
+### 14.2 Directories With Self-Editable URL Fields
 
 **High suitability (free, self-editable, custom URLs confirmed):**
 
@@ -608,7 +845,7 @@ This is similar to the domain proof (Signal 2) but doesn't require the professio
 
 SRA Register, GMC Register, Bar Standards Board Register, AICPA Directory, AMA Profiles — these are compliance records, not marketing profiles. No individual-level URL fields.
 
-### 13.3 The UK Gap
+### 14.3 The UK Gap
 
 UK regulatory bodies (SRA, GMC, ICAEW) maintain compliance registers with no individual-level URL or social media fields. UK professionals would need to rely on:
 - LinkedIn (universally available, cross-profession)
@@ -617,7 +854,7 @@ UK regulatory bodies (SRA, GMC, ICAEW) maintain compliance registers with no ind
 
 This reinforces why domain proof and LinkedIn-style directory proof should both be supported as verification signals.
 
-### 13.4 Directory Proof Mechanism
+### 14.4 Directory Proof Mechanism
 
 A professional adds a URL to their directory profile:
 ```
@@ -634,7 +871,7 @@ or simply includes their npub in a free-text bio/description field.
 
 This is weaker than domain proof (the professional doesn't control the directory infrastructure) but stronger than nothing (the directory has its own verification of who can edit a profile).
 
-### 13.5 Tag Addition
+### 14.5 Tag Addition
 
 Kind 30473 gains an optional tag:
 ```jsonc
@@ -643,13 +880,13 @@ Kind 30473 gains an optional tag:
 
 Multiple directory-proof tags may be present (a lawyer on both Avvo and LinkedIn).
 
-## 14. Political and Public Official Adoption
+## 15. Political and Public Official Adoption
 
-### 14.1 We Don't Need 100% — Just Seeds
+### 15.1 We Don't Need 100% — Just Seeds
 
 The entire web-of-trust model works by seeding trust and letting it propagate. A single MP who publishes their Nostr pubkey on their official parliament page becomes a trust anchor that can verify (or be verified by) professionals in their constituency. A few early adopters create the nucleus.
 
-### 14.2 UK Parliament — Technical Feasibility
+### 15.2 UK Parliament — Technical Feasibility
 
 The UK Parliament Members API (`members-api.parliament.uk`) uses a flexible type-based contact system. Social media platforms are stored as contact entries with distinct `typeId` values (e.g., Website = 6, X/Twitter = 7). The system is generic — adding a "Nostr" typeId is architecturally straightforward.
 
@@ -664,7 +901,7 @@ The UK Parliament Members API (`members-api.parliament.uk`) uses a flexible type
 
 **No MP has published a Nostr pubkey on parliament.uk** (or any official government page anywhere in the world, as of our research). The precedent closest to this is Mastodon handles appearing in the `unitedstates/congress-legislators` community dataset — several US House members have Mastodon accounts listed.
 
-### 14.3 US Congress
+### 15.3 US Congress
 
 **Congress.gov API** — provides `officialUrl` only, no social media fields.
 
@@ -672,17 +909,17 @@ The UK Parliament Members API (`members-api.parliament.uk`) uses a flexible type
 
 **Individual member pages** (house.gov, senate.gov) are self-managed by each office. An MP/representative could add a Nostr pubkey to their own page at their discretion.
 
-### 14.4 UK Local Councils
+### 15.4 UK Local Councils
 
 Local councils overwhelmingly use **ModernGov** (by GOSS Interactive) for councillor directories. The platform is rigid: name, party, ward, email, phone. No social media, no website, no custom fields. **Not currently viable** for Nostr pubkey publication without platform changes.
 
-### 14.5 Politicians Already on Nostr
+### 15.5 Politicians Already on Nostr
 
 No politicians are confirmed on Nostr with official pubkeys. Notable non-politician public figures on Nostr include Edward Snowden and Jack Dorsey. The platform's user base is concentrated in the Bitcoin/cypherpunk community.
 
 **The Mastodon precedent is instructive:** Several US House members adopted Mastodon, the community dataset added a field for it, and it became a normal part of the political social media landscape. The same path is available for Nostr — it just needs the first adopters.
 
-### 14.6 Strategy: Target Crypto-Friendly Politicians
+### 15.6 Strategy: Target Crypto-Friendly Politicians
 
 Rather than seeking broad political adoption, target politicians who are already aligned:
 - UK: Members of APPG on Blockchain, crypto-friendly MPs
@@ -696,25 +933,25 @@ A single crypto-friendly MP publishing their Nostr pubkey on parliament.uk creat
 3. Media coverage for Signet/Nostr adoption
 4. A proof point that the parliament.uk system can accommodate cryptographic identity
 
-## 15. Professional Identity Theft — The Advocacy Angle
+## 16. Professional Identity Theft — The Advocacy Angle
 
-### 15.1 Overview
+### 16.1 Overview
 
 Professional identity theft is a growing and underreported problem. Fraudsters impersonate licensed professionals to commit fraud, provide unlicensed services, or establish false credentials. This is the *exact attack* that Signet's verifier bootstrapping must defend against — and it's already happening in the physical world.
 
-### 15.2 Why This Matters for Adoption
+### 16.2 Why This Matters for Adoption
 
 Positioning Signet as a solution to professional identity theft serves two purposes:
 1. **Technical:** It motivates the multi-signal authentication design — the problem is real, not theoretical
 2. **Political:** It gives professional bodies and regulators a reason to adopt Signet — they're already looking for solutions to this problem
 
-### 15.3 Deep Dive Report
+### 16.3 Deep Dive Report
 
 **Completed:** See `docs/reports/2026-03-04-professional-identity-fraud-deep-dive.md`
 
 The report covers statistics, case studies ($47B US identity fraud losses, £11.7M UK conveyancing fraud, 22-year fake NHS doctor), economic losses, regulatory gaps, and how Signet's multi-signal verifier authentication directly addresses the identified threats. Intended as advocacy material for engaging professional bodies and regulators.
 
-## 16. Updated Adoption Roadmap (Revised)
+## 17. Updated Adoption Roadmap (Revised)
 
 **Phase 1 (Now — launch):**
 - Domain proof mechanism (`.well-known/signet.json`)
