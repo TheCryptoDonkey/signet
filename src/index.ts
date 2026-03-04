@@ -12,6 +12,8 @@ export type {
   ChallengeReason,
   BondAction,
   RevocationScope,
+  EntityType,
+  EntityMode,
   UnsignedEvent,
   NostrEvent,
   CredentialParams,
@@ -21,6 +23,7 @@ export type {
   VerifierParams,
   ChallengeParams,
   RevocationParams,
+  DelegationParams,
   TrustSignal,
   TrustScoreBreakdown,
   MerkleProof,
@@ -31,6 +34,7 @@ export type {
   ParsedVerifier,
   ParsedChallenge,
   ParsedRevocation,
+  ParsedDelegation,
   ParsedIdentityBridge,
 } from './types.js';
 
@@ -47,6 +51,9 @@ export {
   MAX_TRUST_SCORE,
   SIGNAL_PRIORITY,
   MIN_BRIDGE_RING_SIZE,
+  ENTITY_TYPES,
+  DELEGATION_CONSTRAINTS,
+  ENTITY_LABELS,
 } from './constants.js';
 
 // Crypto

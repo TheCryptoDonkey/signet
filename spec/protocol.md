@@ -13,7 +13,7 @@
 
 Signet is an open protocol for decentralised identity verification on Nostr. It enables users to prove claims about their identity — age, parenthood, professional status — using zero-knowledge proofs, without revealing personal data or relying on a central authority.
 
-The protocol defines four verification tiers, a continuous trust score, a verifier accountability framework, and six Nostr event kinds. Any Nostr client can implement Signet. Any community can set verification policies. Any licensed professional can become a verifier.
+The protocol defines four verification tiers, nine entity types, a continuous trust score, a verifier accountability framework, and seven Nostr event kinds. Any Nostr client can implement Signet. Any community can set verification policies. Any licensed professional can become a verifier.
 
 **Child safety is the killer app. Social proof (blue checkmarks) drives adoption across all of Nostr.**
 
@@ -36,6 +36,8 @@ The protocol defines four verification tiers, a continuous trust score, a verifi
 13. [Limitations](#13-limitations)
 14. [Reference Implementation](#14-reference-implementation)
 15. [Identity Management & Peer Verification](#15-identity-management--peer-verification)
+16. [Identity Bridge](#16-identity-bridge)
+17. [Entity Type Classification](#17-entity-type-classification)
 
 ---
 
@@ -1058,5 +1060,185 @@ A device may hold multiple accounts (real-name + anonymous, or multiple identiti
 - Can be switched between in the app UI.
 
 Connections are scoped to the owning account. Credentials and vouches are naturally scoped by pubkey in the Nostr protocol.
+
+---
+
+## 17. Entity Type Classification
+
+### 17.1 Overview
+
+The protocol classifies accounts along two orthogonal axes:
+
+- **Verification tier** (1–4): How deeply an account is verified.
+- **Entity type** (9 types): What kind of entity the account represents.
+
+These axes are independent. A Natural Person could be Tier 3 or Tier 4. A Free Agent is always Tier 1. Entity type is determined by the cryptographic mechanism that links the account to the chain of trust.
+
+### 17.2 Entity Types
+
+The protocol defines nine entity types in three root categories.
+
+**Root categories:**
+
+| Protocol Term | Code | Description |
+|---|---|---|
+| Natural Person | `natural_person` | A living human, professionally verified (Tier 3+) |
+| Juridical Person | `juridical_person` | A legal entity, verified by professional + multi-sig from Natural Persons |
+| Free Agent | `free_agent` | An unverified account with no chain of trust (the default) |
+
+**Alias subtypes (anonymous identities):**
+
+| Protocol Term | Code | Description |
+|---|---|---|
+| Persona | `persona` | Anonymous alias of a Natural Person, linked via identity bridge (ring signature) |
+| Juridical Persona | `juridical_persona` | Anonymous alias of a Juridical Person, linked via identity bridge |
+
+**Agent subtypes (delegated bots):**
+
+| Protocol Term | Code | Description |
+|---|---|---|
+| Personal Agent | `personal_agent` | Bot delegated by a Natural Person |
+| Free Personal Agent | `free_personal_agent` | Bot delegated by a Persona |
+| Organised Agent | `organised_agent` | Bot delegated by a Juridical Person |
+| Free Organised Agent | `free_organised_agent` | Bot delegated by a Juridical Persona |
+
+**Naming convention:** The protocol uses legal terminology (Natural Person, Juridical Person, Persona) for precision. Client applications SHOULD use friendly labels (Person, Organisation, Alias) in user interfaces. See §17.8 for the recommended label mapping.
+
+### 17.3 Ownership and Delegation Tree
+
+```
+Natural Person ──► Personal Agent
+  │
+  └──► Persona ──► Free Personal Agent
+
+Juridical Person ──► Organised Agent
+  │
+  └──► Juridical Persona ──► Free Organised Agent
+
+Free Agent (standalone, no chain of trust)
+```
+
+Every account starts as a Free Agent. Entity type is earned through the appropriate verification mechanism.
+
+### 17.4 Mechanism-Based Type Determination
+
+Entity type is defined by the cryptographic linkage that connects an account to the chain of trust:
+
+| Entity Type | Linkage Mechanism | Event Kind |
+|---|---|---|
+| Natural Person | Professional credential | 30470 (Tier 3/4) |
+| Persona | Identity bridge (ring signature) from a Natural Person | 30476 |
+| Personal Agent | Delegation event from a Natural Person | 30477 |
+| Free Personal Agent | Delegation event from a Persona | 30477 |
+| Juridical Person | Professional credential + multi-sig attestation | 30470 |
+| Juridical Persona | Identity bridge (ring signature) from a Juridical Person | 30476 |
+| Organised Agent | Delegation event from a Juridical Person | 30477 |
+| Free Organised Agent | Delegation event from a Juridical Persona | 30477 |
+| Free Agent | None | — |
+
+### 17.5 Credential Tag
+
+The existing credential event (kind 30470) gains a new tag:
+
+```jsonc
+["entity_type", "<type_code>"]
+```
+
+Where `<type_code>` is one of: `natural_person`, `persona`, `personal_agent`, `free_personal_agent`, `juridical_person`, `juridical_persona`, `organised_agent`, `free_organised_agent`, `free_agent`.
+
+This tag is derived from the verification mechanism used but is included explicitly for relay and client queryability.
+
+### 17.6 Agent Delegation Event (Kind 30477)
+
+A replaceable event published by an account owner to delegate authority to an agent (bot).
+
+```jsonc
+{
+  "kind": 30477,
+  "pubkey": "<owner_pubkey>",
+  "tags": [
+    ["d", "<unique_delegation_id>"],
+    ["p", "<agent_pubkey>"],              // the bot/agent being delegated
+    ["entity_type", "<agent_type>"],      // personal_agent, free_personal_agent,
+                                          // organised_agent, free_organised_agent
+    ["expires", "<unix_timestamp>"],      // optional: delegation expiry
+    ["L", "signet"],
+    ["l", "delegation", "signet"]
+  ],
+  "content": ""
+}
+```
+
+**Delegation constraints:**
+
+- A Natural Person may delegate → `personal_agent`
+- A Persona may delegate → `free_personal_agent`
+- A Juridical Person may delegate → `organised_agent`
+- A Juridical Persona may delegate → `free_organised_agent`
+
+Any other owner→agent type combination is invalid and MUST be rejected by clients and relays.
+
+**Revocation:** Delegations are revoked using the existing kind 30475 revocation event, with the `["d", "<agent_pubkey>"]` tag pointing to the agent being revoked.
+
+### 17.7 Juridical Person Verification
+
+A Juridical Person (organisation) requires dual verification:
+
+1. **Professional verification:** A Tier 3+ professional verifies the organisation's legal registration documents (articles of incorporation, registration certificate, etc.) and issues a kind 30470 credential.
+2. **Multi-sig attestation:** N-of-M verified Natural Persons co-sign a credential attesting they represent the organisation (e.g., 3 of 5 board members). Each co-signer must themselves be a verified Natural Person.
+
+Both proofs must be present for an account to achieve Juridical Person status.
+
+### 17.8 Application Label Mapping
+
+Client applications SHOULD map protocol entity types to user-friendly labels:
+
+| Protocol Term | Recommended App Label |
+|---|---|
+| Natural Person | Person |
+| Persona | Alias |
+| Personal Agent | Personal Agent |
+| Free Personal Agent | Free Personal Agent |
+| Juridical Person | Organisation |
+| Juridical Persona | Org Alias |
+| Organised Agent | Organised Agent |
+| Free Organised Agent | Free Org Agent |
+| Free Agent | Free Agent |
+
+### 17.9 Dynamic Mode Signaling
+
+A single account (particularly a physical device such as a humanoid robot or telepresence system) may switch between entity types depending on who or what is in control at a given moment. Events published by such accounts SHOULD include a mode tag:
+
+```jsonc
+["mode", "<mode>"]
+```
+
+Where `<mode>` is one of:
+
+| Mode | Meaning |
+|---|---|
+| `teleoperated` | A verified person is in direct real-time control (entity acts as Persona) |
+| `autonomous` | AI/software is acting on behalf of the owner (entity acts as Agent) |
+| `assisted` | A verified person is in control with AI assistance (entity acts as Persona) |
+
+**Example:** A paraplegic Natural Person controls a humanoid robot via a brain-computer interface. When the person is directly controlling the robot, it publishes events with `["mode", "teleoperated"]` and operates as a Persona. When the person steps away and onboard AI takes over, it publishes with `["mode", "autonomous"]` and operates as a Personal Agent. This allows others interacting with the robot to know whether they are communicating with the person or their AI.
+
+This pattern applies to any remote-operated system: telepresence robots, drone operators, remote surgery rigs, VR avatars — any case where a verified person may or may not be in direct control at a given moment.
+
+### 17.10 Relay Policy Extensions
+
+Community verification policies (kind 30472) may include entity type requirements:
+
+```jsonc
+["allowed-entity-types", "natural_person,persona,juridical_person"]
+```
+
+Relays MAY filter events by entity type. For example, a child-safety relay might only accept events from Natural Persons and Personas (verified humans and their aliases), rejecting Free Agents and unverified bots.
+
+### 17.11 Future Extension: Synthetic Person
+
+The current taxonomy covers entities that are human, human-controlled, human-organised, or unverified. It does not cover fully autonomous beings (e.g., a sentient AI or truly independent robot) that act on their own behalf rather than on behalf of a human or organisation.
+
+If such entities require their own legal or social standing, a new root category — **Synthetic Person** — may be added alongside Natural Person and Juridical Person, with its own alias and agent subtypes. The taxonomy is designed to accommodate this without breaking changes.
 
 *This specification is a living document. It will evolve through community feedback and implementation experience.*

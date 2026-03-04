@@ -9,6 +9,7 @@ export const SIGNET_KINDS = {
   CHALLENGE: 30474,
   REVOCATION: 30475,
   IDENTITY_BRIDGE: 30476,
+  DELEGATION: 30477,
 } as const;
 
 /** Protocol namespace label */
@@ -47,6 +48,40 @@ export const MIN_BRIDGE_RING_SIZE = 5;
 
 /** Maximum trust score */
 export const MAX_TRUST_SCORE = 100;
+
+/** Valid entity types */
+export const ENTITY_TYPES = [
+  'natural_person',
+  'persona',
+  'personal_agent',
+  'free_personal_agent',
+  'juridical_person',
+  'juridical_persona',
+  'organised_agent',
+  'free_organised_agent',
+  'free_agent',
+] as const;
+
+/** Valid delegation owner → agent type mappings */
+export const DELEGATION_CONSTRAINTS: Record<string, string> = {
+  natural_person: 'personal_agent',
+  persona: 'free_personal_agent',
+  juridical_person: 'organised_agent',
+  juridical_persona: 'free_organised_agent',
+};
+
+/** App-friendly labels for entity types */
+export const ENTITY_LABELS: Record<string, string> = {
+  natural_person: 'Person',
+  persona: 'Alias',
+  personal_agent: 'Personal Agent',
+  free_personal_agent: 'Free Personal Agent',
+  juridical_person: 'Organisation',
+  juridical_persona: 'Org Alias',
+  organised_agent: 'Organised Agent',
+  free_organised_agent: 'Free Org Agent',
+  free_agent: 'Free Agent',
+};
 
 /** Signal ordering (protocol-mandated) */
 export const SIGNAL_PRIORITY = [

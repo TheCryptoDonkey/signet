@@ -1,5 +1,5 @@
 // Signet Protocol Types
-// All TypeScript interfaces for the 6 Nostr event kinds and supporting structures
+// All TypeScript interfaces for the 7 Nostr event kinds and supporting structures
 
 /** Verification tier levels */
 export type SignetTier = 1 | 2 | 3 | 4;
@@ -220,6 +220,41 @@ export interface ParsedRevocation {
   bondAction: BondAction;
   scope: RevocationScope;
   effectiveAt: number;
+}
+
+// --- Entity Type Classification ---
+
+/** Entity type classification (§17 of spec) */
+export type EntityType =
+  | 'natural_person'
+  | 'persona'
+  | 'personal_agent'
+  | 'free_personal_agent'
+  | 'juridical_person'
+  | 'juridical_persona'
+  | 'organised_agent'
+  | 'free_organised_agent'
+  | 'free_agent';
+
+/** Dynamic mode signaling for teleoperated/autonomous entities (§17.9) */
+export type EntityMode =
+  | 'teleoperated'
+  | 'autonomous'
+  | 'assisted';
+
+// --- Kind 30477: Agent Delegation ---
+
+export interface DelegationParams {
+  agentPubkey: string;
+  entityType: 'personal_agent' | 'free_personal_agent' | 'organised_agent' | 'free_organised_agent';
+  expiresAt?: number;
+}
+
+export interface ParsedDelegation {
+  agentPubkey: string;
+  entityType: 'personal_agent' | 'free_personal_agent' | 'organised_agent' | 'free_organised_agent';
+  ownerPubkey: string;
+  expiresAt?: number;
 }
 
 // --- Kind 30476: Identity Bridge ---
