@@ -63,8 +63,13 @@ export interface CredentialParams {
   expiresAt: number;
   profession?: string;
   jurisdiction?: string;
-  ageRange?: string; // e.g. "8-12", only for Tier 4
+  ageRange?: string; // e.g. "8-12", "18+"
   content?: string;  // ZKP proof blob
+  entityType?: EntityType;
+  nullifier?: string;
+  merkleRoot?: string;
+  guardianPubkeys?: string[];
+  supersedes?: string; // event ID of superseded credential
 }
 
 // --- Kind 30471: Vouch Attestation ---
@@ -178,6 +183,12 @@ export interface ParsedCredential {
   jurisdiction?: string;
   ageRange?: string;
   expiresAt?: number;
+  entityType?: EntityType;
+  nullifier?: string;
+  merkleRoot?: string;
+  guardianPubkeys?: string[];
+  supersedes?: string;
+  supersededBy?: string;
 }
 
 export interface ParsedVouch {
@@ -341,6 +352,35 @@ export interface ParsedElectionResult {
   tallyProof?: string;
   tallierPubkey: string;
 }
+
+// --- Two-Credential Ceremony ---
+
+export interface TwoCredentialResult {
+  naturalPerson: NostrEvent;
+  persona: NostrEvent;
+  merkleLeaves: Record<string, string>;
+  merkleProofs: MerkleProof[];
+}
+
+export interface CredentialChain {
+  current: NostrEvent;
+  history: NostrEvent[];
+}
+
+// --- Guardian Delegation ---
+
+export interface GuardianDelegationParams {
+  childPubkey: string;
+  delegatePubkey: string;
+  scope: GuardianDelegationScope;
+  expiresAt?: number;
+}
+
+export type GuardianDelegationScope =
+  | 'full'
+  | 'activity-approval'
+  | 'content-management'
+  | 'contact-approval';
 
 // --- Kind 30476: Identity Bridge ---
 

@@ -2,8 +2,8 @@
 // Create, sign, verify, and parse Signet credentials for all 4 tiers
 
 import { SIGNET_KINDS, SIGNET_LABEL, DEFAULT_CREDENTIAL_EXPIRY_SECONDS } from './constants.js';
-import { signEvent, verifyEvent, getPublicKey } from './crypto.js';
-import { validateCredential, getTagValue } from './validation.js';
+import { signEvent, verifyEvent, getPublicKey, hashString } from './crypto.js';
+import { validateCredential, getTagValue, getTagValues } from './validation.js';
 import { ringSign, ringVerify, type RingSignature } from './ring-signature.js';
 import { createAgeRangeProof, verifyAgeRangeProof, serializeRangeProof, deserializeRangeProof, type RangeProof } from './range-proof.js';
 import type {
@@ -15,7 +15,13 @@ import type {
   VerificationType,
   VerificationScope,
   VerificationMethod,
+  EntityType,
+  TwoCredentialResult,
+  CredentialChain,
+  GuardianDelegationParams,
+  MerkleProof,
 } from './types.js';
+import { MerkleTree } from './merkle.js';
 
 /** Build an unsigned credential event */
 export function buildCredentialEvent(
@@ -37,6 +43,15 @@ export function buildCredentialEvent(
   if (params.profession) tags.push(['profession', params.profession]);
   if (params.jurisdiction) tags.push(['jurisdiction', params.jurisdiction]);
   if (params.ageRange) tags.push(['age-range', params.ageRange]);
+  if (params.entityType) tags.push(['entity-type', params.entityType]);
+  if (params.nullifier) tags.push(['nullifier', params.nullifier]);
+  if (params.merkleRoot) tags.push(['merkle-root', params.merkleRoot]);
+  if (params.guardianPubkeys) {
+    for (const gp of params.guardianPubkeys) {
+      tags.push(['guardian', gp]);
+    }
+  }
+  if (params.supersedes) tags.push(['supersedes', params.supersedes]);
 
   return {
     kind: SIGNET_KINDS.CREDENTIAL,
@@ -172,6 +187,8 @@ export function parseCredential(event: NostrEvent): ParsedCredential | null {
   const tier = getTagValue(event, 'tier');
   if (!tier) return null;
 
+  const guardianValues = getTagValues(event, 'guardian');
+
   return {
     subjectPubkey: getTagValue(event, 'd') || '',
     tier: parseInt(tier) as SignetTier,
@@ -182,6 +199,12 @@ export function parseCredential(event: NostrEvent): ParsedCredential | null {
     jurisdiction: getTagValue(event, 'jurisdiction'),
     ageRange: getTagValue(event, 'age-range'),
     expiresAt: getTagValue(event, 'expires') ? parseInt(getTagValue(event, 'expires')!) : undefined,
+    entityType: getTagValue(event, 'entity-type') as EntityType | undefined,
+    nullifier: getTagValue(event, 'nullifier'),
+    merkleRoot: getTagValue(event, 'merkle-root'),
+    guardianPubkeys: guardianValues.length > 0 ? guardianValues : undefined,
+    supersedes: getTagValue(event, 'supersedes'),
+    supersededBy: getTagValue(event, 'superseded-by'),
   };
 }
 
@@ -400,4 +423,280 @@ export function needsRenewal(event: NostrEvent, withinDays: number = 30): boolea
   const threshold = now + withinDays * 24 * 60 * 60;
 
   return expiresAt <= threshold;
+}
+
+// --- Two-Credential Ceremony ---
+
+/**
+ * Create a two-credential ceremony issuing Natural Person + Persona credentials.
+ * The verifier sees all documents but only publishes privacy-preserving tags.
+ */
+export async function createTwoCredentialCeremony(
+  verifierPrivateKey: string,
+  naturalPersonPubkey: string,
+  personaPubkey: string,
+  opts: {
+    name: string;
+    nationality: string;
+    documentType: string;
+    documentNumber: string;
+    documentCountry: string;
+    dateOfBirth: string; // ISO date
+    profession: string;
+    jurisdiction: string;
+    ageRange?: string;
+    guardianPubkeys?: string[];
+    expiresAt?: number;
+  }
+): Promise<TwoCredentialResult> {
+  const verifierPubkey = getPublicKey(verifierPrivateKey);
+  const expiresAt = opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS;
+
+  // 1. Compute nullifier from document details (NOT published, only hash)
+  const nullifier = computeNullifier(opts.documentType, opts.documentCountry, opts.documentNumber);
+
+  // 2. Build Merkle tree from verified attributes
+  const merkleLeaves: Record<string, string> = {
+    name: opts.name,
+    nationality: opts.nationality,
+    documentType: opts.documentType,
+    dateOfBirth: opts.dateOfBirth,
+    nullifier: nullifier,
+  };
+  const tree = new MerkleTree(merkleLeaves);
+  const merkleRoot = tree.getRoot();
+
+  // 3. Compute age range from DOB if not provided
+  const ageRange = opts.ageRange || computeAgeRange(opts.dateOfBirth);
+
+  // 4. Determine tier and scope
+  const isChild = !ageRange.startsWith('18');
+  const tier: SignetTier = isChild ? 4 : 3;
+  const scope: VerificationScope = isChild ? 'adult+child' : 'adult';
+
+  // 5. Issue Natural Person credential (keypair A)
+  const npEvent = buildCredentialEvent(verifierPubkey, {
+    subjectPubkey: naturalPersonPubkey,
+    tier,
+    type: 'professional',
+    scope,
+    method: 'in-person-id',
+    profession: opts.profession,
+    jurisdiction: opts.jurisdiction,
+    ageRange,
+    entityType: 'natural_person',
+    nullifier,
+    merkleRoot,
+    guardianPubkeys: opts.guardianPubkeys,
+    expiresAt,
+  });
+  const naturalPerson = await signEvent(npEvent, verifierPrivateKey);
+
+  // 6. Issue Persona credential (keypair B) — NO nullifier, NO merkle-root
+  const personaEvent = buildCredentialEvent(verifierPubkey, {
+    subjectPubkey: personaPubkey,
+    tier,
+    type: 'professional',
+    scope,
+    method: 'in-person-id',
+    profession: opts.profession,
+    jurisdiction: opts.jurisdiction,
+    ageRange,
+    entityType: 'persona',
+    guardianPubkeys: opts.guardianPubkeys,
+    expiresAt,
+  });
+  const persona = await signEvent(personaEvent, verifierPrivateKey);
+
+  // 7. Generate Merkle proofs for all leaves
+  const merkleProofs: MerkleProof[] = Object.keys(merkleLeaves)
+    .sort()
+    .map((key) => tree.prove(key));
+
+  return {
+    naturalPerson,
+    persona,
+    merkleLeaves,
+    merkleProofs,
+  };
+}
+
+/** Compute age range string from ISO date of birth */
+function computeAgeRange(dateOfBirth: string): string {
+  const dob = new Date(dateOfBirth);
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const monthDiff = now.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < dob.getDate())) {
+    age--;
+  }
+
+  if (age >= 18) return '18+';
+  if (age >= 13) return '13-17';
+  if (age >= 8) return '8-12';
+  if (age >= 4) return '4-7';
+  return '0-3';
+}
+
+// --- Credential Chains ---
+
+/**
+ * Issue a new credential that supersedes an existing one.
+ * The old credential gets a superseded-by tag added (returned as updated event).
+ */
+export async function supersedeCredential(
+  verifierPrivateKey: string,
+  oldCredential: NostrEvent,
+  newParams: Partial<CredentialParams> & { subjectPubkey: string }
+): Promise<{ newCredential: NostrEvent; oldUpdated: NostrEvent }> {
+  const parsed = parseCredential(oldCredential);
+  if (!parsed) throw new Error('Invalid credential to supersede');
+
+  const verifierPubkey = getPublicKey(verifierPrivateKey);
+  const expiresAt = newParams.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS;
+
+  // Build new credential with supersedes link
+  const newEvent = buildCredentialEvent(verifierPubkey, {
+    subjectPubkey: newParams.subjectPubkey,
+    tier: newParams.tier || parsed.tier,
+    type: newParams.type || parsed.type,
+    scope: newParams.scope || parsed.scope,
+    method: newParams.method || parsed.method,
+    profession: newParams.profession ?? parsed.profession,
+    jurisdiction: newParams.jurisdiction ?? parsed.jurisdiction,
+    ageRange: newParams.ageRange ?? parsed.ageRange,
+    entityType: newParams.entityType ?? parsed.entityType,
+    nullifier: newParams.nullifier ?? parsed.nullifier,
+    merkleRoot: newParams.merkleRoot ?? parsed.merkleRoot,
+    guardianPubkeys: newParams.guardianPubkeys ?? parsed.guardianPubkeys,
+    supersedes: oldCredential.id,
+    expiresAt,
+  });
+
+  const newCredential = await signEvent(newEvent, verifierPrivateKey);
+
+  // Create updated old credential with superseded-by tag
+  const oldTags = [...oldCredential.tags, ['superseded-by', newCredential.id]];
+  const oldUpdated: NostrEvent = { ...oldCredential, tags: oldTags };
+
+  return { newCredential, oldUpdated };
+}
+
+/**
+ * Follow supersedes/superseded-by chain to find current active credential.
+ */
+export function resolveCredentialChain(events: NostrEvent[]): CredentialChain | null {
+  if (events.length === 0) return null;
+
+  // Build lookup maps
+  const byId = new Map<string, NostrEvent>();
+  for (const e of events) byId.set(e.id, e);
+
+  // Find the credential that is NOT superseded by anything
+  let current: NostrEvent | undefined;
+  for (const e of events) {
+    const supersededBy = getTagValue(e, 'superseded-by');
+    if (!supersededBy || !byId.has(supersededBy)) {
+      current = e;
+    }
+  }
+  if (!current) current = events[events.length - 1];
+
+  // Walk backwards through supersedes links to build history
+  const history: NostrEvent[] = [];
+  let cursor: NostrEvent | undefined = current;
+  const visited = new Set<string>();
+
+  while (cursor) {
+    if (visited.has(cursor.id)) break;
+    visited.add(cursor.id);
+
+    const supersedesId = getTagValue(cursor, 'supersedes');
+    if (supersedesId && byId.has(supersedesId)) {
+      history.unshift(byId.get(supersedesId)!);
+      cursor = byId.get(supersedesId);
+    } else {
+      break;
+    }
+  }
+
+  return { current, history };
+}
+
+/**
+ * Check if a credential has been superseded.
+ */
+export function isSuperseded(event: NostrEvent): boolean {
+  return !!getTagValue(event, 'superseded-by');
+}
+
+// --- Nullifier Utilities ---
+
+/**
+ * Compute a deterministic nullifier from document details.
+ * Hash of documentType || countryCode || documentNumber || salt.
+ */
+export function computeNullifier(documentType: string, countryCode: string, documentNumber: string): string {
+  return hashString(`${documentType}||${countryCode}||${documentNumber}||signet-uniqueness-v1`);
+}
+
+/**
+ * Check if a nullifier already exists in a set of credentials.
+ * Returns the conflicting credential if found.
+ */
+export function checkNullifierDuplicate(
+  nullifier: string,
+  existingCredentials: NostrEvent[]
+): { isDuplicate: boolean; conflicting?: NostrEvent } {
+  for (const cred of existingCredentials) {
+    const credNullifier = getTagValue(cred, 'nullifier');
+    if (credNullifier === nullifier) {
+      return { isDuplicate: true, conflicting: cred };
+    }
+  }
+  return { isDuplicate: false };
+}
+
+/**
+ * Build a nullifier-chain tag linking old and new nullifiers (for document renewal).
+ */
+export function buildNullifierChainTag(oldNullifier: string): string[][] {
+  return [['nullifier-chain', oldNullifier]];
+}
+
+// --- Guardian Delegation ---
+
+/**
+ * Create a guardian delegation event (kind 30477).
+ * Allows a guardian to delegate specific permissions to another adult for a child.
+ */
+export async function createGuardianDelegation(
+  guardianPrivateKey: string,
+  params: GuardianDelegationParams
+): Promise<NostrEvent> {
+  const guardianPubkey = getPublicKey(guardianPrivateKey);
+
+  const tags: string[][] = [
+    ['d', `guardian-delegation:${params.childPubkey}:${params.delegatePubkey}`],
+    ['p', params.delegatePubkey],
+    ['delegation-type', 'guardian-delegate'],
+    ['child', params.childPubkey],
+    ['scope', params.scope],
+    ['L', SIGNET_LABEL],
+    ['l', 'delegation', SIGNET_LABEL],
+  ];
+
+  if (params.expiresAt) {
+    tags.push(['expires', String(params.expiresAt)]);
+  }
+
+  const event: UnsignedEvent = {
+    kind: SIGNET_KINDS.DELEGATION,
+    pubkey: guardianPubkey,
+    created_at: Math.floor(Date.now() / 1000),
+    tags,
+    content: '',
+  };
+
+  return signEvent(event, guardianPrivateKey);
 }

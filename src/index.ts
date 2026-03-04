@@ -36,6 +36,10 @@ export type {
   ParsedRevocation,
   ParsedDelegation,
   ParsedIdentityBridge,
+  TwoCredentialResult,
+  CredentialChain,
+  GuardianDelegationParams,
+  GuardianDelegationScope,
   ElectionScale,
   ReVotePolicy,
   ElectionParams,
@@ -92,6 +96,18 @@ export {
   // Credential renewal
   renewCredential,
   needsRenewal,
+  // Two-credential ceremony
+  createTwoCredentialCeremony,
+  // Credential chains
+  supersedeCredential,
+  resolveCredentialChain,
+  isSuperseded,
+  // Nullifier utilities
+  computeNullifier,
+  checkNullifierDuplicate,
+  buildNullifierChainTag,
+  // Guardian delegation
+  createGuardianDelegation,
 } from './credentials.js';
 
 export type { RingProtectedContent } from './credentials.js';
