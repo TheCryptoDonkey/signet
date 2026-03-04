@@ -11,6 +11,7 @@ import {
   getTierDescription,
 } from '../src/i18n.js';
 import type { LanguageCode, TranslationStrings } from '../src/i18n.js';
+import { ENTITY_LABELS } from '../src/constants.js';
 
 describe('i18n', () => {
   // Reset to English before each test to avoid leaking state between tests
@@ -196,6 +197,44 @@ describe('i18n', () => {
     it('returns tier descriptions in Korean', () => {
       expect(getTierDescription(1, 'ko')).toBe('자기 선언 — 미검증된 인간성 주장');
       expect(getTierDescription(4, 'ko')).toBe('전문가 + 아동 보호 — 연령 범위 증명 포함');
+    });
+  });
+
+  describe('entity type labels', () => {
+    const entityKeys: (keyof TranslationStrings)[] = [
+      'entity_natural_person',
+      'entity_persona',
+      'entity_personal_agent',
+      'entity_free_personal_agent',
+      'entity_juridical_person',
+      'entity_juridical_persona',
+      'entity_organised_agent',
+      'entity_free_organised_agent',
+      'entity_free_agent',
+    ];
+
+    it('all 9 entity type keys present in all 15 languages', () => {
+      const languages = getSupportedLanguages();
+      expect(languages).toHaveLength(15);
+      for (const lang of languages) {
+        for (const key of entityKeys) {
+          const value = t(key, lang);
+          expect(value, `${lang} missing ${key}`).toBeTruthy();
+          expect(value.length, `${lang} ${key} should not be empty`).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    it('English entity labels match ENTITY_LABELS constants', () => {
+      expect(t('entity_natural_person', 'en')).toBe(ENTITY_LABELS.natural_person);
+      expect(t('entity_persona', 'en')).toBe(ENTITY_LABELS.persona);
+      expect(t('entity_personal_agent', 'en')).toBe(ENTITY_LABELS.personal_agent);
+      expect(t('entity_free_personal_agent', 'en')).toBe(ENTITY_LABELS.free_personal_agent);
+      expect(t('entity_juridical_person', 'en')).toBe(ENTITY_LABELS.juridical_person);
+      expect(t('entity_juridical_persona', 'en')).toBe(ENTITY_LABELS.juridical_persona);
+      expect(t('entity_organised_agent', 'en')).toBe(ENTITY_LABELS.organised_agent);
+      expect(t('entity_free_organised_agent', 'en')).toBe(ENTITY_LABELS.free_organised_agent);
+      expect(t('entity_free_agent', 'en')).toBe(ENTITY_LABELS.free_agent);
     });
   });
 
