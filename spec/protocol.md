@@ -13,7 +13,7 @@
 
 Signet is an open protocol for decentralised identity verification on Nostr. It enables users to prove claims about their identity — age, parenthood, professional status — using zero-knowledge proofs, without revealing personal data or relying on a central authority.
 
-The protocol defines four verification tiers, nine entity types, a continuous trust score, a verifier accountability framework, and seven Nostr event kinds. Any Nostr client can implement Signet. Any community can set verification policies. Any licensed professional can become a verifier.
+The protocol defines four verification tiers, nine entity types, a continuous trust score, a verifier accountability framework, and eight Nostr event kinds (30470–30477). Any Nostr client can implement Signet. Any community can set verification policies. Any licensed professional can become a verifier.
 
 **Child safety is the killer app. Social proof (blue checkmarks) drives adoption across all of Nostr.**
 
@@ -38,6 +38,8 @@ The protocol defines four verification tiers, nine entity types, a continuous tr
 15. [Identity Management & Peer Verification](#15-identity-management--peer-verification)
 16. [Identity Bridge](#16-identity-bridge)
 17. [Entity Type Classification](#17-entity-type-classification)
+18. [Adversarial Resilience](#18-adversarial-resilience)
+19. [Civic Identity](#19-civic-identity)
 
 ---
 
@@ -1270,5 +1272,151 @@ Relays MAY filter events by entity type. For example, a child-safety relay might
 The current taxonomy covers entities that are human, human-controlled, human-organised, or unverified. It does not cover fully autonomous beings (e.g., a sentient AI or truly independent robot) that act on their own behalf rather than on behalf of a human or organisation.
 
 If such entities require their own legal or social standing, a new root category — **Synthetic Person** — may be added alongside Natural Person and Juridical Person, with its own alias and agent subtypes. The taxonomy is designed to accommodate this without breaking changes.
+
+---
+
+## 18. Adversarial Resilience
+
+### 18.1 Overview
+
+Any identity protocol that achieves meaningful adoption will be evaluated — and potentially co-opted — by adversarial actors, including nation-states. A protocol that works only under cooperative assumptions is not a protocol; it is an invitation to abuse. Signet MUST be designed, evaluated, and maintained under adversarial assumptions, including the scenario where a government mandates Signet ID and then attempts to weaponise it.
+
+This section defines the threat model, compares Signet's position to the current state and its trajectory, and establishes formal requirements that the protocol must satisfy.
+
+### 18.2 Threat Scenarios
+
+The following table compares ten adversarial scenarios across three contexts: the current state (2026), the trajectory if centralised digital identity continues unchecked, and the position with Signet.
+
+| Scenario | Current State (2026) | Trajectory Without Decentralised Alternative | With Signet |
+|---|---|---|---|
+| **Identity revocation** | Multiple ID forms exist. Losing one doesn't kill identity. | Centralised digital ID (EU eIDAS, UK DIATF) creates single points of failure. One revocation = locked out. India's Aadhaar locks people out of food rations. | Multiple independent credential issuers. No single revocation kills identity. Government revokes their attestation, not identity itself. |
+| **Anonymous participation** | Possible via cash, physical post, in-person. Diminishing with CCTV, card-only payments, phone tracking. | Cash elimination. Real-name platform verification (EU DSA, UK OSA). Anonymous speech criminalised or de-platformed. Trajectory: zero anonymity. | Ring signatures provide mathematical anonymity. Persona accounts unlinkable to Natural Person. Anonymous but verified participation is a protocol feature, not a loophole. |
+| **Backdoored identity** | Government holds biometrics. Centralised databases. Citizen doesn't control infrastructure. | Mandatory government wallet apps. Closed-source, government-audited. Apple/Google as gatekeepers. Must use their app to have identity. | Open-source clients. Keys generated offline. Open spec anyone can implement. No mandated app. |
+| **Retrospective de-anonymisation** | ISP logging (UK IPA). CCTV retained. Much activity still unrecorded. | AI retroactive analysis of CCTV, social media, location, payments. "Reconstruct your 2025" becomes routine. Facial recognition on stored footage. | Risk exists (quantum). Post-quantum crypto migration is plannable. Analogue world has NO defence against retrospective AI analysis. |
+| **Mass surveillance** | GCHQ/NSA bulk collection. Smart city sensors. Mobile tracking. Mostly passive. | Real-time AI monitoring. IoT everywhere. China-model normalised as "public safety." Active, not passive. | Relay diversity across jurisdictions. Encrypted connections. Signet words work offline. Can't surveil what doesn't touch your infrastructure. |
+| **Statistical de-anonymisation** | Browser fingerprinting, ad IDs, metadata analysis already de-anonymise routinely. | AI correlation attacks improve exponentially. Pseudonymity provides zero real protection. | Ring signatures stronger than pseudonymity — provable unlinkability. Larger rings = stronger guarantees. |
+| **Social graph mapping** | Social media, phone contacts, email, payments reveal relationships. Government can request with warrants. | AI real-time social graph analysis. Cross-platform graph merging. No relationship private. | Persona-based connections unlinkable to Natural Person. Government key and social key cryptographically separated. |
+| **Family structure exploitation** | Birth certs, school records, tax returns link families. Government knows family structure. | Centralised child identity systems. Family graphs cross-linked across all services. | ZKP proves "parent has child aged 8-12" without revealing which child, which school, any detail. |
+| **Verifier coercion** | Government can pressure professionals via licensing. Professionals have some legal protections. | Professional independence eroded. Licensing bodies politicised. "Comply or lose licence" routine. | Multiple verifiers across jurisdictions and professions. No single jurisdiction's coercion captures entire verification chain. |
+| **Election manipulation** | Paper ballots work reasonably for secrecy. Postal voting vulnerable. No crypto guarantees. | Digital voting without proper crypto. Centralised "trust us" counting. Convenience over security. | Linkable ring signatures for ballot secrecy. Re-voting for coercion resistance. Verifiable tallying anyone can audit. |
+
+### 18.3 Defence Principles
+
+Every defence follows the same meta-principle: **decentralisation prevents single-entity control.**
+
+1. **Multiple credential issuers** — no single entity's revocation kills your identity
+2. **Open-source clients** — no mandated app can be secretly backdoored
+3. **Relay diversity** — no single jurisdiction controls the communication layer
+4. **Large ring signatures** — statistical de-anonymisation requires infeasible computation
+5. **Post-quantum migration path** — build crypto agility into the spec now
+6. **Multiple election authorities** — no single signer controls ballot issuance
+7. **Cross-jurisdiction verifiers** — professionals in different countries provide independent trust paths
+8. **Voluntary credential presentation** — the protocol MUST NOT enable compulsory ID through the back door
+
+### 18.4 Formal Adversarial Requirement
+
+The protocol MUST ensure that no single entity — including a nation-state — can unilaterally:
+
+- **Revoke a person's identity** — only their own attestation, not the keypair or credentials from other issuers
+- **De-anonymise a Persona** — without possession of the private key
+- **Coerce a vote** — without detection by the voter or audit trail
+- **Surveil all activity** — relay diversity defeats centralised monitoring
+- **Weaponise credentials as social credit** — multiple independent issuers prevent any single issuer from gatekeeping participation
+
+These properties are non-negotiable. Any proposed protocol change that weakens any of these guarantees MUST be rejected unless it provides an equivalent or stronger guarantee through a different mechanism.
+
+---
+
+## 19. Civic Identity
+
+### 19.1 Government as Verifier
+
+Governments are simply another class of verifier in the Signet model. A government issues kind 30470 credentials to citizens, just as a professional verifier issues credentials to individuals. The critical difference from traditional national ID:
+
+| Aspect | Traditional National ID | Signet ID |
+|---|---|---|
+| Who generates the identity | Government issues it | Citizen generates keypair |
+| Who holds the master record | Government database | Citizen holds private key |
+| What government stores | Name, DOB, address, photo, biometrics | Public key + attestation |
+| Single point of failure | Government database breach = mass identity theft | No central database to breach |
+| Revocation power | Government can cancel your identity | Government can revoke their attestation; your key still works with other verifiers |
+| Surveillance capability | Full — they hold all your data | Limited — they hold a public key |
+
+No new event kinds are required. Governments use existing kinds: 30470 (credential issuance), 30475 (revocation), and 30476 (identity bridge) where applicable.
+
+### 19.2 Verification Flow
+
+Citizen verification follows a six-step process using existing protocol mechanisms:
+
+1. **Key generation** — Citizen generates a Nostr keypair from a 12-word BIP-39 mnemonic
+2. **In-person appearance** — Citizen visits a government office (analogous to passport issuance)
+3. **Document verification** — Government official verifies identity documents in person
+4. **Credential issuance** — Government issues a kind 30470 Signet credential to the citizen's pubkey: "This pubkey belongs to a verified citizen"
+5. **Connection establishment** — Citizen and government official establish a verified connection (QR exchange, shared secret, or Signet words)
+6. **Ongoing verification** — For future interactions, either party can verify the other using "Signet me" time-based word verification
+
+### 19.3 Good Standing Credentials
+
+A government may issue a "good standing" credential — a kind 30470 attestation that indicates the citizen has no outstanding warrants or court orders requiring action.
+
+**Revocation as warrant mechanism:**
+- When a court issues a warrant, the good standing credential is revoked via kind 30475
+- The citizen's ZKP can prove non-membership in the revocation set (i.e., "I am not on any warrant list")
+- Ring signatures anonymise which specific credential is being proven
+- The credential can be re-issued when the warrant is resolved
+
+**Privacy guarantee:** The revocation set is public (as all kind 30475 events are), but ring signatures prevent observers from linking a specific proof of good standing to a specific citizen.
+
+### 19.4 Privacy-Preserving Police Interaction
+
+**Current process:**
+1. Police stop a person
+2. Ask for name
+3. Run name through Police National Computer / NCIC
+4. Check for warrants
+5. If clear, person goes — but name, location, and time are all logged
+
+**Signet process:**
+1. Police stop a person
+2. Ask to verify status
+3. Person's device presents a ZKP: "I hold a valid, non-revoked citizen credential"
+4. Officer's device verifies the proof and checks revocation status
+5. If clear, person goes — **no identity revealed**
+
+The officer learns exactly one fact: this person holds a valid, non-revoked citizen credential.
+
+**Critical constraint:** Presentation of a Signet credential MUST be voluntary. Refusal to present a credential MUST NOT be grounds for detention, search, or further action. Without this constraint, Signet becomes compulsory ID through the back door. This requirement MUST be enshrined in enabling legislation (see §19.6).
+
+### 19.5 Separation of Official and Private Identity
+
+Citizens maintain strict separation between their government-registered identity and their private life:
+
+```
+Citizen's registered pubkey (Natural Person)
+  │  Used ONLY for government interactions:
+  │  taxes, official correspondence, warrant checks
+  │
+  └──► Persona accounts (anonymous aliases)
+       │  Used for private life:
+       │  social media, communities, personal expression
+       │  Ring signature proves "I am a real citizen"
+       │  without revealing which one
+       │
+       └──► Free Personal Agents
+            Bots/services under anonymous identity
+```
+
+The government knows the citizen's registered pubkey. They cannot link it to any Persona account without breaking the ring signature — which is computationally infeasible. This separation is enforced by cryptography, not by policy.
+
+### 19.6 Legal Framework Requirements
+
+For civic identity to function as described, enabling legislation MUST ensure:
+
+1. **Voluntary presentation** — no person may be compelled to present a Signet credential outside of contexts where identification is already legally required (e.g., border control, court proceedings)
+2. **Refusal without consequence** — refusal to present a credential in a voluntary context must not be treated as grounds for suspicion, detention, or any adverse action
+3. **Keypair sovereignty** — the citizen's private key is their property; government may not demand access to it
+4. **Credential plurality** — citizens may hold credentials from multiple issuers; no single government credential may be made a prerequisite for participation in civil society
+5. **Algorithmic audit** — any government systems that process Signet credentials must be subject to independent audit
+6. **Sunset and review** — civic identity legislation must include mandatory review periods to assess whether the system is being used as intended
 
 *This specification is a living document. It will evolve through community feedback and implementation experience.*
