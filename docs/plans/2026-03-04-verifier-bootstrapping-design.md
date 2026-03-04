@@ -964,7 +964,354 @@ Signet's tiered model creates a **gradient of confidence**:
 
 The system meets people where they are and provides a path upward as their circumstances improve. A homeless person today can be a fully verified Tier 3 identity holder tomorrow, without starting over — the same keypair, the same social connections, just a new credential from a professional.
 
-## 12. Open Questions
+## 12. Child Online Safety — Adversarial Analysis
+
+This is the most immediate problem Signet must solve. Two attack vectors, examined from the attacker's perspective, then defended.
+
+### 12.1 Attack Vector 1: Adult Pretending to Be a Child (Grooming)
+
+**The attack today (no Signet):** Trivially easy. Create an account, put "14" in your bio, use a stolen or AI-generated photo of a teenager, join teen spaces, start building trust. There is literally nothing stopping this. Every social platform relies on self-declaration.
+
+**The attack with Signet — how an attacker would try:**
+
+#### 12.1.1 Attempt: Create an unverified account claiming to be a child
+
+1. Attacker creates a Tier 1 keypair
+2. Sets bio to "14 year old, loves gaming"
+3. Tries to enter a child-safe community
+
+**Defence:** Any properly configured child-safe community sets a kind 30472 policy requiring:
+```jsonc
+["child-min-tier", "4"],
+["require-age-range", "true"]
+```
+A Tier 1 account has NO age-range proof. Rejected at the door. The attacker can't even enter the space.
+
+#### 12.1.2 Attempt: Get a Tier 2 (community-vouched) child identity
+
+1. Attacker builds a fake child persona at Tier 1
+2. Gets vouched by other Tier 2+ users who believe they're a child
+
+**Defence:** Tier 2 vouches do NOT include age-range proofs. A vouch says "this person is real" — it doesn't say "this person is 14." The community policy requiring `["require-age-range", "true"]` still blocks them because age-range proofs can ONLY be issued by a professional who has verified identity documents. No amount of social engineering gets past this — the Bulletproof proof requires a professional's signature on a document-verified age.
+
+#### 12.1.3 Attempt: Get a fake Tier 4 child credential from a professional
+
+1. Attacker walks into a professional's office
+2. Presents forged birth certificate claiming to be 14
+
+**Defence: The professional has eyes.** This is the single strongest defence and it's beautifully simple — a 35-year-old cannot walk into a doctor's office and convince them they're 14. The in-person physical verification that Signet requires for Tier 3-4 makes this attack absurd in a way that no purely digital system can.
+
+Even in edge cases (physically young-looking adult): the professional checks a government-issued photo ID document. If the attacker presents someone else's birth certificate, the photo won't match. If they present a forged document, the professional is trained to detect forgeries (this is literally what notaries, doctors, and solicitors do daily).
+
+#### 12.1.4 Attempt: Use a real child as a proxy
+
+1. Attacker recruits or coerces a real child to create an account
+2. Child gets legitimately verified at Tier 4
+3. Attacker takes over the account (gets the child's private key)
+
+**Defence (multiple layers):**
+- **Guardian notifications:** The child's credential has a `["guardian", "<parent_pubkey>"]` tag. Clients can notify the guardian of unusual activity patterns (sudden change in messaging behaviour, new adult contacts)
+- **"Signet me" challenge:** If the attacker-as-child contacts another child and suggests meeting, the other child's client can prompt a "Signet me" real-time verification — the attacker can't produce the time-based words because they don't have the child's live presence
+- **Key custody:** The child's key should be on the child's device, protected by biometrics. The attacker would need physical access to the device
+- **Revocation on detection:** If the proxy use is discovered, the credential is revoked via kind 30475. The nullifier ensures the real child can get re-verified, but the attacker's access is burned
+
+#### 12.1.5 Attempt: Operate in public/mixed-age spaces
+
+1. Attacker has a valid adult Persona credential (Tier 3, no age range)
+2. Enters a public Nostr community where children also participate
+3. Identifies children by their Tier 4 credentials
+4. Initiates contact, builds trust over weeks, eventually grooms
+
+**This is the hardest attack to prevent at the protocol level.** But Signet provides tools that don't exist today:
+
+**Defence — Age-aware client behaviour:**
+- When an adult-credentialed user initiates a DM to a child-credentialed user, the client can:
+  - **Warn the child:** "This person is a verified adult. Do you know them?"
+  - **Notify the guardian:** "An adult has messaged your child"
+  - **Require guardian approval** before the DM is delivered (configurable)
+  - **Block entirely:** Guardian can set "no adult DMs" policy on the child's account
+
+**Defence — Contact restrictions on child accounts:**
+- Client-enforced policy (configurable by guardian):
+  - `allow-adult-dms: none` — no adults can DM this child
+  - `allow-adult-dms: approved-only` — guardian pre-approves specific adults (teachers, family)
+  - `allow-adult-dms: notify` — adults can DM but guardian gets notified
+- These policies are enforceable because Signet credentials contain the age data
+
+**Defence — Meeting safety protocol:**
+When conversation includes meeting-related language (client-level heuristic, not protocol-level):
+1. Client prompts: "Someone has suggested meeting in person. Would you like to verify them?"
+2. Initiates a "Signet me" challenge — both parties prove they match their credential in real-time
+3. If age gap detected: client alerts the child and the guardian
+4. If the person refuses the "Signet me" challenge: that refusal is itself a warning signal
+5. Guardian can be automatically notified with location data if a meetup is planned
+
+**Defence — The absence of age proof is itself a signal:**
+- An adult with a Persona credential but NO age-range proof contacting a child in a mixed space → client can flag: "This person has not verified their age"
+- A verified adult contacting a child → client can flag: "This is a verified adult"
+- In both cases, **today's systems show nothing** — everyone is an anonymous avatar
+
+#### 12.1.6 Attempt: Use AI-generated documents
+
+1. Use AI to generate a convincing birth certificate or child passport
+2. Present it to a professional for Tier 4 verification
+
+**Defence:**
+- The professional sees the actual person. AI can generate documents but not a 14-year-old human body.
+- Professionals are trained in document verification (watermarks, holograms, UV features, paper stock)
+- Where registry APIs exist, the professional cross-checks the document number against official records
+- Anomaly detection: a professional who issues an unusual number of child credentials gets flagged
+
+#### 12.1.7 Summary: Why Grooming Is Harder With Signet
+
+| Step in grooming process | Today | With Signet |
+|---|---|---|
+| Create fake child identity | Trivial (set bio) | Impossible without professional verification |
+| Enter child-safe spaces | Self-declare age | Requires Tier 4 + Bulletproof age range proof |
+| Build trust with real children | No verification barrier | Credential shows entity type and verified age range |
+| Initiate private contact | No restrictions | Guardian-gated DMs, age-gap warnings |
+| Suggest meeting | No safeguards | "Signet me" challenge, guardian notification, age verification |
+| Ongoing deception | Indefinite | Anomaly detection, guardian oversight, re-verification prompts |
+
+**The fundamental shift:** Today, an adult must be CAUGHT pretending to be a child. With Signet, an adult must PROVE they are a child — and that proof requires fooling a professional in person, which is near-impossible for the age-gap scenario.
+
+### 12.2 Attack Vector 2: Child Pretending to Be an Adult
+
+**The attack today (no Signet):** Click "I am 18+." Done. Every age gate on the internet is a checkbox. Children access pornography, gambling, alcohol sales, and other age-restricted services with zero friction.
+
+**The attack with Signet — how a child would try:**
+
+#### 12.2.1 Attempt: Create a Tier 1 account claiming to be adult
+
+1. Child creates a new keypair
+2. No age-range proof exists on this credential
+3. Tries to access an adult-only community
+
+**Defence:** An adult-only community policy requires:
+```jsonc
+["adult-min-tier", "3"],
+["require-adult-proof", "true"]
+```
+This means: you need a Tier 3+ credential AND a proof that you are NOT a child (either no age-range tag — meaning adult verification — or an age-range proof showing 18+). A Tier 1 account has neither. Rejected.
+
+**But wait — what if the adult community only requires Tier 1?** Then yes, a child could enter. But this is the community's choice. Communities that don't care about age verification will exist, just as websites without age gates exist today. Signet provides the mechanism; communities choose whether to enforce it.
+
+#### 12.2.2 Attempt: Get vouched as an adult at Tier 2
+
+1. Child gets friends/strangers to vouch for them
+2. Claims to be 18+ in vouching context
+
+**Defence:** Same as grooming defence — Tier 2 vouches don't include age proofs. A community requiring adult age verification needs professional-signed age data. Social vouching doesn't provide it.
+
+#### 12.2.3 Attempt: Use a parent's or older sibling's credentials
+
+1. Child borrows parent's phone
+2. Uses parent's Signet-verified keypair to access adult content
+
+**Defence (partial — same as any auth system):**
+- Biometric lock on device and on Signet key access (fingerprint, face ID)
+- Key stored in secure enclave, not exportable
+- Client can require re-authentication for age-restricted access
+- **Honest limitation:** If a child knows their parent's unlock credentials, this attack works — same as a child using a parent's Netflix login or finding their parent's ID card. No system fully prevents physical access sharing within a household.
+
+#### 12.2.4 Attempt: Use a fake or stolen adult document
+
+1. Physically mature 16-year-old uses older sibling's passport
+2. Visits a professional for adult Tier 3 verification
+
+**Defence:**
+- Professional compares photo to person — older sibling's passport photo should differ
+- **Nullifier collision:** When the real sibling later tries to get verified, the nullifier matches → duplicate detected. One credential must be revoked. Investigation reveals the fraud.
+- **Honest limitation:** A 17-year-old who closely resembles their 19-year-old sibling might fool the photo check. This is the same attack that works against bartenders, bouncers, and passport control. Signet is not worse than existing systems here — it's roughly equivalent.
+
+#### 12.2.5 Attempt: Create a second keypair without age range
+
+1. Child already has a Tier 4 credential with age-range "13-17" on keypair A
+2. Creates a new keypair B
+3. Gets keypair B verified at Tier 3 (adult, no age range) using the same documents
+
+**Defence: The nullifier.** Both credentials would use the same government document (passport, birth certificate). The nullifier `H(document_type || country_code || document_number || "signet-uniqueness-v1")` is deterministic. When the second credential is issued, the nullifier already exists on-chain attached to a Tier 4 child credential. The system detects the duplicate and rejects it.
+
+The child would need a DIFFERENT document to generate a different nullifier — but:
+- Their passport says their date of birth (professional checks this)
+- Their birth certificate says their date of birth
+- Any document that truthfully identifies them reveals they're a minor
+- A forged document with a fake DOB is the only remaining attack (see §12.2.4)
+
+#### 12.2.6 Attempt: Wait and re-verify at 18
+
+1. Child waits until they're 18
+2. Gets legitimately verified as an adult
+
+**Defence: This isn't an attack — it's the intended flow.** When someone turns 18, they SHOULD be able to access adult content. The child → adult transition (§10.4.3) handles this cleanly. The age-range proof in the old Tier 4 credential expires naturally, and a professional issues a new Tier 3 adult credential.
+
+#### 12.2.7 Attempt: Exploit the Persona layer
+
+1. Child has Tier 4 child credential on keypair A
+2. Creates a Persona on keypair B
+3. The Persona has no age-range tag (because Personas don't carry demographic data by default)
+4. Tries to use the age-range-free Persona to access adult content
+
+**Defence — critical design decision:**
+
+**A Persona credential issued from a child verification ceremony MUST carry the age-range proof.** This is already specified in §10.4.1:
+```jsonc
+// Child's Persona credential:
+["entity-type", "persona"],
+["tier", "4"],
+["age-range", "8-12"]
+```
+
+The age-range is mandatory on the Persona for precisely this reason. If the Persona lacked age data, it would be a clean bypass. The professional signs the age range onto BOTH credentials (Natural Person and Persona) during the child verification ceremony.
+
+**What about creating a NEW Persona later (not through the ceremony)?**
+- Creating a Persona requires an identity bridge (kind 30476) from an existing credential
+- The identity bridge inherits the tier and age-range from the source credential
+- A child's identity bridge carries the age restriction forward
+- The ring signature proves the Persona is linked to a verified identity — and that identity includes age data
+
+#### 12.2.8 Summary: Why Age Bypass Is Harder With Signet
+
+| Method children use today | Works? | Signet equivalent | Works? |
+|---|---|---|---|
+| Click "I am 18+" | Yes (always) | Create Tier 1, claim adult | No — community requires Tier 3+ |
+| Use parent's account | Yes (common) | Use parent's key | Partially — biometrics help but not foolproof |
+| Lie about DOB on signup | Yes (always) | Get vouched as adult | No — vouches don't include age proofs |
+| Use fake ID at a shop | Sometimes | Use fake documents with professional | Harder — nullifier + in-person + professional training |
+| Use older sibling's ID | Sometimes | Use sibling's passport for verification | Harder — nullifier detects when sibling verifies |
+| No enforcement exists | Most platforms | No age verification policy set | Yes — but community's explicit choice |
+
+**The fundamental shift:** Today, children must be CAUGHT accessing adult content (which essentially never happens). With Signet, children must PROVE they are adults — and that proof requires either a genuinely verifying professional to make an error, or a forged document to go undetected. The barrier goes from zero to substantial.
+
+### 12.3 Design Requirements for Child-Safe Clients
+
+Signet provides the data. Clients must use it. The following are RECOMMENDED client behaviours for any Nostr client that implements Signet:
+
+#### 12.3.1 Mandatory Displays
+
+| Credential state | Client MUST show |
+|---|---|
+| Tier 4 + age-range 0-12 | "Verified Child" + guardian info |
+| Tier 4 + age-range 13-17 | "Verified Teen" + guardian info |
+| Tier 3 + no age-range | "Verified Adult" |
+| Tier 1-2 + no age-range | "Unverified Age" |
+
+#### 12.3.2 Guardian Controls
+
+Clients SHOULD provide guardian configuration:
+
+| Setting | Options | Default |
+|---|---|---|
+| Adult DM policy | `block` / `approve-only` / `notify` / `allow` | `notify` |
+| Adult group chat policy | `block` / `notify` / `allow` | `notify` |
+| Meeting detection | `on` / `off` | `on` |
+| Content filter level | `strict` / `moderate` / `off` | `strict` for under-13, `moderate` for 13-17 |
+| "Signet me" on first contact | `required` / `suggested` / `off` | `suggested` |
+| Location sharing to guardian | `on-meetup` / `always` / `off` | `on-meetup` |
+
+#### 12.3.3 Age-Gap Contact Warnings
+
+When an adult-credentialed user initiates private contact with a child-credentialed user, clients SHOULD:
+
+1. **Warn the child:** "This person is verified as an adult. Be cautious about sharing personal information."
+2. **Notify the guardian** (per guardian settings)
+3. **Log the contact initiation** for potential review (client-local, not on-chain)
+4. **Offer "Signet me"** as a verification step
+
+#### 12.3.4 Community Policy Templates
+
+Pre-built policy templates for common scenarios:
+
+**Child-Safe Community (under-13):**
+```jsonc
+{
+  "child-min-tier": 4,
+  "require-age-range": true,
+  "max-age": 12,
+  "adult-roles": ["moderator", "guardian"],
+  "adult-dm-policy": "guardian-approved-only"
+}
+```
+
+**Teen Community (13-17):**
+```jsonc
+{
+  "child-min-tier": 4,
+  "require-age-range": true,
+  "min-age": 13,
+  "max-age": 17,
+  "adult-roles": ["moderator", "guardian", "mentor"],
+  "adult-dm-policy": "notify-guardian"
+}
+```
+
+**Adult-Only Community (18+):**
+```jsonc
+{
+  "adult-min-tier": 3,
+  "require-adult-proof": true,
+  "min-age": 18
+}
+```
+
+**Mixed-Age Community (family-friendly):**
+```jsonc
+{
+  "min-tier": 2,
+  "age-gap-dm-warning": true,
+  "guardian-notify-on-adult-contact": true
+}
+```
+
+### 12.4 The "Signet Me" Defence for Child Safety
+
+The time-based word verification system gains specific value in child safety:
+
+**Scenario: Online contact suggests meeting up**
+
+1. Either child or client initiates "Signet me" challenge
+2. Both parties must produce the correct time-based words for their keypair
+3. The words prove the person currently holding the device matches the credential
+4. If the adult's words verify against an adult credential → age gap revealed
+5. If the person cannot produce words → they may not be who they claim
+
+**Scenario: Ongoing contact verification**
+
+A child's client can periodically prompt "Signet me" challenges for contacts, especially:
+- New contacts (first week)
+- Before any meetup
+- When conversation patterns change (detected client-side)
+- When a guardian requests verification
+
+This doesn't prevent all attacks, but it raises the cost of impersonation. An attacker using a stolen child credential must have continuous access to the child's device. An attacker using a proxy child must have the child present for every challenge.
+
+### 12.5 What Signet Cannot Prevent (Honest Assessment)
+
+| Attack | Can Signet prevent it? | Why not |
+|---|---|---|
+| Adult using child's unlocked device | No | Same as any auth system — physical access defeats digital controls |
+| Adult grooming child in public (physical world) | No | Signet is digital — it can't prevent physical-world approaches |
+| Adult grooming through platforms that don't implement Signet | No | Signet is opt-in — platforms must choose to implement it |
+| Determined attacker with forged documents who fools a professional | Unlikely but not impossible | Professionals are human — multi-signal verification reduces but doesn't eliminate this |
+| Child who convinces an adult to share credentials | No | Social engineering within trusted relationships is always possible |
+| Grooming via voice/video call where no credential check occurs | No | Real-time communication doesn't inherently involve credential presentation |
+
+**The honest framing:** Signet does not eliminate child safety risks. It makes the two most common attacks — adult pretending to be a child, and child bypassing age gates — dramatically harder by replacing self-declaration with professional verification and zero-knowledge age proofs. It provides guardians with tools that don't exist today. It gives child-safe communities enforceable policies instead of trust-based-on-nothing. It shifts the baseline from "everyone lies about age and nothing prevents it" to "age claims are cryptographically backed and verifiable."
+
+### 12.6 The Comparison: Today vs Signet
+
+| Dimension | Today | With Signet |
+|---|---|---|
+| Age verification | "Click if you're 18+" (useless) | Bulletproof age-range proof from professional verification |
+| Adult in child space | Self-declare age, enter freely | Requires Tier 4 + age proof — professional must verify |
+| Child in adult space | Click checkbox, enter freely | Requires Tier 3+ adult proof — child's age-range proof blocks entry |
+| Guardian awareness | None — parents don't know who contacts their child | Guardian tags, DM notifications, contact approval, meeting alerts |
+| Predator detection | Reactive — caught after harm | Proactive — age-gap warnings, contact patterns, "Signet me" |
+| Identity of contacts | Completely unknown | Entity type + tier + age range visible to clients |
+| Meeting safety | Nothing | "Signet me" challenge, guardian notification, age verification |
+| Accountability | Anonymous, disposable accounts | Nullifier prevents unlimited new identities, professional vouches for verifier |
+
+## 13. Open Questions
 
 1. **Should domain proof be REQUIRED or just weighted?** If required, it blocks professionals without websites. If optional, the Sybil mesh attack still works for the cross-verification-only path.
 
@@ -982,7 +1329,7 @@ The system meets people where they are and provides a path upward as their circu
 
    **Tentative answer:** Conservative. Flag for human review, don't auto-block. The anomaly signals produce warnings that communities and clients can act on. Better to let a few suspicious verifiers through (with low confidence scores) than to block legitimate professionals.
 
-## 13. Original Adoption Roadmap
+## 14. Original Adoption Roadmap
 
 **Phase 1 (Now — launch):**
 - Domain proof mechanism implemented
@@ -1003,7 +1350,7 @@ The system meets people where they are and provides a path upward as their circu
 - Domain proof remains as supplementary signal
 - Advanced graph analysis with historical pattern detection
 
-## 14. Why This Works (Threat Model Revisited)
+## 15. Why This Works (Threat Model Revisited)
 
 **Against simple impersonation:**
 Domain proof raises the cost from "look up a public licence number" to "hack a professional's website." Registry cross-check catches non-existent licence numbers. Body attestation eliminates impersonation entirely.
@@ -1019,15 +1366,15 @@ Domain proof works without body participation. Cross-jurisdiction verifiers prov
 
 **The key insight:** Each layer doesn't need to be perfect. It needs to make the attack *more expensive* than the alternative (impersonating someone in the physical world, which has its own costs and risks). The goal is not cryptographic certainty — it's economic deterrence through layered defence.
 
-## 15. Professional Directory Verification (Additional Signal)
+## 16. Professional Directory Verification (Additional Signal)
 
-### 15.1 The Opportunity
+### 16.1 The Opportunity
 
 Professionals are already listed in directories that publish their credentials, websites, and affiliations. Many of these directories have editable profile fields where a Nostr pubkey or Signet verification URL could be added. This creates an additional corroboration signal: if a professional's pubkey appears on their listing in an established directory, it's harder to impersonate them.
 
 This is similar to the domain proof (Signal 2) but doesn't require the professional to own a website — just a profile on an existing directory.
 
-### 15.2 Directories With Self-Editable URL Fields
+### 16.2 Directories With Self-Editable URL Fields
 
 **High suitability (free, self-editable, custom URLs confirmed):**
 
@@ -1051,7 +1398,7 @@ This is similar to the domain proof (Signal 2) but doesn't require the professio
 
 SRA Register, GMC Register, Bar Standards Board Register, AICPA Directory, AMA Profiles — these are compliance records, not marketing profiles. No individual-level URL fields.
 
-### 15.3 The UK Gap
+### 16.3 The UK Gap
 
 UK regulatory bodies (SRA, GMC, ICAEW) maintain compliance registers with no individual-level URL or social media fields. UK professionals would need to rely on:
 - LinkedIn (universally available, cross-profession)
@@ -1060,7 +1407,7 @@ UK regulatory bodies (SRA, GMC, ICAEW) maintain compliance registers with no ind
 
 This reinforces why domain proof and LinkedIn-style directory proof should both be supported as verification signals.
 
-### 15.4 Directory Proof Mechanism
+### 16.4 Directory Proof Mechanism
 
 A professional adds a URL to their directory profile:
 ```
@@ -1077,7 +1424,7 @@ or simply includes their npub in a free-text bio/description field.
 
 This is weaker than domain proof (the professional doesn't control the directory infrastructure) but stronger than nothing (the directory has its own verification of who can edit a profile).
 
-### 15.5 Tag Addition
+### 16.5 Tag Addition
 
 Kind 30473 gains an optional tag:
 ```jsonc
@@ -1086,13 +1433,13 @@ Kind 30473 gains an optional tag:
 
 Multiple directory-proof tags may be present (a lawyer on both Avvo and LinkedIn).
 
-## 16. Political and Public Official Adoption
+## 17. Political and Public Official Adoption
 
-### 16.1 We Don't Need 100% — Just Seeds
+### 17.1 We Don't Need 100% — Just Seeds
 
 The entire web-of-trust model works by seeding trust and letting it propagate. A single MP who publishes their Nostr pubkey on their official parliament page becomes a trust anchor that can verify (or be verified by) professionals in their constituency. A few early adopters create the nucleus.
 
-### 16.2 UK Parliament — Technical Feasibility
+### 17.2 UK Parliament — Technical Feasibility
 
 The UK Parliament Members API (`members-api.parliament.uk`) uses a flexible type-based contact system. Social media platforms are stored as contact entries with distinct `typeId` values (e.g., Website = 6, X/Twitter = 7). The system is generic — adding a "Nostr" typeId is architecturally straightforward.
 
@@ -1107,7 +1454,7 @@ The UK Parliament Members API (`members-api.parliament.uk`) uses a flexible type
 
 **No MP has published a Nostr pubkey on parliament.uk** (or any official government page anywhere in the world, as of our research). The precedent closest to this is Mastodon handles appearing in the `unitedstates/congress-legislators` community dataset — several US House members have Mastodon accounts listed.
 
-### 16.3 US Congress
+### 17.3 US Congress
 
 **Congress.gov API** — provides `officialUrl` only, no social media fields.
 
@@ -1115,17 +1462,17 @@ The UK Parliament Members API (`members-api.parliament.uk`) uses a flexible type
 
 **Individual member pages** (house.gov, senate.gov) are self-managed by each office. An MP/representative could add a Nostr pubkey to their own page at their discretion.
 
-### 16.4 UK Local Councils
+### 17.4 UK Local Councils
 
 Local councils overwhelmingly use **ModernGov** (by GOSS Interactive) for councillor directories. The platform is rigid: name, party, ward, email, phone. No social media, no website, no custom fields. **Not currently viable** for Nostr pubkey publication without platform changes.
 
-### 16.5 Politicians Already on Nostr
+### 17.5 Politicians Already on Nostr
 
 No politicians are confirmed on Nostr with official pubkeys. Notable non-politician public figures on Nostr include Edward Snowden and Jack Dorsey. The platform's user base is concentrated in the Bitcoin/cypherpunk community.
 
 **The Mastodon precedent is instructive:** Several US House members adopted Mastodon, the community dataset added a field for it, and it became a normal part of the political social media landscape. The same path is available for Nostr — it just needs the first adopters.
 
-### 16.6 Strategy: Target Crypto-Friendly Politicians
+### 17.6 Strategy: Target Crypto-Friendly Politicians
 
 Rather than seeking broad political adoption, target politicians who are already aligned:
 - UK: Members of APPG on Blockchain, crypto-friendly MPs
@@ -1139,25 +1486,25 @@ A single crypto-friendly MP publishing their Nostr pubkey on parliament.uk creat
 3. Media coverage for Signet/Nostr adoption
 4. A proof point that the parliament.uk system can accommodate cryptographic identity
 
-## 17. Professional Identity Theft — The Advocacy Angle
+## 18. Professional Identity Theft — The Advocacy Angle
 
-### 17.1 Overview
+### 18.1 Overview
 
 Professional identity theft is a growing and underreported problem. Fraudsters impersonate licensed professionals to commit fraud, provide unlicensed services, or establish false credentials. This is the *exact attack* that Signet's verifier bootstrapping must defend against — and it's already happening in the physical world.
 
-### 17.2 Why This Matters for Adoption
+### 18.2 Why This Matters for Adoption
 
 Positioning Signet as a solution to professional identity theft serves two purposes:
 1. **Technical:** It motivates the multi-signal authentication design — the problem is real, not theoretical
 2. **Political:** It gives professional bodies and regulators a reason to adopt Signet — they're already looking for solutions to this problem
 
-### 17.3 Deep Dive Report
+### 18.3 Deep Dive Report
 
 **Completed:** See `docs/reports/2026-03-04-professional-identity-fraud-deep-dive.md`
 
 The report covers statistics, case studies ($47B US identity fraud losses, £11.7M UK conveyancing fraud, 22-year fake NHS doctor), economic losses, regulatory gaps, and how Signet's multi-signal verifier authentication directly addresses the identified threats. Intended as advocacy material for engaging professional bodies and regulators.
 
-## 18. Updated Adoption Roadmap (Revised)
+## 19. Updated Adoption Roadmap (Revised)
 
 **Phase 1 (Now — launch):**
 - Domain proof mechanism (`.well-known/signet.json`)
