@@ -330,88 +330,196 @@ Optional. When present, clients SHOULD fetch and verify the proof.
 
 All changes use existing event kinds. The domain proof is off-chain (HTTP). The confidence score is computed client-side. Professional body attestation uses existing kind 30470.
 
-## 9. One-Person-One-Identity: The Duplicate Account Problem
+## 9. Two-Credential Verification: Real Identity + Anonymous Identity
 
-### 9.1 The Attack
+### 9.1 Design Principle
 
-A person can generate multiple keypairs and get each one independently verified by different professionals:
+Governments already have passport and DVLA databases. Signet cannot prevent governments from knowing who their citizens are — that ship has sailed. What Signet *can* do is give every person a **verified anonymous identity** alongside their real one, so that daily digital life does not require exposing your real name.
 
-1. Generate keypair A → visit Doctor Smith → show passport → Tier 3 credential on keypair A
-2. Generate keypair B → visit Lawyer Jones in another city → show same passport → Tier 3 credential on keypair B
-3. Keep keypair A as personal identity, sell keypair B
+Professionals (doctors, lawyers, notaries) are the only tier that needs to be publicly identified — they already have this obligation in law. They sign and witness legal documents as part of their profession. Everyone else gets anonymity by default.
 
-Both credentials are legitimately issued by real professionals who correctly verified a real passport. No existing mechanism detects the duplicate.
+### 9.2 The Two-Credential Verification Ceremony
 
-This is distinct from the verifier bootstrapping problem (§1-4). This is about *subjects* creating multiple verified identities, not about verifiers being fake.
+When a person visits a professional for verification, the ceremony produces **two credentials**:
 
-### 9.2 The Fundamental Tension
+1. **Person generates two keypairs:**
+   - Keypair A — Natural Person (real identity)
+   - Keypair B — Persona (anonymous identity)
 
-Perfect one-person-one-identity requires either:
-- **Biometrics** (iris scan, fingerprint) — privacy nightmare, central database
-- **Central registry** — "has this person been verified before?" — defeats decentralisation
+2. **Person visits a professional** with passport + both pubkeys (e.g. as QR codes)
 
-Neither is acceptable for Signet. The protocol must find a middle ground: good enough uniqueness with good enough privacy.
+3. **Professional verifies the passport** (same process as witnessing any legal document)
 
-### 9.3 Document-Based Nullifiers
+4. **Professional builds a Merkle tree** of verified attributes:
+   - Leaf 0: `name` = "John Smith"
+   - Leaf 1: `nationality` = "GB"
+   - Leaf 2: `document_type` = "passport"
+   - Leaf 3: `nullifier` = `H("passport" || "GB" || "123456789" || "signet-uniqueness-v1")`
 
-When a professional verifies someone, they compute a deterministic, privacy-preserving identifier from the person's government document:
+5. **Professional issues two kind 30470 credentials:**
+
+   **Credential 1 — Natural Person (keypair A):**
+   ```jsonc
+   {
+     "kind": 30470,
+     "tags": [
+       ["p", "<keypair_A_pubkey>"],
+       ["entity-type", "natural_person"],
+       ["merkle-root", "<root_of_verified_attributes>"],
+       ["nullifier", "<hex_encoded_nullifier>"],
+       ["tier", "3"],
+       // ... other standard tags
+     ]
+   }
+   ```
+
+   **Credential 2 — Persona (keypair B):**
+   ```jsonc
+   {
+     "kind": 30470,
+     "tags": [
+       ["p", "<keypair_B_pubkey>"],
+       ["entity-type", "persona"],
+       ["tier", "3"],
+       // ... other standard tags
+       // NO nullifier — Persona is anonymous
+       // NO merkle-root — no verified attributes to bind
+     ]
+   }
+   ```
+
+6. **Professional gives the subject** the Merkle leaves and proofs privately (for selective disclosure later)
+
+7. **Professional records both pubkeys** in their client file (same record-keeping obligation they already have for witnessing documents)
+
+### 9.3 What Goes On-Chain vs What Stays Private
+
+| Data | On-chain? | Who knows it? |
+|---|---|---|
+| Keypair A pubkey | Yes | Public |
+| Keypair B pubkey | Yes | Public |
+| Entity type (`natural_person` / `persona`) | Yes (in credential, signed by professional) | Public |
+| Nullifier hash | Yes (on Natural Person credential only) | Public, but not reversible |
+| Merkle root of verified attributes | Yes (on Natural Person credential only) | Public, but reveals nothing without leaves |
+| Verified name, nationality, document details | **No** — private Merkle leaves | Subject + professional only |
+| Passport number | **No** — consumed to compute nullifier, then discarded | Professional's private records |
+| Link between keypair A and keypair B | **No** | Subject + professional only |
+
+### 9.4 Merkle-Bound Name Verification
+
+The Natural Person credential contains a Merkle root of verified attributes, signed by the professional. This root is **immutable** — the subject cannot change it.
+
+The subject's Nostr kind 0 profile (display name, avatar, bio) is a separate event that the subject controls. They CAN change their display name — but the Merkle root in the credential doesn't change with it.
+
+**Selective disclosure:** When someone needs to verify that a Natural Person's display name matches their verified name, the subject reveals the `name` Merkle leaf + proof. The verifier checks it against the root in the credential.
+
+**Name-change attack defence:**
+
+If "John Smith" changes his kind 0 profile name to "Dr. James Wilson":
+- The credential's Merkle root still contains the hash of "John Smith"
+- Any client that requests name disclosure will see the mismatch
+- If the subject refuses disclosure, the client flags: "verified identity, name unconfirmed"
+
+### 9.5 Entity Type as Immutable Differentiator
+
+The `entity-type` tag is in the credential, signed by the professional. **The subject cannot change it.** This is the primary defence against a Persona impersonating a Natural Person.
+
+**Attack: Persona name change**
+1. Get a Persona credential under display name "SuperDad"
+2. Build web-of-trust, accumulate vouches
+3. Change kind 0 display name to "Dr. James Wilson"
+4. Hope people think you're a verified doctor
+
+**Defence:** The credential still says `entity-type: "persona"`. Clients MUST display this prominently.
+
+**Required client display behaviour:**
+
+| Profile name | Entity type in credential | Merkle name match | Client displays |
+|---|---|---|---|
+| John Smith | `natural_person` | Match | **John Smith — Verified Person** |
+| Dr. James Wilson | `natural_person` | Mismatch | **Dr. James Wilson — Warning: verified name differs** |
+| Dr. James Wilson | `natural_person` | Not disclosed | **Dr. James Wilson — Verified Person, name unconfirmed** |
+| SuperDad | `persona` | N/A | **SuperDad — Verified Alias** |
+| Dr. James Wilson | `persona` | N/A | **Dr. James Wilson — Verified Alias** |
+| Dr. James Wilson | (none) | N/A | **Dr. James Wilson — Unverified** |
+
+The visual distinction between "Verified Person" and "Verified Alias" must be unmistakable — different colours, different icons, different badge shapes. Think of it as a cryptographically enforced version of Twitter's verification, except the badge can't be bought and the type can't be faked.
+
+### 9.6 Document-Based Nullifiers
+
+The nullifier prevents one person from obtaining multiple Natural Person credentials:
 
 ```
 nullifier = H(document_type || country_code || document_number || "signet-uniqueness-v1")
 ```
 
-This nullifier is included as a tag on the kind 30470 credential:
-```jsonc
-["nullifier", "<hex_encoded_nullifier>"]
-```
-
 **Properties:**
-- **Deterministic:** Same passport → same nullifier, every time, regardless of which professional computes it
-- **Privacy-preserving:** The nullifier reveals nothing about the person unless you already know their document number (in which case you already know who they are)
-- **Decentralised detection:** Anyone can scan the credential set for duplicate nullifiers — no central registry needed
-- **No biometrics:** Derived from the document number, not the person's body
+- **Deterministic:** Same passport → same nullifier, regardless of which professional computes it
+- **Privacy-preserving:** The nullifier is a hash — it reveals nothing unless you already know the document number
+- **Decentralised detection:** Anyone can scan for duplicate nullifiers — no central registry needed
+- **Persona-safe:** Nullifiers only appear on Natural Person credentials, never on Persona credentials
 
-**Detection:** If two kind 30470 credentials on different pubkeys share a nullifier, the duplicate is visible to the entire network. Clients flag it. The later credential is suspect.
+**Detection:** If two Natural Person credentials on different pubkeys share a nullifier, the duplicate is visible to the entire network. The later credential is suspect.
 
-### 9.4 Nullifier Weaknesses and Mitigations
+**Government mass computation:** Yes, a government with a database of all passport numbers could compute all nullifiers and match them to Natural Person pubkeys. But governments already have this information — the nullifier doesn't give them anything new about your real identity. What matters is that your *Persona* has no nullifier and cannot be linked to your Natural Person credential by anyone except you and the issuing professional.
+
+### 9.7 Nullifier Weaknesses and Mitigations
 
 | Attack | Mitigation |
 |---|---|
-| Use different document types (passport for one, driving licence for another) | Require passport as primary document; compute nullifiers for ALL documents presented |
-| Dual citizenship, two passports | Rarer and more expensive; cross-reference nationality nullifiers |
+| Different document types (passport for one, licence for another) | Require passport as primary; compute nullifiers for ALL documents presented |
+| Dual citizenship, two passports | Rarer and expensive; cross-reference nationality nullifiers |
 | Professional doesn't compute nullifier | Clients flag credentials without nullifiers as lower confidence |
-| Someone who knows your passport number computes your nullifier and searches for your credential | Acceptable privacy trade-off: if they know your passport number, they already know who you are |
+| Government computes nullifiers for all citizens | Only links to Natural Person pubkey — Persona remains unlinkable |
 
-### 9.5 Social Constraints (Defence in Depth)
+### 9.8 The Link Between Keypair A and Keypair B
 
-Nullifiers catch the easy case. Social constraints make the residual attack economically unattractive:
+The professional knows both pubkeys (from the verification ceremony). This is the same trust model as solicitor-client confidentiality or doctor-patient privilege. Breaking it is professional misconduct and potentially criminal.
 
-1. **Empty social graph:** A sold identity has no organic vouches — no one who actually knows the buyer has vouched for them. Clients can display "0 vouches, 0 connections" alongside the Tier 3 badge.
+**Stronger variant (optional):** The professional signs only keypair A. The subject then creates an **identity bridge** (kind 30476) from keypair A to keypair B using a ring signature. This way the professional never learns keypair B — they only verified keypair A. The Persona proves "I am backed by a Tier 3 Natural Person credential" without revealing which one.
 
-2. **"Signet me" fails:** The time-based word verification requires real-time presence. The buyer can't pass this test with anyone who knows the original person, or with anyone who subsequently meets the real person.
+This is already supported by the existing identity bridge mechanism in the spec.
 
-3. **Trust score is low:** A fresh Tier 3 with no vouches, no identity bridges, no account age scores very low on the trust score (the professional verification weight is 40/100, but all other signals are zero).
+### 9.9 Social Constraints (Defence in Depth)
 
-4. **Professional liability:** Verifying the same passport for two different pubkeys is professional misconduct. Professionals are legally required to keep records. If caught, they face disciplinary action and licence revocation.
+Nullifiers and Merkle-bound names catch the primary attacks. Social constraints make residual attacks economically unattractive:
 
-5. **Credential provenance:** Every credential traces to its issuer. If a sold identity is used for fraud, investigators can trace back to the issuing professional and examine their records.
+1. **Empty social graph:** A sold identity has no organic vouches. Clients display "0 vouches, 0 connections" alongside the Tier 3 badge.
 
-### 9.6 Honest Assessment
+2. **"Signet me" fails:** Time-based word verification requires real-time presence. The buyer can't pass this test with anyone who knows the original person.
+
+3. **Trust score is low:** A fresh Tier 3 with no vouches, no identity bridges, no account age scores low (professional verification weight is 40/100, but all other signals are zero).
+
+4. **Professional liability:** Verifying the same passport for two different Natural Person pubkeys is professional misconduct. Professionals keep records. If caught, they face disciplinary action and licence revocation.
+
+5. **Credential provenance:** Every credential traces to its issuer. Fraud → investigation → issuing professional → their records.
+
+### 9.10 Why This Is Better Than Government Digital ID
+
+| | Government Digital ID | Signet |
+|---|---|---|
+| **Issuer** | Government monopoly | Any licensed professional |
+| **Anonymity** | None — traceability is the point | Built in by default (Persona key) |
+| **What you reveal** | Your full identity, every time | You choose: real name OR anonymous proof |
+| **Revocation** | Government revokes unilaterally | Requires threshold of peer professionals |
+| **Portability** | Tied to one country's system | Works across jurisdictions |
+| **Key custody** | Government holds or controls keys | You hold your own keys |
+| **Duplicate prevention** | Central database | Nullifier hash (decentralised) |
+| **Name binding** | Government-issued, government-controlled | Merkle-bound, professionally verified, you control disclosure |
+| **Anonymous but verified** | Not possible | Default — every person gets a Persona |
+
+### 9.11 Honest Assessment
 
 This won't prevent a determined, well-funded attacker from creating duplicate identities. No decentralised system can guarantee one-person-one-identity without biometrics or a central registry.
 
-But Signet doesn't need to be perfect — it needs to be *better than the status quo*. Currently:
-- Fake IDs cost $50-500 on the dark web
-- Stolen identities are traded in bulk
-- There is no duplicate detection across services
-
-With Signet:
-- Duplicate detection via nullifiers catches the common case
-- The cost of a duplicate is real (professional fees + travel + risk)
-- A sold identity is worth much less (no social graph, fails "Signet me", low trust score)
+But Signet doesn't need to be perfect — it needs to be *better than the status quo*:
+- Fake IDs cost $50-500 on the dark web; with Signet, duplicates require visiting a real professional, paying real fees, and risking a nullifier collision
+- Currently there is no duplicate detection across services; with Signet, nullifiers catch the common case
+- Currently there is no anonymous-but-verified identity; with Signet, everyone gets one by default
+- A sold identity is worth much less: no social graph, fails "Signet me", low trust score
 - The audit trail is permanent and public
 
-The goal is economic deterrence, not cryptographic impossibility.
+The goal is economic deterrence, not cryptographic impossibility. And the real win is the Persona layer — verified anonymity that governments cannot provide and cannot easily surveil.
 
 ## 10. Open Questions (Revised)
 
