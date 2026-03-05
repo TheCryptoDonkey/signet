@@ -81,6 +81,22 @@ export function Settings({ identity, preferences, onSetTheme, onDeleteIdentity, 
         </div>
       )}
 
+      {/* Certificate */}
+      <div className="card section">
+        <div className="section-title">Certificate</div>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+          Install this certificate to trust HTTPS on your local network.
+        </p>
+        <a
+          href="/signet.pem"
+          download="signet.pem"
+          className="btn btn-secondary"
+          style={{ display: 'inline-block', textDecoration: 'none' }}
+        >
+          Download Certificate
+        </a>
+      </div>
+
       {/* Export */}
       <div className="card section">
         <div className="section-title">Export My Signet</div>
