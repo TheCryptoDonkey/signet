@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { StoredIdentity, StoredConnection, StoredPreferences } from '../lib/db';
+import type { EntityType } from '../lib/db';
 import { getConnections } from '../lib/db';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { ENTITY_LABELS } from '../lib/signet';
 import type { RelayState } from 'signet-protocol';
 
 interface RelayHook {
@@ -305,6 +307,7 @@ export function Settings({
                   <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
                     {id.displayName}
                     {id.importMethod === 'nsec' ? ' (nsec)' : ''}
+                    {id.entityType && ` · ${ENTITY_LABELS[id.entityType as EntityType] ?? id.entityType}`}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                     {id.publicKey.slice(0, 8)}...{id.publicKey.slice(-4)}
@@ -412,6 +415,31 @@ export function Settings({
             {identity.displayName}
           </span>
         </div>
+
+        {(identity.entityType || identity.guardianPubkey || identity.linkedPersonaPubkey || identity.isChild) && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+            {identity.entityType && (
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                Entity Type: {ENTITY_LABELS[identity.entityType as EntityType] ?? identity.entityType}
+              </div>
+            )}
+            {identity.isChild && (
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                (Child Account)
+              </div>
+            )}
+            {identity.guardianPubkey && (
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                Guardian: {identity.guardianPubkey.slice(0, 8)}...{identity.guardianPubkey.slice(-4)}
+              </div>
+            )}
+            {identity.linkedPersonaPubkey && (
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                Linked Persona: {identity.linkedPersonaPubkey.slice(0, 8)}...{identity.linkedPersonaPubkey.slice(-4)}
+              </div>
+            )}
+          </div>
+        )}
 
         {!showRoleSelector ? (
           <button

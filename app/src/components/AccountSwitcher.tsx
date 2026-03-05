@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { StoredIdentity } from '../lib/db';
+import type { StoredIdentity, EntityType } from '../lib/db';
+import { ENTITY_LABELS } from '../lib/signet';
 
 interface AccountSwitcherProps {
   identities: StoredIdentity[];
@@ -123,6 +124,7 @@ export function AccountSwitcher({ identities, activeIdentity, onSwitch, onAddAcc
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                     {truncateKey(id.publicKey)}
                     {id.importMethod === 'nsec' ? ' (nsec)' : ''}
+                    {id.entityType ? ` · ${ENTITY_LABELS[id.entityType as EntityType] ?? id.entityType}` : ''}
                   </div>
                 </div>
                 {isActive && (

@@ -27,11 +27,15 @@ const baseTabs: TabDef[] = [
 ];
 
 const verifierTab: TabDef = { key: 'verify', label: 'Verify', icon: '\u{1F6E1}' };
+const guardianTab: TabDef = { key: 'guardian', label: 'Guardian', icon: '\u{1F6E1}' };
 
 export function Layout({ activePage, onNavigate, role, identities, activeIdentity, onSwitchAccount, onAddAccount, children }: LayoutProps) {
-  const tabs = role === 'verifier'
-    ? [...baseTabs, verifierTab]
-    : baseTabs;
+  const isGuardian = identities.some(id => id.guardianPubkey === activeIdentity.publicKey);
+  const isChild = activeIdentity.isChild === true;
+
+  let tabs = [...baseTabs];
+  if (role === 'verifier') tabs.push(verifierTab);
+  if (isGuardian || isChild) tabs.push(guardianTab);
 
   return (
     <div className="app">

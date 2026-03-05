@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { computeTrustScore, type NostrEvent } from 'signet-protocol';
 import type { StoredIdentity } from '../lib/db';
-import { createQRPayload, serializeQRPayload } from '../lib/signet';
+import { createQRPayload, serializeQRPayload, ENTITY_LABELS } from '../lib/signet';
 import { QRCode } from '../components/QRCode';
 import { TierBadge } from '../components/TierBadge';
 import { TrustScore } from '../components/TrustScore';
@@ -132,6 +132,104 @@ export function Home({ identity, credentials = [], vouches = [], bridges = [] }:
           </span>
         )}
       </div>
+
+      {/* Entity info card */}
+      {(identity.entityType || identity.ageRange || identity.isChild || identity.guardianPubkey || identity.linkedPersonaPubkey) && (
+        <div
+          className="card"
+          style={{
+            width: '100%',
+            marginBottom: 16,
+            padding: '12px 16px',
+            background: 'var(--bg-card)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          {/* Entity type + age range + child badge row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {identity.entityType && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: 0.3,
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                {ENTITY_LABELS[identity.entityType]}
+              </span>
+            )}
+            {identity.ageRange && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                {identity.ageRange}
+              </span>
+            )}
+            {identity.isChild && (
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: 'var(--warning)',
+                  color: '#000',
+                }}
+              >
+                Child Account
+              </span>
+            )}
+          </div>
+
+          {/* Guardian pubkey */}
+          {identity.guardianPubkey && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              <span style={{ fontWeight: 600 }}>Guardian: </span>
+              <span
+                style={{
+                  fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+                  letterSpacing: 0.3,
+                }}
+              >
+                {truncateKey(identity.guardianPubkey)}
+              </span>
+            </div>
+          )}
+
+          {/* Linked persona pubkey */}
+          {identity.linkedPersonaPubkey && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              <span style={{ fontWeight: 600 }}>Linked Persona: </span>
+              <span
+                style={{
+                  fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+                  letterSpacing: 0.3,
+                }}
+              >
+                {truncateKey(identity.linkedPersonaPubkey)}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* QR Code card */}
       <div

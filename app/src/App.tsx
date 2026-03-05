@@ -14,6 +14,7 @@ import { Backup } from './pages/Backup';
 import { Verifier } from './pages/Verifier';
 import { Settings } from './pages/Settings';
 import { LinkAccounts } from './pages/LinkAccounts';
+import { GuardianControls } from './pages/GuardianControls';
 import { saveIdentity, type StoredIdentity, type StoredConnection } from './lib/db';
 
 export function App() {
@@ -237,6 +238,14 @@ export function App() {
             identities={identities}
             relay={relay}
             onBack={() => handleNavigate('settings')}
+          />
+        );
+      case 'guardian':
+        return (
+          <GuardianControls
+            identity={identity!}
+            identities={identities}
+            onBack={() => handleNavigate('home')}
           />
         );
       default:
