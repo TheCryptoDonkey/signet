@@ -3,6 +3,17 @@ import { openDB, type IDBPDatabase } from 'idb';
 const DB_NAME = 'signet';
 const DB_VERSION = 2;
 
+export type EntityType =
+  | 'natural_person'
+  | 'persona'
+  | 'personal_agent'
+  | 'free_personal_agent'
+  | 'juridical_person'
+  | 'juridical_persona'
+  | 'organised_agent'
+  | 'free_organised_agent'
+  | 'free_agent';
+
 export interface StoredIdentity {
   id: string; // pubkey (was 'current' in v1)
   mnemonic?: string; // optional — nsec imports have none
@@ -12,6 +23,11 @@ export interface StoredIdentity {
   displayName: string;
   createdAt: number;
   importMethod: 'mnemonic' | 'nsec';
+  entityType?: EntityType;
+  guardianPubkey?: string; // for child accounts
+  linkedPersonaPubkey?: string; // link between Natural Person and Persona
+  ageRange?: string;
+  isChild?: boolean;
 }
 
 export interface StoredConnection {

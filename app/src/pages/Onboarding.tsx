@@ -33,6 +33,8 @@ export function Onboarding({ onCreate, onImport, onImportNsec, isAddingAccount, 
   const [displayName, setDisplayName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guardianPubkey, setGuardianPubkey] = useState('');
+  const [entityType, setEntityType] = useState<'natural_person' | 'persona'>('natural_person');
 
   // ── Step 1: Welcome ───────────────────────────
 
@@ -49,12 +51,17 @@ export function Onboarding({ onCreate, onImport, onImportNsec, isAddingAccount, 
 
   // ── Step 2: Account Type ──────────────────────
 
-  const handleRoleChoice = useCallback((chosen: Role) => {
+  const handleRoleChoice = useCallback((chosen: Role, entity: 'natural_person' | 'persona') => {
     setRole(chosen);
+    setEntityType(entity);
     const words = generateMnemonic();
     setMnemonic(words);
     setWrittenDown(false);
-    setStep(3);
+    if (chosen === 'child') {
+      setStep(25); // guardian pubkey entry step
+    } else {
+      setStep(3);
+    }
   }, []);
 
   // ── Step 3a: Show mnemonic ────────────────────
@@ -116,14 +123,18 @@ export function Onboarding({ onCreate, onImport, onImportNsec, isAddingAccount, 
     } else if (step === 4) {
       setWrittenDown(false);
       setStep(3);
+    } else if (step === 3 && flow === 'create' && role === 'child') {
+      setStep(25);
     } else if (step === 3 && flow === 'create') {
       setStep(2);
     } else if (step === 3 && (flow === 'import' || flow === 'nsec')) {
       setStep(1);
+    } else if (step === 25) {
+      setStep(2);
     } else if (step === 2) {
       setStep(1);
     }
-  }, [step, flow]);
+  }, [step, flow, role]);
 
   // ── Render ────────────────────────────────────
 
@@ -228,24 +239,34 @@ export function Onboarding({ onCreate, onImport, onImportNsec, isAddingAccount, 
   // ── STEP 2: Account Type ──
 
   if (step === 2) {
-    const roles: { key: Role; label: string; desc: string; emoji: string }[] = [
+    const roles: { key: Role; label: string; desc: string; emoji: string; entity: 'natural_person' | 'persona' }[] = [
       {
         key: 'adult',
-        label: 'Adult',
-        desc: 'A standard account for adults. Prove claims about your identity without revealing personal data.',
+        label: 'Adult (Person)',
+        desc: 'A Natural Person account for adults. Get verified via the two-credential ceremony to receive both a real identity and an anonymous alias.',
         emoji: '\u{1F464}',
+        entity: 'natural_person',
       },
       {
         key: 'child',
         label: 'Child',
-        desc: 'An account managed on behalf of a child. Linked to a parent or guardian.',
+        desc: 'An account for a child, linked to a verified parent or guardian. Requires guardian pubkey.',
         emoji: '\u{1F9D2}',
+        entity: 'natural_person',
       },
       {
         key: 'verifier',
         label: 'Verifier',
         desc: 'A professional verification account for notaries, lawyers, or other trusted parties.',
         emoji: '\u{1F6E1}\uFE0F',
+        entity: 'natural_person',
+      },
+      {
+        key: 'adult',
+        label: 'Alias (Persona)',
+        desc: 'A standalone anonymous alias. Tier 1 (self-declared). Can be linked to a verified identity later via identity bridge.',
+        emoji: '\u{1F3AD}',
+        entity: 'persona',
       },
     ];
 
@@ -278,10 +299,10 @@ export function Onboarding({ onCreate, onImport, onImportNsec, isAddingAccount, 
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {roles.map((r) => (
+          {roles.map((r, i) => (
             <button
-              key={r.key}
-              onClick={() => handleRoleChoice(r.key)}
+              key={`${r.key}-${r.entity}`}
+              onClick={() => handleRoleChoice(r.key, r.entity)}
               style={{
                 display: 'flex',
                 alignItems: 'flex-start',
@@ -317,6 +338,97 @@ export function Onboarding({ onCreate, onImport, onImportNsec, isAddingAccount, 
             </button>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  // ── STEP 2.5: Guardian Pubkey (child flow) ──
+
+  if (step === 25) {
+    const pubkeyValid = guardianPubkey.trim().length === 64 && /^[0-9a-f]+$/.test(guardianPubkey.trim());
+
+    return (
+      <div style={containerStyle}>
+        <div style={headerStyle}>
+          <button style={backBtnStyle} onClick={() => setStep(2)} aria-label="Back">
+            &#8592;
+          </button>
+        </div>
+
+        <h2
+          style={{
+            fontSize: 22,
+            fontWeight: 700,
+            color: 'var(--text-primary)',
+            marginBottom: 8,
+          }}
+        >
+          Guardian Link
+        </h2>
+        <p
+          style={{
+            fontSize: 14,
+            color: 'var(--text-secondary)',
+            marginBottom: 20,
+            lineHeight: 1.5,
+          }}
+        >
+          Enter your parent or guardian&apos;s public key (hex format). They must have a Tier 3+ verified account.
+        </p>
+
+        <input
+          className="input"
+          type="text"
+          value={guardianPubkey}
+          onChange={(e) => setGuardianPubkey(e.target.value.toLowerCase())}
+          placeholder="Guardian's public key (64 hex characters)"
+          style={{
+            fontFamily: 'monospace',
+            fontSize: 13,
+          }}
+        />
+
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: 13,
+            color: guardianPubkey.trim().length === 0
+              ? 'var(--text-muted)'
+              : pubkeyValid
+                ? 'var(--success)'
+                : 'var(--danger)',
+          }}
+        >
+          {guardianPubkey.trim().length === 0
+            ? 'Paste or scan guardian pubkey'
+            : pubkeyValid
+              ? '\u2713 Valid public key format'
+              : '\u2717 Must be 64 hex characters'}
+        </div>
+
+        <p
+          style={{
+            marginTop: 20,
+            fontSize: 13,
+            color: 'var(--text-secondary)',
+            lineHeight: 1.5,
+            padding: '12px 16px',
+            background: 'var(--bg-input)',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          Your parent must take you to a verified professional to complete your identity verification. The professional will issue your credentials with a guardian link.
+        </p>
+
+        <button
+          className="btn btn-primary"
+          style={{ marginTop: 24 }}
+          disabled={!pubkeyValid}
+          onClick={() => setStep(3)}
+        >
+          Continue
+        </button>
       </div>
     );
   }
