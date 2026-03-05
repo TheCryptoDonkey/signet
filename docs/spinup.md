@@ -32,13 +32,14 @@ cd family-app && node node_modules/vite/bin/vite.js --host &
 
 ### 3. Access
 
-| App | HTTPS | HTTP (auto-redirects) |
-|-----|-------|-----------------------|
-| Reference app | https://localhost:5174/ | http://localhost:5180/ |
-| Family app | https://localhost:5175/ | http://localhost:5181/ |
-| Relay | ws://localhost:7777 | — |
+| App | URL |
+|-----|-----|
+| Reference app | https://localhost:5174/ |
+| Family app | https://localhost:5175/ |
 
-HTTP requests to ports 5180/5181 auto-redirect to the HTTPS ports. Both apps also respond on the network IP (https://10.10.10.60:5174/, etc.).
+From other devices on the network: `https://10.10.10.60:5174/` and `https://10.10.10.60:5175/`.
+
+Both apps are HTTPS-only. Use `https://` — plain `http://` will not work.
 
 ## One-Command Spinup
 
@@ -51,14 +52,14 @@ docker ps --format '{{.Names}}' | grep -q "^strfry-relay$" || docker start strfr
 
 ## Certificate
 
-Both apps share one self-signed certificate (`app/cert/signet.pem`). Install it once — it covers both ports.
+Both apps share one self-signed certificate (`app/cert/signet.pem`). Install it once — it covers both ports on all local interfaces.
 
 ### Downloading
 
-Both apps have a **Download Certificate** button in their Settings page. Or fetch directly:
+Both apps have a **Download Certificate** button in Settings. Or fetch directly:
 
-- https://localhost:5174/signet.pem (reference app)
-- https://localhost:5175/signet.pem (family app)
+- https://localhost:5174/signet.pem
+- https://localhost:5175/signet.pem
 
 ### Regenerating
 
@@ -66,10 +67,7 @@ Both apps have a **Download Certificate** button in their Settings page. Or fetc
 bash app/cert/generate-cert.sh
 ```
 
-This regenerates the cert and copies it to both `app/public/` and `family-app/public/`. The cert covers:
-
-- `localhost`, `*.local`
-- `127.0.0.1`, `10.10.10.60`, `172.17.0.1`, `192.168.1.1`, `10.0.2.15`
+Regenerates the cert and copies it to both `app/public/` and `family-app/public/`.
 
 ### Installing on devices
 
@@ -110,14 +108,12 @@ docker run -d \
 
 ## Port Allocation
 
-| Port | Service | Protocol |
-|------|---------|----------|
-| 5174 | Signet reference app | HTTPS |
-| 5175 | My Signet family app | HTTPS |
-| 5180 | Reference app HTTP redirect | HTTP → 5174 |
-| 5181 | Family app HTTP redirect | HTTP → 5175 |
-| 7777 | strfry relay (shared with Fathom) | WebSocket |
-| 7778 | Blossom server (Fathom) | HTTP |
+| Port | Service |
+|------|---------|
+| 5174 | Signet reference app (HTTPS) |
+| 5175 | My Signet family app (HTTPS) |
+| 7777 | strfry relay (WebSocket, shared with Fathom) |
+| 7778 | Blossom server (Fathom) |
 
 Avoid: 3000, 5173, 80, 443 (used by Fathom/nginx).
 
@@ -127,6 +123,6 @@ Avoid: 3000, 5173, 80, 443 (used by Fathom/nginx).
 
 **Relay not connecting** — Check `docker ps` to confirm the container is running and healthy. If unhealthy, check logs with `docker logs strfry-relay`.
 
-**Self-signed cert warning** — Install the certificate (see above). Or accept it manually in the browser. The mkcert root CA from Fathom is also at `/home/mintai/Fathom/client/static/rootCA.pem`.
+**Self-signed cert warning** — Install the certificate (see above), or accept it manually in the browser.
 
-**Cert doesn't cover your IP** — Regenerate with `bash app/cert/generate-cert.sh` after adding your IP to the SAN list in the script.
+**Cert doesn't cover your IP** — Edit `app/cert/generate-cert.sh`, add your IP to the SAN list, then run `bash app/cert/generate-cert.sh`.
