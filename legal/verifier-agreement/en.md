@@ -106,20 +106,34 @@ When performing Tier 3 (Adult) verifications, the Verifier shall:
 1. **Verify identity in person** or through a legally equivalent process (e.g., regulated remote verification where permitted by law in the relevant jurisdiction).
 2. **Examine original identity documents** — the Verifier must inspect at least one government-issued photo identification document (e.g., passport, national ID card, driving licence).
 3. **Confirm the identity of the person** — the Verifier must satisfy themselves that the person presenting the documents is the person described in the documents.
-4. **Verify age** — where the credential includes an age range proof, the Verifier must confirm the individual's date of birth from the identity documents and ensure the Bulletproof age range proof is correctly generated.
-5. **Create the credential event** — publish a kind 30470 event signed by the Verifier's key, attesting to the verification performed.
-6. **Maintain records** — keep records of the verification as required by the Verifier's professional obligations (see Section 2.5).
+4. **Verify age** — confirm the individual's date of birth from the identity documents and generate a Bulletproof age-range proof (e.g., "18+" for adults). The date of birth is NEVER published on-chain.
+5. **Perform the two-credential ceremony** — the subject presents two Nostr pubkeys (Natural Person and Persona). The Verifier:
+   - Builds a Merkle tree from verified attributes (name, nationality, document type, DOB, nullifier)
+   - Computes a document-based nullifier: `SHA-256(document_type || country_code || document_number || "signet-uniqueness-v1")`
+   - Issues a Natural Person credential (kind 30470) with entity-type, merkle-root, nullifier, and age-range tags
+   - Issues a Persona credential (kind 30470) with entity-type=persona and age-range tags only (NO nullifier, NO merkle-root)
+   - Discards document number after nullifier computation — it is NOT stored or published
+6. **Maintain records** — keep records of the verification as required by the Verifier's professional obligations (see Section 2.5), including both pubkeys and document details (but NOT the document number after nullifier computation, unless required by professional regulations).
 
 ### 2.3 Tier 4 Verification (Adult + Child) Obligations
 
 When performing Tier 4 (Adult + Child) verifications, the Verifier shall comply with all Tier 3 obligations and additionally:
 
 1. **Verify the child's identity** — inspect the child's identity documents (birth certificate, passport, or other appropriate documents).
-2. **Verify the parent/guardian relationship** — confirm the relationship between the adult and the child through appropriate documentation (birth certificate, legal guardianship order, adoption papers, or equivalent).
+2. **Verify the parent/guardian relationship** — confirm the relationship between the adult and the child through appropriate documentation (birth certificate, legal guardianship order, adoption papers, or equivalent). The parent/guardian MUST hold a Tier 3+ Signet credential.
 3. **Obtain parental consent** — obtain and document verifiable parental consent for the child's credential, in compliance with the applicable child protection laws (see Child Safety Policy).
 4. **Conduct the verification with the child present** — the child must be present during the verification (in person or through legally equivalent means).
 5. **Assess the child's welfare** — exercise professional judgement to identify any indicators of coercion, exploitation, or safeguarding concerns. If concerns arise, the Verifier must not proceed and must follow applicable reporting procedures (see Section 2.8).
-6. **Issue separate credentials** — the child's credential must be a separate event from the parent/guardian's credential, linked by the parental consent event.
+6. **Perform the child two-credential ceremony** — issue two credentials for the child (Natural Person + Persona), both carrying:
+   - Age-range proof appropriate to the child's age (e.g., "8-12", "13-17")
+   - Guardian tags (`["guardian", "<parent_pubkey>"]`) linking the child to their verified parent/guardian
+   - Multiple guardian tags if applicable (joint custody)
+   - The child's real name is stored only as a private Merkle leaf — never published on-chain
+7. **Verify guardian documentation** — for non-standard family structures, verify appropriate legal documentation:
+   - Birth certificate (biological parent)
+   - Court-issued guardianship order (legal guardian)
+   - Adoption papers (adoptive parent)
+   - Step-parent responsibility order (where applicable)
 
 ### 2.4 Verification Standards
 
@@ -140,9 +154,11 @@ The Verifier shall:
 1. Maintain records of all verifications performed, including:
    - Date and location of verification
    - Identity of the verified individual (sufficient for professional record-keeping obligations)
-   - Documents inspected
+   - Both pubkeys (Natural Person and Persona) issued during the two-credential ceremony
+   - Documents inspected and document type used
+   - Nullifier hash computed (but NOT the document number, unless required by professional regulations)
    - Outcome of verification
-   - For Tier 4: parental consent documentation
+   - For Tier 4: parental consent documentation and guardian pubkey(s)
 2. Retain records for the period required by the Verifier's professional obligations (typically 6–7 years, or longer as required by law).
 3. Store records securely and in compliance with applicable data protection laws.
 4. **Not retain** copies of identity documents beyond what is required by professional obligations.

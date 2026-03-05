@@ -53,6 +53,12 @@ The Signet Protocol is architected to minimise data collection. Because the Prot
 | **Verifier Registration** | Kind 30473 events identifying professional verifiers | Created by verifiers | Nostr relays (decentralised) |
 | **Challenge/Response Data** | Kind 30474 events for interactive verification | Generated during verification | Nostr relays (decentralised) |
 | **Revocation Records** | Kind 30475 events for credential revocation | Created when credentials are revoked | Nostr relays (decentralised) |
+| **Nullifier Hashes** | SHA-256 hash of document type, country code, and document number — used to prevent duplicate identity creation | Computed during two-credential ceremony | Embedded in Natural Person credential events |
+| **Merkle Roots** | Hash commitment to verified attributes (name, nationality, DOB) enabling selective disclosure | Computed during two-credential ceremony | Embedded in Natural Person credential events |
+| **Entity Type Tags** | Classification of account type (Natural Person, Persona, etc.) | Set during credential issuance | Embedded in credential events |
+| **Guardian Tags** | Parent/guardian public keys linked to child credentials | Set during child verification ceremony | Embedded in child credential events |
+| **Identity Bridge Events** | Kind 30476 events linking Natural Person and Persona via ring signatures | Created by the user | Nostr relays (decentralised) |
+| **Delegation Events** | Kind 30477 events for agent or guardian delegation | Created by the delegator | Nostr relays (decentralised) |
 
 ### 3.2 Data We Do NOT Collect
 
@@ -61,6 +67,8 @@ By design, the Signet Protocol does **not** collect, process, or store:
 - Real names, addresses, or government identification numbers
 - Biometric data
 - Exact dates of birth (age range proofs reveal only that a user falls within a range)
+- Document numbers or details (document details are used only to compute a one-way nullifier hash during the two-credential ceremony, then discarded by the verifier; only the hash is published)
+- Merkle tree leaf values (the verified name, nationality, and DOB are stored as Merkle leaves known only to the subject and verifier; only the Merkle root hash is published on-chain)
 - Financial information or payment data
 - Location data or IP addresses (Protocol-level; relay operators may collect IP addresses independently)
 - Browsing history or device fingerprints
@@ -149,6 +157,9 @@ Data processed through the Signet Protocol is used exclusively for:
 5. **Credential Revocation** — Processing revocation events when credentials are invalidated.
 6. **Protocol Integrity** — Maintaining the cryptographic integrity and security of the Protocol.
 7. **Legal Compliance** — Complying with applicable laws and regulations.
+8. **Two-Credential Ceremony** — Issuing paired Natural Person and Persona credentials during professional verification, including computation of Merkle trees, nullifiers, and age-range proofs.
+9. **Guardian Management** — Processing guardian delegation events (kind 30477) for child account management.
+10. **Credential Lifecycle** — Processing credential chains (supersedes/superseded-by tags) for name changes, document renewal, and tier upgrades.
 
 ---
 
@@ -177,6 +188,17 @@ We will notify affected users of such requests where legally permitted.
 ### 6.4 Verifier Data Sharing
 
 Professional verifiers (Tier 3 and Tier 4) publish verifier registration events (kind 30473) on the Nostr network. These events include the verifier's public key, professional credentials, and jurisdictional information. Verifiers consent to this publication as part of the Verifier Agreement.
+
+The only data shared between the Verifier and the Protocol is the published credential event (kind 30470), which contains:
+- The Verifier's public key (as the signing key)
+- The subject's public key
+- Credential metadata (tier, dates, type, entity type)
+- The zero-knowledge age-range proof
+- Nullifier hash (Natural Person credentials only — a one-way hash that cannot be reversed to document details)
+- Merkle root (Natural Person credentials only — a hash commitment enabling selective attribute disclosure)
+- Guardian pubkey tags (child credentials only)
+
+No personal identification data (name, DOB, document numbers, nationality) is shared with or through the Protocol. These details remain private between the subject and the verifier, accessible only through Merkle proof selective disclosure initiated by the subject.
 
 ---
 

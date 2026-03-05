@@ -100,7 +100,8 @@ For children (under 18):
 1. The age range proof must be created as part of a Tier 4 verification (or, at minimum, with parental/guardian involvement at Tier 2+).
 2. A licensed professional verifier must confirm the child's age against a valid identity document.
 3. The parent/guardian must be present (in person or through a legally equivalent process) and must provide verifiable consent.
-4. The proof is bound to the child's Nostr public key and includes metadata indicating parental consent.
+4. The professional issues two credentials: a Natural Person credential (keypair A) and a Persona credential (keypair B). Both carry the age-range proof and guardian tags (`["guardian", "<parent_pubkey>"]`). The child's real name is stored only as a private Merkle leaf — never published on-chain.
+5. The document-based nullifier (hash of document type, country, and number) is included only on the Natural Person credential, preventing duplicate identity creation.
 
 ---
 
@@ -126,10 +127,11 @@ For children (under 18):
 The Protocol supports the following parental consent mechanisms:
 
 1. **Tier 3/4 Verified Parent Credential:**
-   The parent/guardian obtains a Tier 3 or Tier 4 credential verifying their own identity. They then cryptographically sign a consent event authorising the child's credential. This creates a verifiable chain:
-   - Parent's identity verified by professional verifier
+   The parent/guardian obtains a Tier 3 or Tier 4 credential verifying their own identity via the two-credential ceremony (Natural Person + Persona). They then cryptographically sign a consent event authorising the child's credential. This creates a verifiable chain:
+   - Parent's identity verified by professional verifier (two-credential ceremony)
    - Parent's consent cryptographically signed with their Nostr key
-   - Child's credential linked to parent's consent event
+   - Child's credential linked to parent via immutable guardian tags on both Natural Person and Persona credentials
+   - Guardian delegation events (kind 30477) allow the parent to delegate specific permissions to other trusted adults
 
 2. **Co-Verification:**
    The parent/guardian and child attend a Tier 4 verification session together. The professional verifier:
@@ -175,6 +177,10 @@ The Protocol applies the strictest data minimisation principles for children's d
 | Child's date of birth | **No** | Replaced by ZK age range proof |
 | Child's photograph | **No** | Not required |
 | Child's government ID number | **No** | Not stored; only verified by professional verifier and discarded |
+| Nullifier hash (document hash) | Yes (NP credential only) | Required for duplicate prevention; cannot be reversed to document details |
+| Guardian pubkey(s) | Yes (both credentials) | Required for guardian-child link |
+| Merkle root | Yes (NP credential only) | Required for selective disclosure of verified attributes |
+| Entity type tag | Yes (both credentials) | Required to distinguish Natural Person from Persona |
 | Child's location | **No** | Not required |
 | Child's school or institution | **No** | Not required |
 | Behavioural data | **No** | Prohibited |
@@ -412,6 +418,23 @@ This Policy and all child safety measures are reviewed:
 - Upon any change in applicable law
 - Following any child safety incident
 - Upon significant changes to the Protocol
+
+### 11.4 Guardian Delegation Model
+
+The Protocol implements a three-layer family structure model:
+
+**Layer 1 — Credential level (immutable):**
+Guardian tags (`["guardian", "<parent_pubkey>"]`) are set by the professional verifier and reflect legal parental responsibility. They can only be changed by a new credential issued by a professional with appropriate legal documentation (e.g., court order).
+
+**Layer 2 — Delegation level (flexible):**
+Guardians may delegate specific permissions to trusted adults (step-parents, grandparents, teachers) via kind 30477 guardian delegation events. Delegations are:
+- Time-limited (with expiry)
+- Scope-limited: `full`, `activity-approval`, `content-management`, `contact-approval`
+- Revocable by the guardian at any time
+- Signed by the guardian's Nostr key
+
+**Layer 3 — Client level (app-specific):**
+Applications enforce permissions based on Layer 1 and Layer 2 data, including screen time limits, content filtering, activity approval workflows, and contact restrictions.
 
 ---
 

@@ -65,8 +65,8 @@ The Protocol implements four verification tiers:
 
 - **Tier 1 — Self-Declared:** User-generated credentials with no external verification. Lowest trust level.
 - **Tier 2 — Web-of-Trust:** Credentials strengthened by vouches from other Protocol participants. Trust derived from network endorsements.
-- **Tier 3 — Professional Verification (Adult):** Credentials verified by a licensed professional verifier through an in-person or equivalent verification process.
-- **Tier 4 — Professional Verification (Adult + Child):** Tier 3 verification extended to include child identity verification with appropriate parental/guardian oversight.
+- **Tier 3 — Professional Verification (Adult):** Credentials verified by a licensed professional verifier through the two-credential ceremony. The subject receives a Natural Person credential (real identity with Merkle-bound attributes and document nullifier) and a Persona credential (anonymous alias with age-range proof only).
+- **Tier 4 — Professional Verification (Adult + Child):** Two-credential ceremony extended to include child identity verification with parental/guardian oversight. Both credentials carry age-range proofs and guardian tags linking the child to their verified parent/guardian.
 
 ### 3.3 Event Kinds
 
@@ -77,6 +77,9 @@ The Protocol uses the following Nostr event kinds (numbers are placeholders pend
 - **30473** — Verifier registration events
 - **30474** — Challenge events
 - **30475** — Revocation events
+- **30476** — Identity bridge events
+- **30477** — Delegation events (agent and guardian delegation)
+- **30478–30480** — Voting extension events (election, ballot, result)
 
 ### 3.4 Cryptographic Components
 
@@ -180,6 +183,32 @@ Revocation is accomplished by publishing a kind 30475 event.
 ### 6.4 No Guarantee of Acceptance
 
 [ORGANIZATION NAME] does not guarantee that any credential will be accepted by any relying party. Relying parties set their own acceptance policies through kind 30472 events.
+
+### 6.5 Two-Credential Model
+
+Professional verification (Tier 3 and Tier 4) uses a two-credential ceremony:
+- **Natural Person credential:** Bound to the subject's real identity, includes Merkle root (for selective attribute disclosure), document-based nullifier (for duplicate prevention), and age-range proof. Personal details (name, DOB, nationality) are never published on-chain.
+- **Persona credential:** An anonymous alias carrying only the age-range proof and guardian tags (if child). No nullifier or Merkle root. The link between Natural Person and Persona is known only to the subject and the verifier.
+
+### 6.6 Credential Chains
+
+Credentials may be superseded when real-world attributes change (name change, document renewal, tier upgrade). A superseding credential includes a `["supersedes", "<old_event_id>"]` tag. Clients follow the chain to display only the current active credential. Superseded credentials remain on relays but are marked as historical.
+
+### 6.7 Child Sub-Accounts
+
+Child credentials are sub-accounts of a verified parent/guardian:
+- A child credential MUST include guardian tags linking to a Tier 3+ verified parent/guardian
+- Guardian tags are immutable — they can only be changed by a new credential issued by a professional with appropriate legal documentation
+- Guardians may delegate specific permissions to trusted adults via kind 30477 delegation events
+- When a child turns 18, they receive a new Tier 3 credential with no guardian tags, superseding their child credential
+
+### 6.8 Persona Usage
+
+Persona accounts are anonymous aliases:
+- A Persona carries no personally identifying information (no name, no nullifier, no Merkle root)
+- A Persona inherits the age-range proof from the two-credential ceremony
+- A Persona may be linked to a Natural Person via an identity bridge (kind 30476) using ring signatures, preserving anonymity
+- Users are responsible for the conduct of all their Persona accounts
 
 ---
 
