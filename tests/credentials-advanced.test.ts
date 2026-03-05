@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { generateKeyPair } from '../src/crypto.js';
 import {
+  generateKeyPair,
   createRingProtectedCredential,
   createRingProtectedChildCredential,
   verifyRingProtectedContent,
@@ -8,16 +8,13 @@ import {
   renewCredential,
   needsRenewal,
   createProfessionalCredential,
-} from '../src/credentials.js';
-import { getTagValue } from '../src/validation.js';
+  getTagValue,
+} from '../src/index.js';
+import { TIER3_OPTS, generateKeypairs } from './fixtures.js';
 
 describe('ring-protected credentials', () => {
-  function makeVerifierRing(size: number) {
-    return Array.from({ length: size }, () => generateKeyPair());
-  }
-
   it('creates a Tier 3 ring-protected credential', async () => {
-    const verifiers = makeVerifierRing(5);
+    const verifiers = generateKeypairs(5);
     const subject = generateKeyPair();
     const signerIdx = 2;
 
@@ -26,7 +23,7 @@ describe('ring-protected credentials', () => {
       subject.publicKey,
       verifiers.map((v) => v.publicKey),
       signerIdx,
-      { profession: 'solicitor', jurisdiction: 'UK' }
+      TIER3_OPTS
     );
 
     expect(getTagValue(cred, 'tier')).toBe('3');
@@ -45,7 +42,7 @@ describe('ring-protected credentials', () => {
   });
 
   it('creates a Tier 4 ring-protected credential with age proof', async () => {
-    const verifiers = makeVerifierRing(5);
+    const verifiers = generateKeypairs(5);
     const parent = generateKeyPair();
     const signerIdx = 4;
 
@@ -74,7 +71,7 @@ describe('ring-protected credentials', () => {
   });
 
   it('Tier 4 ring-protected credential proves boundary ages', async () => {
-    const verifiers = makeVerifierRing(3);
+    const verifiers = generateKeypairs(3);
     const parent = generateKeyPair();
 
     // Test lower boundary
@@ -104,10 +101,7 @@ describe('credential renewal', () => {
     const verifier = generateKeyPair();
     const subject = generateKeyPair();
 
-    const original = await createProfessionalCredential(verifier.privateKey, subject.publicKey, {
-      profession: 'solicitor',
-      jurisdiction: 'UK',
-    });
+    const original = await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS);
 
     const renewed = await renewCredential(verifier.privateKey, original);
 
@@ -127,8 +121,7 @@ describe('credential renewal', () => {
     // Create credential expiring in 10 days
     const tenDays = Math.floor(Date.now() / 1000) + 10 * 24 * 60 * 60;
     const cred = await createProfessionalCredential(kp.privateKey, subject.publicKey, {
-      profession: 'solicitor',
-      jurisdiction: 'UK',
+      ...TIER3_OPTS,
       expiresAt: tenDays,
     });
 

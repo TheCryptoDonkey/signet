@@ -8,6 +8,7 @@ import {
   generateKeyPair,
   deriveNostrKeyPair,
 } from '../src/index.js';
+import { TEST_MNEMONIC } from './fixtures.js';
 
 describe('nsec/npub encoding', () => {
   it('encodes and decodes nsec roundtrip', () => {
@@ -27,9 +28,7 @@ describe('nsec/npub encoding', () => {
   });
 
   it('roundtrips for mnemonic-derived keys', () => {
-    const mnemonic =
-      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
-    const { privateKey, publicKey } = deriveNostrKeyPair(mnemonic);
+    const { privateKey, publicKey } = deriveNostrKeyPair(TEST_MNEMONIC);
 
     const nsec = encodeNsec(privateKey);
     const npub = encodeNpub(publicKey);

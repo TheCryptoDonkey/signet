@@ -13,11 +13,7 @@ import {
   MIN_BRIDGE_RING_SIZE,
   SIGNET_KINDS,
 } from '../src/index.js';
-
-// Generate a set of test keypairs
-function generateKeypairs(n: number) {
-  return Array.from({ length: n }, () => generateKeyPair());
-}
+import { generateKeypairs } from './fixtures.js';
 
 describe('selectDecoyRing', () => {
   it('creates a ring of the correct size', () => {

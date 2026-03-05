@@ -8,9 +8,10 @@ import {
   verifyCredential,
   isCredentialExpired,
   parseCredential,
+  getTagValue,
   SIGNET_KINDS,
 } from '../src/index.js';
-import { getTagValue } from '../src/validation.js';
+import { TIER3_OPTS } from './fixtures.js';
 
 describe('credentials', () => {
   describe('Tier 1 — Self-Declared', () => {
@@ -64,10 +65,7 @@ describe('credentials', () => {
     it('creates a valid professional credential', async () => {
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
-      const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, {
-        profession: 'solicitor',
-        jurisdiction: 'UK',
-      });
+      const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS);
 
       expect(getTagValue(cred, 'tier')).toBe('3');
       expect(getTagValue(cred, 'type')).toBe('professional');
@@ -80,10 +78,7 @@ describe('credentials', () => {
     it('passes verification', async () => {
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
-      const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, {
-        profession: 'solicitor',
-        jurisdiction: 'UK',
-      });
+      const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS);
       const result = await verifyCredential(cred);
 
       expect(result.signatureValid).toBe(true);

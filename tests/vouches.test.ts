@@ -6,10 +6,10 @@ import {
   countQualifyingVouches,
   hasEnoughVouches,
   getVouchers,
+  verifyEvent,
+  getTagValue,
   SIGNET_KINDS,
 } from '../src/index.js';
-import { verifyEvent } from '../src/crypto.js';
-import { getTagValue } from '../src/validation.js';
 
 describe('vouches', () => {
   it('creates a valid in-person vouch', async () => {

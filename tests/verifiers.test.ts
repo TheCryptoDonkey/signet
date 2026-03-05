@@ -7,10 +7,10 @@ import {
   isVerifierRevoked,
   createVouch,
   createRevocation,
+  verifyEvent,
+  getTagValue,
   SIGNET_KINDS,
 } from '../src/index.js';
-import { verifyEvent } from '../src/crypto.js';
-import { getTagValue } from '../src/validation.js';
 
 describe('verifiers', () => {
   it('creates a valid verifier credential', async () => {

@@ -8,6 +8,7 @@ import {
   generateMnemonic,
 } from '../src/mnemonic.js';
 import { BIP39_WORDLIST } from '../src/wordlist.js';
+import { TEST_MNEMONIC } from './fixtures.js';
 
 /** Convert a hex string to Uint8Array. */
 function hexToBytes(hex: string): Uint8Array {
@@ -74,10 +75,8 @@ describe('mnemonic', () => {
     });
 
     it('returns false for a bad checksum (two words swapped)', () => {
-      const mnemonic =
-        'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
       // Swap first two meaningful words to break checksum
-      const words = mnemonic.split(' ');
+      const words = TEST_MNEMONIC.split(' ');
       // Swap positions 0 and 10 — "abandon" and "abandon" are the same, so swap 0 and 11
       const swapped = [...words];
       [swapped[0], swapped[11]] = [swapped[11], swapped[0]];
@@ -152,8 +151,7 @@ describe('mnemonic', () => {
 
   describe('BIP-39 test vector', () => {
     const entropyHex = '00000000000000000000000000000000';
-    const expectedMnemonic =
-      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    const expectedMnemonic = TEST_MNEMONIC;
     const expectedSeedHex =
       '5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4';
 

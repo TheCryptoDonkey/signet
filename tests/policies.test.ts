@@ -5,10 +5,10 @@ import {
   parsePolicy,
   checkPolicyCompliance,
   PolicyChecker,
+  verifyEvent,
+  getTagValue,
   SIGNET_KINDS,
 } from '../src/index.js';
-import { verifyEvent } from '../src/crypto.js';
-import { getTagValue } from '../src/validation.js';
 
 describe('policies', () => {
   it('creates a valid community policy', async () => {

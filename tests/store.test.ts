@@ -1,14 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { generateKeyPair, signEvent } from '../src/crypto.js';
-import { SignetStore } from '../src/store.js';
-import { SIGNET_KINDS } from '../src/constants.js';
 import {
+  generateKeyPair,
+  signEvent,
+  SignetStore,
   createSelfDeclaredCredential,
   createProfessionalCredential,
   createVouch,
   createPolicy,
   createVerifierCredential,
+  SIGNET_KINDS,
 } from '../src/index.js';
+import { TIER3_OPTS } from './fixtures.js';
 
 describe('SignetStore', () => {
   it('adds and retrieves events', async () => {
@@ -96,12 +98,8 @@ describe('SignetStore', () => {
     const subject = generateKeyPair();
     const other = generateKeyPair();
 
-    store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, {
-      profession: 'solicitor', jurisdiction: 'UK',
-    }));
-    store.add(await createProfessionalCredential(verifier.privateKey, other.publicKey, {
-      profession: 'solicitor', jurisdiction: 'UK',
-    }));
+    store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS));
+    store.add(await createProfessionalCredential(verifier.privateKey, other.publicKey, TIER3_OPTS));
 
     const results = store.query({ subjects: [subject.publicKey] });
     expect(results).toHaveLength(1);
@@ -113,9 +111,7 @@ describe('SignetStore', () => {
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
 
-      store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, {
-        profession: 'solicitor', jurisdiction: 'UK',
-      }));
+      store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS));
 
       const creds = store.getCredentials(subject.publicKey);
       expect(creds).toHaveLength(1);
@@ -127,9 +123,7 @@ describe('SignetStore', () => {
       const verifier = generateKeyPair();
 
       store.add(await createSelfDeclaredCredential(subject.privateKey));
-      store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, {
-        profession: 'solicitor', jurisdiction: 'UK',
-      }));
+      store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS));
 
       const highest = store.getHighestCredential(subject.publicKey);
       expect(highest).not.toBeNull();

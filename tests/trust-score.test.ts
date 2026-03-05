@@ -7,16 +7,14 @@ import {
   formatTrustDisplay,
   verifySignalOrdering,
 } from '../src/index.js';
+import { TIER3_OPTS } from './fixtures.js';
 
 describe('trust-score', () => {
   it('computes score for professional verification', async () => {
     const verifier = generateKeyPair();
     const subject = generateKeyPair();
 
-    const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, {
-      profession: 'solicitor',
-      jurisdiction: 'UK',
-    });
+    const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS);
 
     const breakdown = computeTrustScore(subject.publicKey, [cred], []);
 
@@ -70,10 +68,7 @@ describe('trust-score', () => {
     const subject = generateKeyPair();
     const voucher = generateKeyPair();
 
-    const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, {
-      profession: 'solicitor',
-      jurisdiction: 'UK',
-    });
+    const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS);
 
     const vouch = await createVouch(voucher.privateKey, {
       subjectPubkey: subject.publicKey,
@@ -99,10 +94,7 @@ describe('trust-score', () => {
     const creds = await Promise.all(
       Array.from({ length: 5 }, () => {
         const v = generateKeyPair();
-        return createProfessionalCredential(v.privateKey, subject.publicKey, {
-          profession: 'solicitor',
-          jurisdiction: 'UK',
-        });
+        return createProfessionalCredential(v.privateKey, subject.publicKey, TIER3_OPTS);
       })
     );
 
@@ -150,10 +142,7 @@ describe('trust-score', () => {
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
 
-      const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, {
-        profession: 'solicitor',
-        jurisdiction: 'UK',
-      });
+      const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS);
 
       const breakdown = computeTrustScore(subject.publicKey, [cred], []);
       const display = formatTrustDisplay(breakdown);
