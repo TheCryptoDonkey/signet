@@ -122,7 +122,7 @@ export function Follow({ identity, onConnect, onBack, relayUrl }: FollowProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Entity type</span>
                   <span style={{ fontWeight: 600 }}>
-                    {ENTITY_LABELS[badge.entityType as keyof typeof ENTITY_LABELS] ?? badge.entityType}
+                    {ENTITY_LABELS[badge.entityType] ?? badge.entityType}
                   </span>
                 </div>
               )}

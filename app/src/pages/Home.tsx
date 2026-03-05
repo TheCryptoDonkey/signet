@@ -5,6 +5,7 @@ import { createQRPayload, serializeQRPayload, ENTITY_LABELS } from '../lib/signe
 import { QRCode } from '../components/QRCode';
 import { TierBadge } from '../components/TierBadge';
 import { SignetIQ } from '../components/SignetIQ';
+import { truncatePubkey } from '../lib/utils';
 
 interface HomeProps {
   identity: StoredIdentity;
@@ -18,11 +19,6 @@ const roleLabels: Record<StoredIdentity['role'], string> = {
   child: 'Child',
   verifier: 'Verifier',
 };
-
-function truncateKey(key: string): string {
-  if (key.length <= 20) return key;
-  return key.slice(0, 8) + '...' + key.slice(-8);
-}
 
 export function Home({ identity, credentials = [], vouches = [], bridges = [] }: HomeProps) {
   const [copied, setCopied] = useState(false);
@@ -209,7 +205,7 @@ export function Home({ identity, credentials = [], vouches = [], bridges = [] }:
                   letterSpacing: 0.3,
                 }}
               >
-                {truncateKey(identity.guardianPubkey)}
+                {truncatePubkey(identity.guardianPubkey)}
               </span>
             </div>
           )}
@@ -224,7 +220,7 @@ export function Home({ identity, credentials = [], vouches = [], bridges = [] }:
                   letterSpacing: 0.3,
                 }}
               >
-                {truncateKey(identity.linkedPersonaPubkey)}
+                {truncatePubkey(identity.linkedPersonaPubkey)}
               </span>
             </div>
           )}
@@ -274,7 +270,7 @@ export function Home({ identity, credentials = [], vouches = [], bridges = [] }:
               letterSpacing: 0.5,
             }}
           >
-            {truncateKey(identity.publicKey)}
+            {truncatePubkey(identity.publicKey)}
           </span>
           <span
             style={{

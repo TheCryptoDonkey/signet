@@ -11,6 +11,8 @@ import {
   getRelayUrl,
 } from '../lib/relay-service';
 
+export type RelayHook = ReturnType<typeof useRelay>;
+
 export function useRelay() {
   const [state, setState] = useState<RelayState>(getRelayState());
   const [url, setUrl] = useState(getRelayUrl());

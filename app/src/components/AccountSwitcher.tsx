@@ -1,17 +1,13 @@
 import { useState } from 'react';
 import type { StoredIdentity, EntityType } from '../lib/db';
 import { ENTITY_LABELS } from '../lib/signet';
+import { truncatePubkey } from '../lib/utils';
 
 interface AccountSwitcherProps {
   identities: StoredIdentity[];
   activeIdentity: StoredIdentity;
   onSwitch: (pubkey: string) => void;
   onAddAccount: () => void;
-}
-
-function truncateKey(key: string): string {
-  if (key.length <= 16) return key;
-  return key.slice(0, 6) + '...' + key.slice(-4);
 }
 
 export function AccountSwitcher({ identities, activeIdentity, onSwitch, onAddAccount }: AccountSwitcherProps) {
@@ -122,7 +118,7 @@ export function AccountSwitcher({ identities, activeIdentity, onSwitch, onAddAcc
                     {id.displayName}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                    {truncateKey(id.publicKey)}
+                    {truncatePubkey(id.publicKey, 6, 4)}
                     {id.importMethod === 'nsec' ? ' (nsec)' : ''}
                     {id.entityType ? ` · ${ENTITY_LABELS[id.entityType as EntityType] ?? id.entityType}` : ''}
                   </div>

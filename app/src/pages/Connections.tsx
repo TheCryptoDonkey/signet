@@ -1,37 +1,12 @@
 import { useState, useMemo } from 'react';
 import type { StoredConnection } from '../lib/db';
 import { ENTITY_LABELS } from '../lib/signet';
+import { truncatePubkey, timeAgo } from '../lib/utils';
 
 interface ConnectionsProps {
   connections: StoredConnection[];
   onSelectContact: (pubkey: string) => void;
   onFollow: () => void;
-}
-
-function timeAgo(timestampSeconds: number): string {
-  const now = Math.floor(Date.now() / 1000);
-  const diff = now - timestampSeconds;
-
-  if (diff < 60) return 'just now';
-  if (diff < 3600) {
-    const m = Math.floor(diff / 60);
-    return `${m} minute${m === 1 ? '' : 's'} ago`;
-  }
-  if (diff < 86400) {
-    const h = Math.floor(diff / 3600);
-    return `${h} hour${h === 1 ? '' : 's'} ago`;
-  }
-  const d = Math.floor(diff / 86400);
-  if (d < 30) return `${d} day${d === 1 ? '' : 's'} ago`;
-  const mo = Math.floor(d / 30);
-  if (mo < 12) return `${mo} month${mo === 1 ? '' : 's'} ago`;
-  const y = Math.floor(d / 365);
-  return `${y} year${y === 1 ? '' : 's'} ago`;
-}
-
-function truncatePubkey(pubkey: string): string {
-  if (pubkey.length <= 16) return pubkey;
-  return `${pubkey.slice(0, 8)}...${pubkey.slice(-8)}`;
 }
 
 export function Connections({ connections, onSelectContact, onFollow }: ConnectionsProps) {
@@ -176,7 +151,7 @@ export function Connections({ connections, onSelectContact, onFollow }: Connecti
               {conn.badge && (
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                   {conn.badge.tierLabel} · IQ {conn.badge.score}
-                  {conn.badge.entityType && ` · ${ENTITY_LABELS[conn.badge.entityType as keyof typeof ENTITY_LABELS] ?? ''}`}
+                  {conn.badge.entityType && ` · ${ENTITY_LABELS[conn.badge.entityType] ?? ''}`}
                 </div>
               )}
               {conn.connectionType === 'mutual' && (

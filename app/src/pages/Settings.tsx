@@ -4,15 +4,7 @@ import type { EntityType } from '../lib/db';
 import { getConnections } from '../lib/db';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { ENTITY_LABELS } from '../lib/signet';
-import type { RelayState } from 'signet-protocol';
-
-interface RelayHook {
-  state: RelayState;
-  url: string;
-  connect: () => Promise<void>;
-  disconnect: () => void;
-  changeUrl: (url: string) => void;
-}
+import type { RelayHook } from '../hooks/useRelay';
 
 interface SettingsProps {
   identity: StoredIdentity;

@@ -5,6 +5,7 @@ import { SignetWords } from '../components/SignetWords';
 import { SignetIQ } from '../components/SignetIQ';
 import { ENTITY_LABELS } from '../lib/signet';
 import { publishEvent } from '../lib/relay-service';
+import { truncatePubkey, timeAgo } from '../lib/utils';
 
 interface ContactDetailProps {
   connection: StoredConnection;
@@ -12,11 +13,6 @@ interface ContactDetailProps {
   onBack: () => void;
   onRemove: (pubkey: string) => void;
   onRefreshBadge?: (pubkey: string) => Promise<import('../lib/db').CachedBadge | null>;
-}
-
-function truncatePubkey(pubkey: string): string {
-  if (pubkey.length <= 16) return pubkey;
-  return `${pubkey.slice(0, 8)}...${pubkey.slice(-8)}`;
 }
 
 function InfoSection({
@@ -91,16 +87,6 @@ function InfoSection({
       </div>
     </div>
   );
-}
-
-function timeAgo(ts: number): string {
-  const now = Math.floor(Date.now() / 1000);
-  const diff = now - ts;
-  if (diff < 60) return 'just now';
-  if (diff < 3600) { const m = Math.floor(diff / 60); return `${m}m ago`; }
-  if (diff < 86400) { const h = Math.floor(diff / 3600); return `${h}h ago`; }
-  const d = Math.floor(diff / 86400);
-  return `${d}d ago`;
 }
 
 export function ContactDetail({ connection, identity, onBack, onRemove, onRefreshBadge }: ContactDetailProps) {
@@ -224,7 +210,7 @@ export function ContactDetail({ connection, identity, onBack, onRemove, onRefres
                 {connection.badge.tierLabel}
                 {connection.badge.entityType && (
                   <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>
-                    {ENTITY_LABELS[connection.badge.entityType as keyof typeof ENTITY_LABELS] ?? connection.badge.entityType}
+                    {ENTITY_LABELS[connection.badge.entityType] ?? connection.badge.entityType}
                   </span>
                 )}
               </span>
@@ -235,7 +221,7 @@ export function ContactDetail({ connection, identity, onBack, onRemove, onRefres
             <SignetIQ
               breakdown={{
                 score: connection.badge.score,
-                tier: connection.badge.tier as 1 | 2 | 3 | 4,
+                tier: connection.badge.tier,
                 professionalVerifications: 0,
                 inPersonVouches: 0,
                 onlineVouches: connection.badge.vouchCount,

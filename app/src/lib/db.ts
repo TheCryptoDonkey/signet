@@ -23,10 +23,10 @@ export interface StoredIdentity {
 }
 
 export interface CachedBadge {
-  tier: number;
+  tier: 1 | 2 | 3 | 4;
   tierLabel: string;
   score: number;
-  entityType?: string;
+  entityType?: EntityType;
   isVerified: boolean;
   credentialCount: number;
   vouchCount: number;

@@ -1,8 +1,5 @@
-import {
-  buildBadgeFilters,
-  computeBadge,
-} from 'signet-protocol';
-import { RelayClient } from 'signet-protocol';
+import { buildBadgeFilters, computeBadge, RelayClient } from 'signet-protocol';
+import type { EntityType } from 'signet-protocol';
 import type { CachedBadge } from './db';
 
 /** Fetch badge data for a pubkey from a relay. Returns null if relay is unreachable. */
@@ -19,13 +16,13 @@ export async function fetchBadge(
     const badge = computeBadge(pubkey, events);
 
     // Extract entity type from credential events
-    let entityType: string | undefined;
+    let entityType: EntityType | undefined;
     for (const event of events) {
       if (event.kind !== 30470) continue;
       const d = event.tags.find(t => t[0] === 'd')?.[1];
       if (d !== pubkey) continue;
       const et = event.tags.find(t => t[0] === 'entity-type')?.[1];
-      if (et) { entityType = et; break; }
+      if (et) { entityType = et as EntityType; break; }
     }
 
     return {
@@ -63,13 +60,13 @@ export async function fetchBadges(
     for (const pubkey of pubkeys) {
       const badge = computeBadge(pubkey, events);
 
-      let entityType: string | undefined;
+      let entityType: EntityType | undefined;
       for (const event of events) {
         if (event.kind !== 30470) continue;
         const d = event.tags.find(t => t[0] === 'd')?.[1];
         if (d !== pubkey) continue;
         const et = event.tags.find(t => t[0] === 'entity-type')?.[1];
-        if (et) { entityType = et; break; }
+        if (et) { entityType = et as EntityType; break; }
       }
 
       results.set(pubkey, {

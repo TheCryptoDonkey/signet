@@ -12,11 +12,8 @@ import {
   createTwoCredentialCeremony,
   computeNullifier,
 } from '../lib/signet';
-
-interface RelayHook {
-  state: string;
-  publish: (event: import('signet-protocol').NostrEvent) => Promise<{ ok: boolean; message: string }>;
-}
+import { truncatePubkey } from '../lib/utils';
+import type { RelayHook } from '../hooks/useRelay';
 
 interface VerifierProps {
   identity: StoredIdentity;
@@ -41,11 +38,6 @@ interface IssuedCredential {
   entityType?: string;
   notes: string;
   issuedAt: number;
-}
-
-function truncatePubkey(pubkey: string): string {
-  if (pubkey.length <= 16) return pubkey;
-  return `${pubkey.slice(0, 8)}...${pubkey.slice(-8)}`;
 }
 
 function formatTimestamp(ts: number): string {

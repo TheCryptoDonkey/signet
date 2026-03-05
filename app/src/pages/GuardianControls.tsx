@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { StoredIdentity } from '../lib/db';
+import { truncatePubkey } from '../lib/utils';
 
 interface GuardianControlsProps {
   identity: StoredIdentity;
@@ -13,11 +14,6 @@ type ContentFilter = 'strict' | 'moderate' | 'off';
 interface ChildSettings {
   dmPolicy: DmPolicy;
   contentFilter: ContentFilter;
-}
-
-function truncateKey(key: string): string {
-  if (key.length <= 16) return key;
-  return key.slice(0, 8) + '...' + key.slice(-8);
 }
 
 const dmPolicyOptions: { value: DmPolicy; label: string }[] = [
@@ -157,7 +153,7 @@ export function GuardianControls({ identity, identities, onBack }: GuardianContr
                         marginBottom: child.ageRange || child.entityType ? 8 : 0,
                       }}
                     >
-                      {truncateKey(child.publicKey)}
+                      {truncatePubkey(child.publicKey)}
                     </div>
                     {(child.ageRange || child.entityType) && (
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

@@ -8,24 +8,14 @@ import {
   type SignetTier,
 } from 'signet-protocol';
 import type { StoredIdentity } from '../lib/db';
-
-interface RelayHook {
-  state: string;
-  publish: (event: NostrEvent) => Promise<{ ok: boolean; message: string }>;
-  fetch: (filters: import('signet-protocol').NostrFilter[]) => Promise<NostrEvent[]>;
-  connect: () => Promise<void>;
-}
+import { truncatePubkey } from '../lib/utils';
+import type { RelayHook } from '../hooks/useRelay';
 
 interface LinkAccountsProps {
   identity: StoredIdentity;
   identities: StoredIdentity[];
   relay: RelayHook;
   onBack: () => void;
-}
-
-function truncateKey(key: string): string {
-  if (key.length <= 16) return key;
-  return key.slice(0, 8) + '...' + key.slice(-4);
 }
 
 export function LinkAccounts({ identity, identities, relay, onBack }: LinkAccountsProps) {
@@ -192,7 +182,7 @@ export function LinkAccounts({ identity, identities, relay, onBack }: LinkAccoun
                     {id.displayName}
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                    {truncateKey(id.publicKey)}
+                    {truncatePubkey(id.publicKey, 8, 4)}
                   </span>
                 </button>
               ))}
@@ -228,7 +218,7 @@ export function LinkAccounts({ identity, identities, relay, onBack }: LinkAccoun
                       {id.displayName}
                     </span>
                     <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                      {truncateKey(id.publicKey)}
+                      {truncatePubkey(id.publicKey, 8, 4)}
                     </span>
                   </button>
                 ))}
