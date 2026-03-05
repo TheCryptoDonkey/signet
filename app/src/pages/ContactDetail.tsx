@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { createVouch } from 'signet-protocol';
 import type { StoredConnection, StoredIdentity } from '../lib/db';
 import { SignetWords } from '../components/SignetWords';
+import { SignetIQ } from '../components/SignetIQ';
+import { ENTITY_LABELS } from '../lib/signet';
 import { publishEvent } from '../lib/relay-service';
 
 interface ContactDetailProps {
@@ -90,6 +92,16 @@ function InfoSection({
   );
 }
 
+function timeAgo(ts: number): string {
+  const now = Math.floor(Date.now() / 1000);
+  const diff = now - ts;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) { const m = Math.floor(diff / 60); return `${m}m ago`; }
+  if (diff < 86400) { const h = Math.floor(diff / 3600); return `${h}h ago`; }
+  const d = Math.floor(diff / 86400);
+  return `${d}d ago`;
+}
+
 export function ContactDetail({ connection, identity, onBack, onRemove }: ContactDetailProps) {
   const displayName = connection.theirInfo.name || truncatePubkey(connection.pubkey);
   const [vouched, setVouched] = useState(false);
@@ -176,25 +188,83 @@ export function ContactDetail({ connection, identity, onBack, onRemove }: Contac
         </h1>
       </div>
 
+      {/* Signet Badge */}
+      {connection.badge && (
+        <div style={{ marginBottom: 20 }}>
+          <h3
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'var(--text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: 0.8,
+              marginBottom: 10,
+            }}
+          >
+            Signet Badge
+          </h3>
+          <div
+            style={{
+              background: 'var(--bg-card)',
+              borderRadius: 'var(--radius)',
+              border: '1px solid var(--border)',
+              padding: '14px 16px',
+            }}
+          >
+            <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, fontSize: 14 }}>
+                {connection.badge.tierLabel}
+                {connection.badge.entityType && (
+                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>
+                    {ENTITY_LABELS[connection.badge.entityType as keyof typeof ENTITY_LABELS] ?? connection.badge.entityType}
+                  </span>
+                )}
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                Tier {connection.badge.tier}
+              </span>
+            </div>
+            <SignetIQ
+              breakdown={{
+                score: connection.badge.score,
+                tier: connection.badge.tier as 1 | 2 | 3 | 4,
+                professionalVerifications: 0,
+                inPersonVouches: 0,
+                onlineVouches: connection.badge.vouchCount,
+                accountAgeDays: 0,
+                signals: [],
+              }}
+              showBreakdown={false}
+            />
+            <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)' }}>
+              <span>Credentials: {connection.badge.credentialCount} · Vouches: {connection.badge.vouchCount}</span>
+              <span>Updated {timeAgo(connection.badge.fetchedAt)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Their info */}
       <InfoSection label="Their Information" info={connection.theirInfo} />
 
-      {/* Signet Words — the main attraction */}
-      <div style={{ marginBottom: 20 }}>
-        <h3
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: 0.8,
-            marginBottom: 10,
-          }}
-        >
-          Signet Words
-        </h3>
-        <SignetWords sharedSecret={connection.sharedSecret} />
-      </div>
+      {/* Signet Words — only for mutual (in-person) connections */}
+      {connection.connectionType !== 'follow' && connection.sharedSecret && (
+        <div style={{ marginBottom: 20 }}>
+          <h3
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'var(--text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: 0.8,
+              marginBottom: 10,
+            }}
+          >
+            Signet Words
+          </h3>
+          <SignetWords sharedSecret={connection.sharedSecret} />
+        </div>
+      )}
 
       {/* Our shared info */}
       <InfoSection label="Information You Shared" info={connection.ourInfo} />
