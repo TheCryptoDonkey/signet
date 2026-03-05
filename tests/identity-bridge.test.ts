@@ -73,10 +73,10 @@ describe('selectDecoyRing', () => {
 
 describe('computeBridgeWeight', () => {
   it('scales weight by tier', () => {
-    expect(computeBridgeWeight(4)).toBe(25);
-    expect(computeBridgeWeight(3)).toBeCloseTo(18.75);
-    expect(computeBridgeWeight(2)).toBeCloseTo(12.5);
-    expect(computeBridgeWeight(1)).toBeCloseTo(6.25);
+    expect(computeBridgeWeight(4)).toBe(50);
+    expect(computeBridgeWeight(3)).toBeCloseTo(37.5);
+    expect(computeBridgeWeight(2)).toBeCloseTo(25);
+    expect(computeBridgeWeight(1)).toBeCloseTo(12.5);
   });
 });
 
@@ -223,7 +223,7 @@ describe('trust score integration', () => {
     expect(breakdown.signals.some((s) => s.type === 'identity-bridge')).toBe(true);
 
     const bridgeSignal = breakdown.signals.find((s) => s.type === 'identity-bridge');
-    expect(bridgeSignal!.weight).toBeCloseTo(18.75); // 25 * (3/4)
+    expect(bridgeSignal!.weight).toBeCloseTo(37.5); // 50 * (3/4)
   });
 
   it('combines bridge with vouches', async () => {
@@ -242,7 +242,7 @@ describe('trust score integration', () => {
 
     // Score with bridge only
     const withBridge = computeTrustScore(anon.publicKey, [], [], undefined, [bridge]);
-    expect(withBridge.score).toBe(25); // 25 * (4/4)
+    expect(withBridge.score).toBe(50); // 50 * (4/4)
 
     // Score without bridge
     const without = computeTrustScore(anon.publicKey, [], []);

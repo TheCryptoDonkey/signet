@@ -16,7 +16,7 @@ export interface BadgeInfo {
   tier: SignetTier;
   /** Human-readable tier label */
   tierLabel: string;
-  /** Trust score (0-100) */
+  /** Signet IQ (0-200) */
   score: number;
   /** Whether the user has any valid credentials */
   isVerified: boolean;
@@ -112,7 +112,7 @@ export function computeBadge(
 
     const method = getTagValue(event, 'method');
     const voucherScore = parseInt(getTagValue(event, 'voucher-score') || '50');
-    const multiplier = voucherScore / 100;
+    const multiplier = voucherScore / 200;
 
     if (method === 'in-person') {
       rawScore += TRUST_WEIGHTS.IN_PERSON_VOUCH * multiplier;

@@ -147,7 +147,7 @@ export interface TrustSignal {
 }
 
 export interface TrustScoreBreakdown {
-  score: number; // 0-100
+  score: number; // 0-200 (Signet IQ)
   tier: SignetTier;
   professionalVerifications: number;
   inPersonVouches: number;

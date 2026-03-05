@@ -13,7 +13,7 @@
 
 Signet is an open protocol for decentralised identity verification on Nostr. It enables users to prove claims about their identity — age, parenthood, professional status — using zero-knowledge proofs, without revealing personal data or relying on a central authority.
 
-The protocol defines four verification tiers, nine entity types, a continuous trust score, a verifier accountability framework, and eleven Nostr event kinds (30470–30480, including the voting extension). Every professionally verified person receives two credentials — a Natural Person (real identity with Merkle-bound attributes and document nullifier) and a Persona (anonymous alias with age-range proof only). This two-credential model makes privacy a first-class design goal.
+The protocol defines four verification tiers, nine entity types, a continuous Signet IQ score (Identification Quotient), a verifier accountability framework, and eleven Nostr event kinds (30470–30480, including the voting extension). Every professionally verified person receives two credentials — a Natural Person (real identity with Merkle-bound attributes and document nullifier) and a Persona (anonymous alias with age-range proof only). This two-credential model makes privacy a first-class design goal.
 
 Any Nostr client can implement Signet. Any community can set verification policies. Any licensed professional can become a verifier.
 
@@ -26,7 +26,7 @@ Any Nostr client can implement Signet. Any community can set verification polici
 1. [Motivation](#1-motivation)
 2. [Design Principles](#2-design-principles)
 3. [Credential Tiers](#3-credential-tiers)
-4. [Trust Score](#4-trust-score)
+4. [Signet IQ (Identification Quotient)](#4-signet-iq-identification-quotient)
 5. [Service Policies](#5-service-policies)
 6. [Verifier Network](#6-verifier-network)
 7. [Anti-Corruption Framework](#7-anti-corruption-framework)
@@ -167,9 +167,9 @@ A predator who is a verified real adult (Tier 3) could still create a fake child
 
 ---
 
-## 4. Trust Score
+## 4. Signet IQ (Identification Quotient)
 
-On top of discrete tiers, a continuous trust score (0-100%) provides nuanced reputation.
+On top of discrete tiers, a continuous Signet IQ score (0-200) provides nuanced reputation. A score of 100 represents the current UK/US standard that governments deem acceptable. Scores above 100 indicate multiple verifications, strong peer trust, bridges, and time on the network.
 
 ### Score Components
 
@@ -180,7 +180,7 @@ On top of discrete tiers, a continuous trust score (0-100%) provides nuanced rep
 | In-person peer signature | Strong | Met in person, signed keys face-to-face |
 | Online vouch from verified user | Light | Accumulates — many light vouches add up |
 | Account age | Passive | Time on the network adds weight gradually |
-| Voucher's own score | Multiplier | A vouch from someone at 90% carries more than from someone at 30% |
+| Voucher's own Signet IQ | Multiplier | A vouch from someone at IQ 150 carries more than from someone at IQ 40 |
 
 ### Score Algorithm
 
@@ -197,7 +197,7 @@ Clients MUST respect this ordering. A single professional verification always ou
 ```
 ┌───────────────────────────────────┐
 │  Alice ✓✓✓              Tier 3   │
-│  Trust: 87%                       │
+│  Signet IQ: 106                   │
 │                                   │
 │  ● Prof verified (lawyer)         │
 │  ● 4 in-person vouches            │
@@ -207,7 +207,7 @@ Clients MUST respect this ordering. A single professional verification always ou
 ```
 
 - **Tier** = the gate (can you enter this space?)
-- **Score** = the reputation (how much should I trust this person?)
+- **Signet IQ** = the reputation (how much should I trust this person?)
 - End users see a simple tier badge. Power users can drill into the score breakdown.
 
 ---
@@ -229,7 +229,7 @@ Each community, circle, relay, or client sets a minimum verification requirement
 
 Services can also set:
 
-- **Minimum score**: "Tier 2 AND score > 50%"
+- **Minimum Signet IQ**: "Tier 2 AND iq > 100"
 - **Per-role requirements**: "moderators need Tier 3, members need Tier 2"
 - **Child-specific overrides**: "adults can be Tier 2, child accounts must be Tier 4"
 
@@ -279,7 +279,7 @@ A fake lawyer can't just publish a credential claiming to be a lawyer. Other ver
 1. Reach Tier 2+ yourself
 2. You can vouch for others you know
 3. In-person vouches (key signing at meetups, conferences) carry more weight than online vouches
-4. Your vouches' weight scales with your own trust score
+4. Your vouches' weight scales with your own Signet IQ
 
 **The already-doxed advantage:**
 
@@ -576,7 +576,7 @@ A replaceable event published when a community confirms a challenge. Supersedes 
 **Client behaviour on kind 30475:**
 
 1. Display a warning on all kind 30470 credentials issued by the revoked verifier
-2. Reduce the trust score contribution of those credentials to zero
+2. Reduce the Signet IQ contribution of those credentials to zero
 3. Notify affected users that re-verification is recommended
 4. Do not automatically invalidate credentials — the community policy decides whether to require re-verification or grandfather existing ones
 
@@ -735,9 +735,9 @@ They can still build trust through:
 - Peer vouches from verified users
 - In-person key signings at meetups and conferences
 - Account age and consistent behaviour
-- Online vouches from high-score accounts
+- Online vouches from high-IQ accounts
 
-This gives them a visible trust score and a checkmark — weaker than professional verification, but more than nothing. And nothing is what everyone on Nostr has today.
+This gives them a visible Signet IQ score and a checkmark — weaker than professional verification, but more than nothing. And nothing is what everyone on Nostr has today.
 
 ### For Public Figures
 
@@ -943,7 +943,7 @@ Alice's phone                          Bob's phone
 
 This data is stored **locally only** — never published to relays. The QR exchange happens entirely in person.
 
-**Automatic vouch:** The connection optionally triggers a mutual in-person vouch (kind 30471), contributing to both users' Tier 2 web-of-trust and trust scores.
+**Automatic vouch:** The connection optionally triggers a mutual in-person vouch (kind 30471), contributing to both users' Tier 2 web-of-trust and Signet IQ.
 
 ### 15.4 Signet Verification Words ("Signet Me")
 
@@ -1072,7 +1072,7 @@ The identity bridge allows users to maintain separate anonymous and real-name ac
 2. Alice creates an anonymous account for participating in communities where she wants privacy.
 3. Alice creates an identity bridge: her real account signs a ring signature (among 10 other verified accounts) proving "one of these 11 people also controls this anon account."
 4. The bridge event (kind 30476) is published from Alice's anon account.
-5. Community members see Alice's anon account has a trust score of ~19 (from the bridge alone), indicating a verified person is behind it.
+5. Community members see Alice's anon account has a Signet IQ of ~38 (from the bridge alone), indicating a verified person is behind it.
 6. When other bridged anonymous accounts vouch for Alice's anon account, trust compounds naturally.
 
 ### 16.2 Ring Construction
@@ -1096,7 +1096,7 @@ Users may import existing Nostr accounts via nsec (NIP-19 bech32-encoded private
 
 A device may hold multiple accounts (real-name + anonymous, or multiple identities). Each account:
 - Is identified by its pubkey (not a singleton key).
-- Has its own connections, credentials, and trust score.
+- Has its own connections, credentials, and Signet IQ.
 - Can be switched between in the app UI.
 
 Connections are scoped to the owning account. Credentials and vouches are naturally scoped by pubkey in the Nostr protocol.
@@ -1831,7 +1831,7 @@ The jurisdiction confidence score (0-100) is computed from:
 ### 24.3 Client Behaviour
 
 Clients MAY use jurisdiction confidence scores to:
-- Weight trust scores from different jurisdictions (a Tier 3 credential from a high-confidence jurisdiction contributes more to the trust score)
+- Weight Signet IQ contributions from different jurisdictions (a Tier 3 credential from a high-confidence jurisdiction contributes more to the Signet IQ)
 - Display jurisdiction confidence alongside credentials
 - Set minimum jurisdiction confidence in community policies
 

@@ -1,16 +1,16 @@
 interface TrustScoreProps {
-  score: number; // 0-100
+  score: number; // 0-200 (Signet IQ)
   showBreakdown?: boolean;
 }
 
 function getScoreColor(score: number): string {
-  if (score < 30) return 'var(--danger)';
-  if (score < 60) return 'var(--warning)';
+  if (score < 50) return 'var(--danger)';
+  if (score < 100) return 'var(--warning)';
   return 'var(--accent)';
 }
 
 export function TrustScore({ score, showBreakdown = false }: TrustScoreProps) {
-  const clampedScore = Math.max(0, Math.min(100, score));
+  const clampedScore = Math.max(0, Math.min(200, score));
   const barColor = getScoreColor(clampedScore);
 
   return (
@@ -36,7 +36,7 @@ export function TrustScore({ score, showBreakdown = false }: TrustScoreProps) {
           {/* Fill */}
           <div
             style={{
-              width: `${clampedScore}%`,
+              width: `${(clampedScore / 200) * 100}%`,
               height: '100%',
               borderRadius: 4,
               background: barColor,
@@ -45,7 +45,7 @@ export function TrustScore({ score, showBreakdown = false }: TrustScoreProps) {
           />
         </div>
 
-        {/* Percentage text */}
+        {/* Score text */}
         <span
           style={{
             fontSize: 14,
@@ -55,7 +55,7 @@ export function TrustScore({ score, showBreakdown = false }: TrustScoreProps) {
             textAlign: 'right',
           }}
         >
-          {clampedScore}%
+          {clampedScore}
         </span>
       </div>
 
@@ -67,7 +67,7 @@ export function TrustScore({ score, showBreakdown = false }: TrustScoreProps) {
           color: 'var(--text-muted)',
         }}
       >
-        Trust Score
+        Signet IQ
       </div>
 
       {/* Optional breakdown */}

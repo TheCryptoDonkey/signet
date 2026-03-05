@@ -85,13 +85,13 @@ describe('trust-score', () => {
     const oneYearAgo = Math.floor(Date.now() / 1000) - 365 * 24 * 60 * 60;
     const breakdown = computeTrustScore(subject.publicKey, [cred], [vouch], oneYearAgo);
 
-    expect(breakdown.score).toBeGreaterThan(40);
+    expect(breakdown.score).toBeGreaterThan(80);
     expect(breakdown.professionalVerifications).toBe(1);
     expect(breakdown.inPersonVouches).toBe(1);
     expect(breakdown.accountAgeDays).toBeGreaterThan(360);
   });
 
-  it('caps at 100', async () => {
+  it('caps at 200', async () => {
     const verifier = generateKeyPair();
     const subject = generateKeyPair();
 
@@ -119,7 +119,7 @@ describe('trust-score', () => {
     );
 
     const breakdown = computeTrustScore(subject.publicKey, creds, vouches);
-    expect(breakdown.score).toBeLessThanOrEqual(100);
+    expect(breakdown.score).toBeLessThanOrEqual(200);
   });
 
   it('deduplicates vouches from same person', async () => {
@@ -167,10 +167,10 @@ describe('trust-score', () => {
   describe('verifySignalOrdering', () => {
     it('validates correct ordering', () => {
       const signals = [
-        { type: 'professional-verification' as const, weight: 40 },
-        { type: 'in-person-vouch' as const, weight: 8 },
-        { type: 'online-vouch' as const, weight: 2 },
-        { type: 'account-age' as const, weight: 5 },
+        { type: 'professional-verification' as const, weight: 80 },
+        { type: 'in-person-vouch' as const, weight: 16 },
+        { type: 'online-vouch' as const, weight: 4 },
+        { type: 'account-age' as const, weight: 10 },
       ];
       expect(verifySignalOrdering(signals)).toBe(true);
     });

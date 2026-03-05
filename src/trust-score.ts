@@ -1,5 +1,5 @@
 // Trust Score Computation
-// Continuous 0-100 score from weighted signals
+// Continuous 0-200 Signet IQ score from weighted signals
 
 import { TRUST_WEIGHTS, MAX_TRUST_SCORE, SIGNET_KINDS } from './constants.js';
 import { getTagValue } from './validation.js';
@@ -60,7 +60,7 @@ export function computeTrustScore(
 
     const method = getTagValue(vouch, 'method');
     const voucherScore = parseInt(getTagValue(vouch, 'voucher-score') || '50');
-    const scoreMultiplier = voucherScore / 100;
+    const scoreMultiplier = voucherScore / 200;
 
     if (method === 'in-person') {
       inPersonVouches++;
@@ -148,7 +148,7 @@ export function formatTrustDisplay(breakdown: TrustScoreBreakdown): string {
 
   const lines = [
     `${checkmarks} Tier ${breakdown.tier} (${tierLabel})`,
-    `Trust: ${breakdown.score}%`,
+    `Signet IQ: ${breakdown.score}`,
   ];
 
   if (breakdown.professionalVerifications > 0) {

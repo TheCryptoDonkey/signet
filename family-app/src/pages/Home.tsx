@@ -26,7 +26,7 @@ export function Home({ identity, familyCount }: Props) {
   };
 
   // Simple trust score: family members verified = basic trust
-  const trustScore = Math.min(familyCount * 10 + 10, 100);
+  const trustScore = Math.min(familyCount * 10 + 10, 200);
 
   return (
     <div className="fade-in">
@@ -42,7 +42,7 @@ export function Home({ identity, familyCount }: Props) {
       {/* Trust Summary */}
       {!identity.isChild && (
         <div className="card section">
-          <TrustBar score={trustScore} label="Trust" />
+          <TrustBar score={trustScore} label="Signet IQ" />
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             <span>Family: {familyCount} member{familyCount !== 1 ? 's' : ''} verified</span>
             <span>Since {new Date(identity.createdAt * 1000).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</span>

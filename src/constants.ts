@@ -37,21 +37,21 @@ export const VERIFIER_ACTIVATION = {
   MIN_PROFESSIONS: 2,
 } as const;
 
-/** Trust score weights (default implementation) */
+/** Trust score weights (default implementation, Signet IQ 0-200 scale) */
 export const TRUST_WEIGHTS = {
-  PROFESSIONAL_VERIFICATION: 40,
-  IN_PERSON_VOUCH: 8,
-  ONLINE_VOUCH: 2,
-  ACCOUNT_AGE_PER_YEAR: 5,
-  ACCOUNT_AGE_MAX: 15,
-  IDENTITY_BRIDGE: 25,
+  PROFESSIONAL_VERIFICATION: 80,
+  IN_PERSON_VOUCH: 16,
+  ONLINE_VOUCH: 4,
+  ACCOUNT_AGE_PER_YEAR: 10,
+  ACCOUNT_AGE_MAX: 30,
+  IDENTITY_BRIDGE: 50,
 } as const;
 
 /** Minimum ring size for identity bridges (anonymity threshold) */
 export const MIN_BRIDGE_RING_SIZE = 5;
 
-/** Maximum trust score */
-export const MAX_TRUST_SCORE = 100;
+/** Maximum Signet IQ score */
+export const MAX_TRUST_SCORE = 200;
 
 /** Valid entity types */
 export const ENTITY_TYPES = [
