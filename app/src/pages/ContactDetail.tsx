@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { createVouch } from 'signet-protocol';
 import type { StoredConnection, StoredIdentity } from '../lib/db';
 import { SignetWords } from '../components/SignetWords';
@@ -11,6 +11,7 @@ interface ContactDetailProps {
   identity?: StoredIdentity;
   onBack: () => void;
   onRemove: (pubkey: string) => void;
+  onRefreshBadge?: (pubkey: string) => Promise<import('../lib/db').CachedBadge | null>;
 }
 
 function truncatePubkey(pubkey: string): string {
@@ -102,10 +103,17 @@ function timeAgo(ts: number): string {
   return `${d}d ago`;
 }
 
-export function ContactDetail({ connection, identity, onBack, onRemove }: ContactDetailProps) {
+export function ContactDetail({ connection, identity, onBack, onRemove, onRefreshBadge }: ContactDetailProps) {
   const displayName = connection.theirInfo.name || truncatePubkey(connection.pubkey);
   const [vouched, setVouched] = useState(false);
   const [vouchError, setVouchError] = useState<string | null>(null);
+
+  // Auto-refresh badge if stale
+  useEffect(() => {
+    if (onRefreshBadge) {
+      onRefreshBadge(connection.pubkey).catch(() => {});
+    }
+  }, [connection.pubkey, onRefreshBadge]);
 
   const handleVouch = useCallback(async () => {
     if (!identity) return;

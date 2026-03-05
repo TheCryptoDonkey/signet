@@ -17,6 +17,7 @@ import { LinkAccounts } from './pages/LinkAccounts';
 import { GuardianControls } from './pages/GuardianControls';
 import { Follow } from './pages/Follow';
 import { saveIdentity, type StoredIdentity, type StoredConnection } from './lib/db';
+import { useBadgeRefresh } from './hooks/useBadgeRefresh';
 
 export function App() {
   const {
@@ -34,6 +35,7 @@ export function App() {
   const { connections, loading: connsLoading, addConnection, removeConnection } = useConnections(activeIdentity?.publicKey);
   const relay = useRelay();
   const nostrEvents = useNostrEvents(activeIdentity?.publicKey);
+  const { refreshBadge } = useBadgeRefresh(preferences.relayUrl);
 
   const [activePage, setActivePage] = useState('home');
   const [selectedContact, setSelectedContact] = useState<string | null>(null);
@@ -174,6 +176,7 @@ export function App() {
             identity={identity}
             onBack={handleBackFromContact}
             onRemove={handleRemoveConnection}
+            onRefreshBadge={refreshBadge}
           />
         </Layout>
       );
