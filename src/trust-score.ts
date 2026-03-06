@@ -31,7 +31,7 @@ export function computeTrustScore(
     const subject = getTagValue(cred, 'd');
     if (subject !== subjectPubkey) continue;
 
-    const tier = parseInt(getTagValue(cred, 'tier') || '1') as SignetTier;
+    const tier = parseInt(getTagValue(cred, 'tier') || '1', 10) as SignetTier;
     if (tier > highestTier) highestTier = tier;
 
     const type = getTagValue(cred, 'type');
@@ -59,8 +59,8 @@ export function computeTrustScore(
     vouchersSeen.add(vouch.pubkey);
 
     const method = getTagValue(vouch, 'method');
-    const voucherScore = parseInt(getTagValue(vouch, 'voucher-score') || '50');
-    const scoreMultiplier = voucherScore / 200;
+    const voucherScore = parseInt(getTagValue(vouch, 'voucher-score') || '50', 10);
+    const scoreMultiplier = voucherScore / MAX_TRUST_SCORE;
 
     if (method === 'in-person') {
       inPersonVouches++;
@@ -91,7 +91,7 @@ export function computeTrustScore(
       if (bridge.kind !== SIGNET_KINDS.IDENTITY_BRIDGE) continue;
       if (bridge.pubkey !== subjectPubkey) continue;
 
-      const ringMinTier = parseInt(getTagValue(bridge, 'ring-min-tier') || '1') as SignetTier;
+      const ringMinTier = parseInt(getTagValue(bridge, 'ring-min-tier') || '1', 10) as SignetTier;
       const weight = TRUST_WEIGHTS.IDENTITY_BRIDGE * (ringMinTier / 4);
       rawScore += weight;
       signals.push({
@@ -123,12 +123,6 @@ export function computeTrustScore(
 
   // Cap at MAX_TRUST_SCORE
   const score = Math.min(Math.round(rawScore), MAX_TRUST_SCORE);
-
-  // Determine tier from credentials
-  if (highestTier === 1 && (inPersonVouches > 0 || onlineVouches > 0)) {
-    // If they have vouches, check if they qualify for Tier 2
-    // (actual Tier 2 promotion is done via credential issuance, but we reflect it in the score)
-  }
 
   return {
     score,

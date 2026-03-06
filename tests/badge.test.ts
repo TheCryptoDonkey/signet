@@ -18,9 +18,9 @@ import type { NostrEvent } from '../src/types.js';
 
 describe('badge display (Level 1)', () => {
   describe('computeBadge', () => {
-    it('returns unverified badge for no events', () => {
+    it('returns unverified badge for no events', async () => {
       const kp = generateKeyPair();
-      const badge = computeBadge(kp.publicKey, []);
+      const badge = await computeBadge(kp.publicKey, []);
 
       expect(badge.pubkey).toBe(kp.publicKey);
       expect(badge.tier).toBe(1);
@@ -34,7 +34,7 @@ describe('badge display (Level 1)', () => {
     it('computes badge for Tier 1 (self-declared) credential', async () => {
       const kp = generateKeyPair();
       const cred = await createSelfDeclaredCredential(kp.privateKey);
-      const badge = computeBadge(kp.publicKey, [cred]);
+      const badge = await computeBadge(kp.publicKey, [cred]);
 
       expect(badge.isVerified).toBe(true);
       expect(badge.tier).toBe(1);
@@ -47,7 +47,7 @@ describe('badge display (Level 1)', () => {
       const issuer = generateKeyPair();
       const subject = generateKeyPair();
       const cred = await createPeerVouchedCredential(issuer.privateKey, subject.publicKey);
-      const badge = computeBadge(subject.publicKey, [cred]);
+      const badge = await computeBadge(subject.publicKey, [cred]);
 
       expect(badge.isVerified).toBe(true);
       expect(badge.tier).toBe(2);
@@ -62,7 +62,7 @@ describe('badge display (Level 1)', () => {
         subject.publicKey,
         { profession: 'legal', jurisdiction: 'GB' }
       );
-      const badge = computeBadge(subject.publicKey, [cred]);
+      const badge = await computeBadge(subject.publicKey, [cred]);
 
       expect(badge.isVerified).toBe(true);
       expect(badge.tier).toBe(3);
@@ -82,7 +82,7 @@ describe('badge display (Level 1)', () => {
         { profession: 'legal', jurisdiction: 'GB' }
       );
 
-      const badge = computeBadge(kp.publicKey, [cred1, cred3]);
+      const badge = await computeBadge(kp.publicKey, [cred1, cred3]);
       expect(badge.tier).toBe(3);
       expect(badge.credentialCount).toBe(2);
     });
@@ -106,7 +106,7 @@ describe('badge display (Level 1)', () => {
         voucherScore: 30,
       });
 
-      const badge = computeBadge(subject.publicKey, [cred, vouch1, vouch2]);
+      const badge = await computeBadge(subject.publicKey, [cred, vouch1, vouch2]);
       expect(badge.vouchCount).toBe(2);
       expect(badge.score).toBeGreaterThan(0);
     });
@@ -128,7 +128,7 @@ describe('badge display (Level 1)', () => {
         voucherScore: 50,
       });
 
-      const badge = computeBadge(subject.publicKey, [vouch1, vouch2]);
+      const badge = await computeBadge(subject.publicKey, [vouch1, vouch2]);
       expect(badge.vouchCount).toBe(1);
     });
 
@@ -136,7 +136,7 @@ describe('badge display (Level 1)', () => {
       const kp = generateKeyPair();
       const past = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
       const cred = await createSelfDeclaredCredential(kp.privateKey, 'adult', past);
-      const badge = computeBadge(kp.publicKey, [cred]);
+      const badge = await computeBadge(kp.publicKey, [cred]);
 
       expect(badge.isVerified).toBe(false);
       expect(badge.credentialCount).toBe(0);
@@ -146,23 +146,23 @@ describe('badge display (Level 1)', () => {
       const kp1 = generateKeyPair();
       const kp2 = generateKeyPair();
       const cred = await createSelfDeclaredCredential(kp2.privateKey);
-      const badge = computeBadge(kp1.publicKey, [cred]);
+      const badge = await computeBadge(kp1.publicKey, [cred]);
 
       expect(badge.isVerified).toBe(false);
     });
   });
 
   describe('getTrustLevel', () => {
-    it('returns unverified for empty badge', () => {
+    it('returns unverified for empty badge', async () => {
       const kp = generateKeyPair();
-      const badge = computeBadge(kp.publicKey, []);
+      const badge = await computeBadge(kp.publicKey, []);
       expect(getTrustLevel(badge)).toBe('unverified');
     });
 
     it('returns self-declared for Tier 1', async () => {
       const kp = generateKeyPair();
       const cred = await createSelfDeclaredCredential(kp.privateKey);
-      const badge = computeBadge(kp.publicKey, [cred]);
+      const badge = await computeBadge(kp.publicKey, [cred]);
       expect(getTrustLevel(badge)).toBe('self-declared');
     });
 
@@ -174,15 +174,15 @@ describe('badge display (Level 1)', () => {
         subject.publicKey,
         { profession: 'legal', jurisdiction: 'GB' }
       );
-      const badge = computeBadge(subject.publicKey, [cred]);
+      const badge = await computeBadge(subject.publicKey, [cred]);
       expect(getTrustLevel(badge)).toBe('professional');
     });
   });
 
   describe('meetsMinimumTier', () => {
-    it('returns false for unverified user at any tier', () => {
+    it('returns false for unverified user at any tier', async () => {
       const kp = generateKeyPair();
-      const badge = computeBadge(kp.publicKey, []);
+      const badge = await computeBadge(kp.publicKey, []);
       expect(meetsMinimumTier(badge, 1)).toBe(false);
     });
 
@@ -194,7 +194,7 @@ describe('badge display (Level 1)', () => {
         subject.publicKey,
         { profession: 'legal', jurisdiction: 'GB' }
       );
-      const badge = computeBadge(subject.publicKey, [cred]);
+      const badge = await computeBadge(subject.publicKey, [cred]);
       expect(meetsMinimumTier(badge, 1)).toBe(true);
       expect(meetsMinimumTier(badge, 2)).toBe(true);
       expect(meetsMinimumTier(badge, 3)).toBe(true);

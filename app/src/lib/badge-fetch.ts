@@ -13,7 +13,7 @@ export async function fetchBadge(
     await relay.connect();
     const filters = buildBadgeFilters([pubkey]);
     const events = await relay.fetch(filters);
-    const badge = computeBadge(pubkey, events);
+    const badge = await computeBadge(pubkey, events);
 
     // Extract entity type from credential events
     let entityType: EntityType | undefined;
@@ -58,7 +58,7 @@ export async function fetchBadges(
     const events = await relay.fetch(filters);
 
     for (const pubkey of pubkeys) {
-      const badge = computeBadge(pubkey, events);
+      const badge = await computeBadge(pubkey, events);
 
       let entityType: EntityType | undefined;
       for (const event of events) {

@@ -55,11 +55,11 @@ const TIER_TO_TRUST_LEVEL: Record<SignetTier, TrustLevel> = {
  * @param options - Optional configuration
  * @returns Badge info for display
  */
-export function computeBadge(
+export async function computeBadge(
   pubkey: string,
   events: NostrEvent[],
   options?: { verifySignatures?: boolean; now?: number }
-): BadgeInfo {
+): Promise<BadgeInfo> {
   const now = options?.now ?? Math.floor(Date.now() / 1000);
   const verify = options?.verifySignatures ?? false;
 
@@ -76,15 +76,15 @@ export function computeBadge(
 
     // Check expiry
     const expires = getTagValue(event, 'expires');
-    if (expires && parseInt(expires) < now) continue;
+    if (expires && parseInt(expires, 10) < now) continue;
 
     // Optional signature verification
-    if (verify && !verifyEvent(event)) continue;
+    if (verify && !await verifyEvent(event)) continue;
 
     hasAnyCredential = true;
     credentialCount++;
 
-    const tier = parseInt(getTagValue(event, 'tier') || '1') as SignetTier;
+    const tier = parseInt(getTagValue(event, 'tier') || '1', 10) as SignetTier;
     if (tier > highestTier) highestTier = tier;
 
     const type = getTagValue(event, 'type');
@@ -106,13 +106,13 @@ export function computeBadge(
     if (vouchersSeen.has(event.pubkey)) continue;
     vouchersSeen.add(event.pubkey);
 
-    if (verify && !verifyEvent(event)) continue;
+    if (verify && !await verifyEvent(event)) continue;
 
     vouchCount++;
 
     const method = getTagValue(event, 'method');
-    const voucherScore = parseInt(getTagValue(event, 'voucher-score') || '50');
-    const multiplier = voucherScore / 200;
+    const voucherScore = parseInt(getTagValue(event, 'voucher-score') || '50', 10);
+    const multiplier = voucherScore / MAX_TRUST_SCORE;
 
     if (method === 'in-person') {
       rawScore += TRUST_WEIGHTS.IN_PERSON_VOUCH * multiplier;

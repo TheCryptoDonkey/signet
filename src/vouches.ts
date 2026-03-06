@@ -60,8 +60,8 @@ export function parseVouch(event: NostrEvent): ParsedVouch | null {
     subjectPubkey: getTagValue(event, 'd') || '',
     method: (getTagValue(event, 'method') || 'online') as VouchMethod,
     context: getTagValue(event, 'context'),
-    voucherTier: (tier ? parseInt(tier) : 1) as SignetTier,
-    voucherScore: score ? parseInt(score) : 50,
+    voucherTier: (tier ? parseInt(tier, 10) : 1) as SignetTier,
+    voucherScore: score ? parseInt(score, 10) : 50,
   };
 }
 
@@ -81,7 +81,7 @@ export function countQualifyingVouches(
     if (subject !== subjectPubkey) continue;
 
     const tier = getTagValue(vouch, 'voucher-tier');
-    if (!tier || parseInt(tier) < minVoucherTier) continue;
+    if (!tier || parseInt(tier, 10) < minVoucherTier) continue;
 
     // One vouch per voucher
     if (seen.has(vouch.pubkey)) continue;

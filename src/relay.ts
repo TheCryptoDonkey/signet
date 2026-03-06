@@ -4,6 +4,9 @@
 import { signEvent, getPublicKey } from './crypto.js';
 import type { NostrEvent, UnsignedEvent } from './types.js';
 
+/** NIP-42 client authentication event kind */
+const NIP42_AUTH_KIND = 22242;
+
 /** Nostr relay message types (relay → client) */
 export type RelayMessage =
   | ['EVENT', string, NostrEvent]
@@ -290,7 +293,7 @@ export class RelayClient {
 
     const pubkey = getPublicKey(this.options.authPrivateKey);
     const authEvent: UnsignedEvent = {
-      kind: 22242,
+      kind: NIP42_AUTH_KIND,
       pubkey,
       created_at: Math.floor(Date.now() / 1000),
       tags: [

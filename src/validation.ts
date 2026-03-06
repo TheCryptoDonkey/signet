@@ -61,7 +61,7 @@ export function validateCredential(event: NostrEvent): ValidationResult {
   if (!method) errors.push('Missing "method" tag');
 
   // Tier-specific validations
-  const tierNum = parseInt(tier || '0') as SignetTier;
+  const tierNum = parseInt(tier || '0', 10) as SignetTier;
 
   if (tierNum === 1 && type !== 'self') {
     errors.push('Tier 1 must have type "self"');
@@ -240,7 +240,7 @@ export function validateRevocation(event: NostrEvent): ValidationResult {
   }
 
   const confirmations = getTagValue(event, 'confirmations');
-  if (!confirmations || parseInt(confirmations) < 1) {
+  if (!confirmations || parseInt(confirmations, 10) < 1) {
     errors.push('Missing or invalid "confirmations" tag');
   }
 

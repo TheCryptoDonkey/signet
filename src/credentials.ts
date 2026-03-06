@@ -75,7 +75,7 @@ export async function createSelfDeclaredCredential(
     type: 'self',
     scope,
     method: 'self-declaration',
-    expiresAt: expiresAt || Math.floor(Date.now() / 1000) + 2 * 365 * 24 * 60 * 60,
+    expiresAt: expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
   });
   return signEvent(event, privateKey);
 }
@@ -94,7 +94,7 @@ export async function createPeerVouchedCredential(
     type: 'peer',
     scope: 'adult',
     method: 'in-person',
-    expiresAt: expiresAt || Math.floor(Date.now() / 1000) + 2 * 365 * 24 * 60 * 60,
+    expiresAt: expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
   });
   return signEvent(event, issuerPrivateKey);
 }
@@ -119,7 +119,7 @@ export async function createProfessionalCredential(
     method: 'in-person-id',
     profession: opts.profession,
     jurisdiction: opts.jurisdiction,
-    expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + 2 * 365 * 24 * 60 * 60,
+    expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
     content: opts.proofBlob,
   });
   return signEvent(event, verifierPrivateKey);
@@ -147,7 +147,7 @@ export async function createChildSafetyCredential(
     profession: opts.profession,
     jurisdiction: opts.jurisdiction,
     ageRange: opts.ageRange,
-    expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + 2 * 365 * 24 * 60 * 60,
+    expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
     content: opts.proofBlob,
   });
   return signEvent(event, verifierPrivateKey);
@@ -163,7 +163,7 @@ export async function verifyCredential(event: NostrEvent): Promise<{
   const signatureValid = await verifyEvent(event);
   const validation = validateCredential(event);
   const expiresStr = getTagValue(event, 'expires');
-  const expired = expiresStr ? parseInt(expiresStr) < Math.floor(Date.now() / 1000) : false;
+  const expired = expiresStr ? parseInt(expiresStr, 10) < Math.floor(Date.now() / 1000) : false;
 
   return {
     signatureValid,
@@ -177,7 +177,7 @@ export async function verifyCredential(event: NostrEvent): Promise<{
 export function isCredentialExpired(event: NostrEvent): boolean {
   const expiresStr = getTagValue(event, 'expires');
   if (!expiresStr) return false;
-  return parseInt(expiresStr) < Math.floor(Date.now() / 1000);
+  return parseInt(expiresStr, 10) < Math.floor(Date.now() / 1000);
 }
 
 /** Parse a credential event into a structured object */
@@ -191,14 +191,14 @@ export function parseCredential(event: NostrEvent): ParsedCredential | null {
 
   return {
     subjectPubkey: getTagValue(event, 'd') || '',
-    tier: parseInt(tier) as SignetTier,
+    tier: parseInt(tier, 10) as SignetTier,
     type: (getTagValue(event, 'type') || 'self') as VerificationType,
     scope: (getTagValue(event, 'scope') || 'adult') as VerificationScope,
     method: (getTagValue(event, 'method') || 'self-declaration') as VerificationMethod,
     profession: getTagValue(event, 'profession'),
     jurisdiction: getTagValue(event, 'jurisdiction'),
     ageRange: getTagValue(event, 'age-range'),
-    expiresAt: getTagValue(event, 'expires') ? parseInt(getTagValue(event, 'expires')!) : undefined,
+    expiresAt: getTagValue(event, 'expires') ? parseInt(getTagValue(event, 'expires')!, 10) : undefined,
     entityType: getTagValue(event, 'entity-type') as EntityType | undefined,
     nullifier: getTagValue(event, 'nullifier'),
     merkleRoot: getTagValue(event, 'merkle-root'),
@@ -418,7 +418,7 @@ export function needsRenewal(event: NostrEvent, withinDays: number = 30): boolea
   const expiresStr = getTagValue(event, 'expires');
   if (!expiresStr) return false;
 
-  const expiresAt = parseInt(expiresStr);
+  const expiresAt = parseInt(expiresStr, 10);
   const now = Math.floor(Date.now() / 1000);
   const threshold = now + withinDays * 24 * 60 * 60;
 

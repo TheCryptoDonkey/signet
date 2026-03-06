@@ -59,6 +59,8 @@ export interface ConsentRequirement {
   notes?: string;
 }
 
+const GDPR_JURISDICTIONS = ['GB', 'FR', 'DE', 'ES', 'IT', 'NL', 'IE'];
+
 // --- Credential Compliance ---
 
 /**
@@ -386,8 +388,7 @@ export function getConsentRequirements(jurisdictionCode: string): ConsentRequire
   }
 
   // GDPR special categories
-  const gdprJurisdictions = ['GB', 'FR', 'DE', 'ES', 'IT', 'NL', 'IE'];
-  if (gdprJurisdictions.includes(jurisdictionCode)) {
+  if (GDPR_JURISDICTIONS.includes(jurisdictionCode)) {
     base.specialCategories.push('biometric-hash');
     base.notes = 'GDPR Article 9 applies — biometric data used for identification is a special category.';
   }
@@ -429,8 +430,7 @@ export function getRetentionGuidance(jurisdictionCode: string): {
   }
 
   // Default guidance based on jurisdiction type
-  const gdprJurisdictions = ['GB', 'FR', 'DE', 'ES', 'IT', 'NL', 'IE'];
-  if (gdprJurisdictions.includes(jurisdictionCode)) {
+  if (GDPR_JURISDICTIONS.includes(jurisdictionCode)) {
     return {
       maxDays: 0,
       guidance: 'GDPR requires data to be kept no longer than necessary for the purpose. Apply data minimisation. Signet credentials are inherently time-limited via the expires tag.',

@@ -124,7 +124,7 @@ export function countChallengeConfirmations(
   for (const cred of credentialEvents) {
     if (cred.kind !== SIGNET_KINDS.CREDENTIAL) continue;
     const tier = getTagValue(cred, 'tier');
-    if (tier && parseInt(tier) >= 3) {
+    if (tier && parseInt(tier, 10) >= 3) {
       const subject = getTagValue(cred, 'd');
       if (subject) tier3Plus.add(subject);
     }

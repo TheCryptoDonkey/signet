@@ -20,6 +20,9 @@ function pointToBytes(p: ProjectivePoint): Uint8Array {
   return p.toRawBytes(true);
 }
 
+const DOMAIN_BIT_PROOF = 'signet-bit-proof';
+const DOMAIN_SUM_BINDING = 'signet-sum-binding';
+
 // --- Pedersen Commitment ---
 
 export interface PedersenCommitment {
@@ -109,7 +112,7 @@ function proveBit(bit: 0 | 1, blinding: bigint, commitmentPoint: ProjectivePoint
 
     // Fiat-Shamir challenge
     const e = hashToScalar(
-      utf8ToBytes('signet-bit-proof'),
+      utf8ToBytes(DOMAIN_BIT_PROOF),
       hexToBytes(commitHex),
       pointToBytes(R0),
       pointToBytes(R1)
@@ -143,7 +146,7 @@ function proveBit(bit: 0 | 1, blinding: bigint, commitmentPoint: ProjectivePoint
 
     // Fiat-Shamir challenge
     const e = hashToScalar(
-      utf8ToBytes('signet-bit-proof'),
+      utf8ToBytes(DOMAIN_BIT_PROOF),
       hexToBytes(commitHex),
       pointToBytes(R0),
       pointToBytes(R1)
@@ -185,7 +188,7 @@ function verifyBitProof(proof: BitProof): boolean {
 
     // Check Fiat-Shamir: e0 + e1 = H(...)
     const e = hashToScalar(
-      utf8ToBytes('signet-bit-proof'),
+      utf8ToBytes(DOMAIN_BIT_PROOF),
       hexToBytes(proof.commitment),
       pointToBytes(R0),
       pointToBytes(R1)
@@ -242,7 +245,7 @@ function proveSumBinding(
   const R = safeMultiply(H, k);
 
   const e = hashToScalar(
-    utf8ToBytes('signet-sum-binding'),
+    utf8ToBytes(DOMAIN_SUM_BINDING),
     pointToBytes(D),
     pointToBytes(R)
   );
@@ -264,7 +267,7 @@ function verifySumBinding(
     // R = s*H + e*D (Schnorr verification)
     const R = safeMultiply(H, s).add(safeMultiply(D, e));
     const eCheck = hashToScalar(
-      utf8ToBytes('signet-sum-binding'),
+      utf8ToBytes(DOMAIN_SUM_BINDING),
       pointToBytes(D),
       pointToBytes(R)
     );
