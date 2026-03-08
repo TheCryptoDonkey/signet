@@ -72,6 +72,7 @@ export class RelayClient {
   private subCounter = 0;
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private disconnectRequested = false;
   private onStateChange?: (state: RelayState) => void;
 
   constructor(
@@ -154,7 +155,7 @@ export class RelayClient {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    this.options.autoReconnect = false;
+    this.disconnectRequested = true;
     this.ws?.close();
     this.ws = null;
     this.setState('disconnected');
@@ -308,7 +309,7 @@ export class RelayClient {
   }
 
   private handleReconnect(): void {
-    if (!this.options.autoReconnect) return;
+    if (this.disconnectRequested || !this.options.autoReconnect) return;
     if (this.reconnectAttempts >= (this.options.maxReconnectAttempts ?? 5)) return;
 
     this.reconnectAttempts++;

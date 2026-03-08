@@ -9,8 +9,16 @@ import { SIGNET_KINDS, SIGNET_LABEL, MIN_BRIDGE_RING_SIZE, TRUST_WEIGHTS } from 
 import { getPublicKey, signEvent, verifyEvent } from './crypto.js';
 import { ringSign, ringVerify } from './ring-signature.js';
 import { getTagValue } from './validation.js';
+import { randomBytes } from '@noble/hashes/utils';
 import type { NostrEvent, UnsignedEvent, SignetTier, ParsedIdentityBridge } from './types.js';
 import type { RingSignature } from './ring-signature.js';
+
+/** Generate a cryptographically secure random integer in [0, max) */
+function secureRandomInt(max: number): number {
+  const bytes = randomBytes(4);
+  const val = ((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]) >>> 0;
+  return val % max;
+}
 
 /**
  * Select decoy ring members from a set of verified pubkeys.
@@ -38,16 +46,16 @@ export function selectDecoyRing(
     );
   }
 
-  // Shuffle and pick decoys (Fisher-Yates partial shuffle)
+  // Shuffle and pick decoys (Fisher-Yates partial shuffle, CSPRNG)
   const shuffled = [...candidates];
   for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = secureRandomInt(i + 1);
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   const decoys = shuffled.slice(0, decoyCount);
 
-  // Insert real pubkey at a random position
-  const signerIndex = Math.floor(Math.random() * ringSize);
+  // Insert real pubkey at a random position (CSPRNG)
+  const signerIndex = secureRandomInt(ringSize);
   const ring: string[] = [];
   let decoyIdx = 0;
   for (let i = 0; i < ringSize; i++) {
@@ -149,7 +157,7 @@ export async function verifyIdentityBridge(event: NostrEvent): Promise<boolean> 
   }
 
   // Verify ring size
-  const ringSize = parseInt(getTagValue(event, 'ring-size') || '0');
+  const ringSize = parseInt(getTagValue(event, 'ring-size') || '0', 10);
   if (ringSize < MIN_BRIDGE_RING_SIZE) return false;
   if (parsed.ringSig.ring.length !== ringSize) return false;
 
@@ -169,8 +177,8 @@ export function parseIdentityBridge(event: NostrEvent): ParsedIdentityBridge | n
 
   try {
     const parsed = JSON.parse(event.content);
-    const ringMinTier = parseInt(getTagValue(event, 'ring-min-tier') || '1') as SignetTier;
-    const ringSize = parseInt(getTagValue(event, 'ring-size') || '0');
+    const ringMinTier = parseInt(getTagValue(event, 'ring-min-tier') || '1', 10) as SignetTier;
+    const ringSize = parseInt(getTagValue(event, 'ring-size') || '0', 10);
 
     return {
       anonPubkey: event.pubkey,

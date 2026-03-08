@@ -15,10 +15,14 @@ export function mod(a: bigint, m: bigint = N): bigint {
   return result >= 0n ? result : result + m;
 }
 
-/** Generate a random scalar in [1, N-1] */
+/** Generate a random scalar in [1, N-1] (rejection sampling if mod reduces to 0) */
 export function randomScalar(): bigint {
-  const bytes = secp256k1.utils.randomPrivateKey();
-  return mod(BigInt('0x' + bytesToHex(bytes)));
+  let s: bigint;
+  do {
+    const bytes = secp256k1.utils.randomPrivateKey();
+    s = mod(BigInt('0x' + bytesToHex(bytes)));
+  } while (s === 0n);
+  return s;
 }
 
 /** Convert a scalar bigint to 32-byte hex */

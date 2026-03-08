@@ -233,26 +233,12 @@ export async function createRingProtectedCredential(
   }
 ): Promise<NostrEvent> {
   const pubkey = getPublicKey(verifierPrivateKey);
+  const expiresAt = opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS;
 
-  // Build the event first to get its ID
-  const event = buildCredentialEvent(pubkey, {
-    subjectPubkey,
-    tier: 3,
-    type: 'professional',
-    scope: 'adult',
-    method: 'in-person-id',
-    profession: opts.profession,
-    jurisdiction: opts.jurisdiction,
-    expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
-    content: '', // placeholder
-  });
-
-  // Sign the event to get its ID
-  const signed = await signEvent(event, verifierPrivateKey);
-
-  // Create ring signature over the event ID + subject
+  // Ring signature binds to subject + ring + timestamp (not event ID, which changes with content)
+  const timestamp = Math.floor(Date.now() / 1000);
   const ringSig = ringSign(
-    `signet:credential:${signed.id}:${subjectPubkey}`,
+    `signet:credential:${subjectPubkey}:${timestamp}`,
     ring,
     signerIndex,
     verifierPrivateKey
@@ -260,7 +246,6 @@ export async function createRingProtectedCredential(
 
   const content: RingProtectedContent = { ringSignature: ringSig };
 
-  // Re-sign with the content populated
   const finalEvent = buildCredentialEvent(pubkey, {
     subjectPubkey,
     tier: 3,
@@ -269,7 +254,7 @@ export async function createRingProtectedCredential(
     method: 'in-person-id',
     profession: opts.profession,
     jurisdiction: opts.jurisdiction,
-    expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
+    expiresAt,
     content: JSON.stringify(content),
   });
 
@@ -293,29 +278,15 @@ export async function createRingProtectedChildCredential(
   }
 ): Promise<NostrEvent> {
   const pubkey = getPublicKey(verifierPrivateKey);
+  const expiresAt = opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS;
 
   // Create the age range proof
   const rangeProof = createAgeRangeProof(opts.actualAge, opts.ageRange);
 
-  // Build and sign to get event ID
-  const event = buildCredentialEvent(pubkey, {
-    subjectPubkey,
-    tier: 4,
-    type: 'professional',
-    scope: 'adult+child',
-    method: 'in-person-id',
-    profession: opts.profession,
-    jurisdiction: opts.jurisdiction,
-    ageRange: opts.ageRange,
-    expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
-    content: '', // placeholder
-  });
-
-  const signed = await signEvent(event, verifierPrivateKey);
-
-  // Ring signature over event
+  // Ring signature binds to subject + ring + timestamp (not event ID, which changes with content)
+  const timestamp = Math.floor(Date.now() / 1000);
   const ringSig = ringSign(
-    `signet:credential:${signed.id}:${subjectPubkey}`,
+    `signet:credential:${subjectPubkey}:${timestamp}`,
     ring,
     signerIndex,
     verifierPrivateKey
@@ -335,7 +306,7 @@ export async function createRingProtectedChildCredential(
     profession: opts.profession,
     jurisdiction: opts.jurisdiction,
     ageRange: opts.ageRange,
-    expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
+    expiresAt,
     content: JSON.stringify(content),
   });
 
@@ -365,7 +336,16 @@ export function verifyRingProtectedContent(event: NostrEvent): {
 
     if (content.ringSignature) {
       result.hasRingSignature = true;
-      result.ringValid = ringVerify(content.ringSignature);
+
+      // Verify the ring signature is cryptographically valid
+      const cryptoValid = ringVerify(content.ringSignature);
+
+      // Verify the binding message references this credential's subject
+      const subjectPubkey = getTagValue(event, 'd') || '';
+      const expectedPrefix = `signet:credential:${subjectPubkey}:`;
+      const messageBindsToSubject = content.ringSignature.message.startsWith(expectedPrefix);
+
+      result.ringValid = cryptoValid && messageBindsToSubject;
     }
 
     if (content.rangeProof) {
@@ -524,6 +504,7 @@ export async function createTwoCredentialCeremony(
 /** Compute age range string from ISO date of birth */
 function computeAgeRange(dateOfBirth: string): string {
   const dob = new Date(dateOfBirth);
+  if (isNaN(dob.getTime())) throw new Error(`Invalid date of birth: ${dateOfBirth}`);
   const now = new Date();
   let age = now.getFullYear() - dob.getFullYear();
   const monthDiff = now.getMonth() - dob.getMonth();
@@ -548,7 +529,7 @@ export async function supersedeCredential(
   verifierPrivateKey: string,
   oldCredential: NostrEvent,
   newParams: Partial<CredentialParams> & { subjectPubkey: string }
-): Promise<{ newCredential: NostrEvent; oldUpdated: NostrEvent }> {
+): Promise<{ newCredential: NostrEvent; oldCredential: NostrEvent }> {
   const parsed = parseCredential(oldCredential);
   if (!parsed) throw new Error('Invalid credential to supersede');
 
@@ -575,11 +556,12 @@ export async function supersedeCredential(
 
   const newCredential = await signEvent(newEvent, verifierPrivateKey);
 
-  // Create updated old credential with superseded-by tag
-  const oldTags = [...oldCredential.tags, ['superseded-by', newCredential.id]];
-  const oldUpdated: NostrEvent = { ...oldCredential, tags: oldTags };
+  // Note: We do NOT modify the old credential. Adding a tag would invalidate its
+  // id and signature (which are computed from the serialized event including tags).
+  // The supersession relationship is established by the 'supersedes' tag on the
+  // new credential pointing to the old credential's id.
 
-  return { newCredential, oldUpdated };
+  return { newCredential, oldCredential };
 }
 
 /**
@@ -592,11 +574,19 @@ export function resolveCredentialChain(events: NostrEvent[]): CredentialChain | 
   const byId = new Map<string, NostrEvent>();
   for (const e of events) byId.set(e.id, e);
 
-  // Find the credential that is NOT superseded by anything
+  // Build a set of all IDs that are superseded by another event in the set
+  const supersededIds = new Set<string>();
+  for (const e of events) {
+    const supersedesId = getTagValue(e, 'supersedes');
+    if (supersedesId && byId.has(supersedesId)) {
+      supersededIds.add(supersedesId);
+    }
+  }
+
+  // The "current" credential is the one whose ID is NOT in the superseded set
   let current: NostrEvent | undefined;
   for (const e of events) {
-    const supersededBy = getTagValue(e, 'superseded-by');
-    if (!supersededBy || !byId.has(supersededBy)) {
+    if (!supersededIds.has(e.id)) {
       current = e;
     }
   }

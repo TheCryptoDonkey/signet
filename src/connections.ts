@@ -39,7 +39,8 @@ export function computeSharedSecret(myPrivateKey: string, theirPublicKey: string
   // Nostr/schnorr public keys are x-only (32 bytes).  To perform ECDH we need
   // the full compressed point, so we prepend 0x02 (assume even y-coordinate).
   const theirPoint = secp256k1.ProjectivePoint.fromHex('02' + theirPublicKey);
-  const privateKeyBigInt = BigInt('0x' + myPrivateKey);
+  const privateKeyBigInt = BigInt('0x' + myPrivateKey) % secp256k1.CURVE.n;
+  if (privateKeyBigInt === 0n) throw new Error('Invalid private key (zero after mod N reduction)');
   const sharedPoint = theirPoint.multiply(privateKeyBigInt);
 
   // Derive shared secret: SHA-256 of the x-coordinate (32 bytes big-endian)

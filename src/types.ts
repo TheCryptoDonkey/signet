@@ -276,7 +276,7 @@ export type ElectionScale = 'organisational' | 'community' | 'national';
 /** Re-vote policy */
 export type ReVotePolicy = 'allowed' | 'denied';
 
-/** Kind 30478: Election Definition */
+/** Kind 30482: Election Definition */
 export interface ElectionParams {
   electionId: string;
   title: string;
@@ -312,7 +312,7 @@ export interface ParsedElection {
   authorityPubkey: string;
 }
 
-/** Kind 30479: Ballot */
+/** Kind 30483: Ballot */
 export interface BallotParams {
   electionId: string;
   electionEventId: string;
@@ -331,7 +331,7 @@ export interface ParsedBallot {
   timestamp: number;
 }
 
-/** Kind 30480: Election Result */
+/** Kind 30484: Election Result */
 export interface ElectionResultParams {
   electionId: string;
   electionEventId: string;

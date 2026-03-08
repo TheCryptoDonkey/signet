@@ -245,17 +245,17 @@ describe('Credential Chains', () => {
       }
     );
 
-    const { newCredential: cred2, oldUpdated: cred1Updated } = await supersedeCredential(
+    const { newCredential: cred2, oldCredential: cred1Ref } = await supersedeCredential(
       verifier.privateKey,
       cred1,
       { subjectPubkey: subject.publicKey }
     );
 
-    const chain = resolveCredentialChain([cred1Updated, cred2]);
+    const chain = resolveCredentialChain([cred1Ref, cred2]);
     expect(chain).not.toBeNull();
     expect(chain!.current.id).toBe(cred2.id);
     expect(chain!.history).toHaveLength(1);
-    expect(chain!.history[0].id).toBe(cred1Updated.id);
+    expect(chain!.history[0].id).toBe(cred1Ref.id);
   });
 
   it('isSuperseded correctly identifies superseded credentials', async () => {
@@ -277,13 +277,18 @@ describe('Credential Chains', () => {
 
     expect(isSuperseded(original)).toBe(false);
 
-    const { oldUpdated } = await supersedeCredential(
+    const { newCredential } = await supersedeCredential(
       verifier.privateKey,
       original,
       { subjectPubkey: subject.publicKey }
     );
 
-    expect(isSuperseded(oldUpdated)).toBe(true);
+    // Old credential is NOT modified (would invalidate its id/sig).
+    // Supersession is tracked by the 'supersedes' tag on the new credential.
+    expect(isSuperseded(original)).toBe(false);
+    const supersedesTag = newCredential.tags.find(t => t[0] === 'supersedes');
+    expect(supersedesTag).toBeDefined();
+    expect(supersedesTag![1]).toBe(original.id);
   });
 
   it('chain of 3 resolves correctly', async () => {
@@ -303,23 +308,23 @@ describe('Credential Chains', () => {
       }
     );
 
-    const { newCredential: cred2, oldUpdated: cred1Updated } = await supersedeCredential(
+    const { newCredential: cred2 } = await supersedeCredential(
       verifier.privateKey,
       cred1,
       { subjectPubkey: subject.publicKey }
     );
 
-    const { newCredential: cred3, oldUpdated: cred2Updated } = await supersedeCredential(
+    const { newCredential: cred3 } = await supersedeCredential(
       verifier.privateKey,
       cred2,
       { subjectPubkey: subject.publicKey }
     );
 
-    const chain = resolveCredentialChain([cred1Updated, cred2Updated, cred3]);
+    const chain = resolveCredentialChain([cred1, cred2, cred3]);
     expect(chain!.current.id).toBe(cred3.id);
     expect(chain!.history).toHaveLength(2);
-    expect(chain!.history[0].id).toBe(cred1Updated.id);
-    expect(chain!.history[1].id).toBe(cred2Updated.id);
+    expect(chain!.history[0].id).toBe(cred1.id);
+    expect(chain!.history[1].id).toBe(cred2.id);
   });
 });
 

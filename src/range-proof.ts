@@ -415,6 +415,13 @@ export function verifyRangeProof(proof: RangeProof): boolean {
  * @returns The range proof (to be placed in event content)
  */
 export function createAgeRangeProof(age: number, ageRange: string): RangeProof {
+  // Handle "18+" format (adults, no upper bound — use 150 as practical max)
+  if (ageRange.endsWith('+')) {
+    const min = parseInt(ageRange.slice(0, -1), 10);
+    if (isNaN(min)) throw new Error(`Invalid age range format: ${ageRange}`);
+    return createRangeProof(age, min, 150);
+  }
+
   const [minStr, maxStr] = ageRange.split('-');
   const min = parseInt(minStr, 10);
   const max = parseInt(maxStr, 10);
@@ -442,5 +449,16 @@ export function serializeRangeProof(proof: RangeProof): string {
  * Deserialize a range proof from a JSON string.
  */
 export function deserializeRangeProof(json: string): RangeProof {
-  return JSON.parse(json) as RangeProof;
+  const parsed = JSON.parse(json);
+  if (typeof parsed !== 'object' || parsed === null) throw new Error('Invalid range proof: not an object');
+  if (typeof parsed.min !== 'number' || typeof parsed.max !== 'number') {
+    throw new Error('Invalid range proof: missing min/max');
+  }
+  if (typeof parsed.bits !== 'number' || typeof parsed.commitment !== 'string') {
+    throw new Error('Invalid range proof: missing bits or commitment');
+  }
+  if (!Array.isArray(parsed.lowerProof) || !Array.isArray(parsed.upperProof)) {
+    throw new Error('Invalid range proof: missing lowerProof/upperProof');
+  }
+  return parsed as RangeProof;
 }

@@ -152,6 +152,12 @@ export function reconstructSecret(
 
   // Use only the first `threshold` shares
   const used = shares.slice(0, threshold);
+
+  // Validate no duplicate share IDs
+  const ids = new Set(used.map(s => s.id));
+  if (ids.size !== used.length) {
+    throw new Error('Duplicate share IDs detected — each share must have a unique ID');
+  }
   const secretLen = used[0].data.length;
   const result = new Uint8Array(secretLen);
 

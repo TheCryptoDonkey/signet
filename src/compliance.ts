@@ -557,9 +557,17 @@ function checkChildDataRequirements(
     return issues;
   }
 
-  const [minStr, maxStr] = ageRange.split('-');
-  const minAge = parseInt(minStr, 10);
-  const maxAge = parseInt(maxStr, 10);
+  // Handle "18+" format (adults, no upper bound)
+  let minAge: number;
+  let maxAge: number;
+  if (ageRange.endsWith('+')) {
+    minAge = parseInt(ageRange.slice(0, -1), 10);
+    maxAge = 150;
+  } else {
+    const [minStr, maxStr] = ageRange.split('-');
+    minAge = parseInt(minStr, 10);
+    maxAge = parseInt(maxStr, 10);
+  }
 
   // Check if age range falls below digital consent age
   if (maxAge < j.childProtection.minAgeDigitalConsent) {

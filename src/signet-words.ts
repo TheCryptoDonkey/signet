@@ -51,9 +51,9 @@ export function deriveWords(sharedSecret: string, epoch: number, wordCount: numb
     const byteIndex = Math.floor(bitOffset / 8);
     const bitShift = bitOffset % 8;
 
-    // Read 16 bits starting from byteIndex, then extract the 11-bit window
-    const twoBytes = (mac[byteIndex] << 8) | (mac[byteIndex + 1] ?? 0);
-    const index = (twoBytes >> (5 - bitShift)) & 0x7FF;
+    // Read 3 bytes to cover the 11-bit window that may span byte boundaries
+    const threeBytes = ((mac[byteIndex] ?? 0) << 16) | ((mac[byteIndex + 1] ?? 0) << 8) | (mac[byteIndex + 2] ?? 0);
+    const index = (threeBytes >> (13 - bitShift)) & 0x7FF;
 
     words.push(BIP39_WORDLIST[index]);
   }

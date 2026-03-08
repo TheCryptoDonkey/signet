@@ -13,16 +13,16 @@ import type {
 
 describe('voting extension', () => {
   describe('event kind constants', () => {
-    it('ELECTION is 30478', () => {
-      expect(SIGNET_KINDS.ELECTION).toBe(30478);
+    it('ELECTION is 30482', () => {
+      expect(SIGNET_KINDS.ELECTION).toBe(30482);
     });
 
-    it('BALLOT is 30479', () => {
-      expect(SIGNET_KINDS.BALLOT).toBe(30479);
+    it('BALLOT is 30483', () => {
+      expect(SIGNET_KINDS.BALLOT).toBe(30483);
     });
 
-    it('ELECTION_RESULT is 30480', () => {
-      expect(SIGNET_KINDS.ELECTION_RESULT).toBe(30480);
+    it('ELECTION_RESULT is 30484', () => {
+      expect(SIGNET_KINDS.ELECTION_RESULT).toBe(30484);
     });
 
     it('all kind numbers are unique', () => {
@@ -31,7 +31,7 @@ describe('voting extension', () => {
       expect(unique.size).toBe(values.length);
     });
 
-    it('has 11 total event kinds (30470-30480)', () => {
+    it('has 11 total event kinds (30470-30484, gap at 30478-30481)', () => {
       expect(Object.keys(SIGNET_KINDS)).toHaveLength(11);
     });
   });
