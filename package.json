@@ -33,7 +33,8 @@
   "license": "MIT",
   "dependencies": {
     "@noble/curves": "^1.8.1",
-    "@noble/hashes": "^1.7.1"
+    "@noble/hashes": "^1.7.1",
+    "canary-kit": "file:../canary-kit"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",

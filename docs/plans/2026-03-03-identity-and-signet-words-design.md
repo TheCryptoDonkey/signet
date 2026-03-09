@@ -34,14 +34,16 @@ And before any of that: how does a user create their identity in the first place
 - Contact info stored locally only — never published to relays
 - Optionally auto-creates mutual in-person vouches (kind 30471)
 
-### 4. "Signet Me" — Time-Based Verification Words
+### 4. "Signet Me" — Time-Based Verification Words (powered by canary-kit)
 
-- `HMAC-SHA256(sharedSecret, floor(unixTimestamp / 30))` → 32 bytes
-- Extract 33 bits → 3 × 11-bit BIP-39 word indices → 3 words
+- Delegates word derivation to canary-kit's CANARY-DERIVE primitive
+- `deriveTokenBytes(sharedSecret, "signet:verify", epoch)` → HMAC-SHA256 → 32 bytes
+- `encodeAsWords(bytes, 3, CANARY_WORDLIST)` → 3 spoken-clarity words
 - 30-second epoch, accept current ± 1 window (90s tolerance)
 - Both parties compute independently → same words
 - Works offline, no server needed
 - Works for personal contacts and organisations (banks, etc.)
+- Same wordlist as Canary protocol — consistent vocabulary across identity and verification
 
 ## Modules
 

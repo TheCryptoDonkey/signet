@@ -11,6 +11,7 @@ export default defineConfig({
   resolve: {
     alias: {
       'signet-protocol': path.resolve(__dirname, '../src'),
+      'canary-kit': path.resolve(__dirname, '../../canary-kit/src'),
     },
   },
   server: {

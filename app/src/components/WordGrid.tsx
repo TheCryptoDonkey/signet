@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { BIP39_WORDLIST } from 'signet-protocol';
+import { SIGNET_WORDLIST } from 'signet-protocol';
 
 interface WordGridProps {
   words: string[];
@@ -31,11 +31,11 @@ function shuffle<T>(arr: T[]): T[] {
 function randomDecoys(exclude: Set<string>, count: number): string[] {
   const decoys: string[] = [];
   const tried = new Set<number>();
-  while (decoys.length < count && tried.size < BIP39_WORDLIST.length) {
-    const idx = Math.floor(Math.random() * BIP39_WORDLIST.length);
+  while (decoys.length < count && tried.size < SIGNET_WORDLIST.length) {
+    const idx = Math.floor(Math.random() * SIGNET_WORDLIST.length);
     if (tried.has(idx)) continue;
     tried.add(idx);
-    const w = BIP39_WORDLIST[idx];
+    const w = SIGNET_WORDLIST[idx];
     if (!exclude.has(w)) {
       decoys.push(w);
     }

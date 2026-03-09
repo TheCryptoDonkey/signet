@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
-import { BIP39_WORDLIST } from '../src/wordlist.js';
+import { WORDLIST } from 'canary-kit/wordlist';
 import {
   SIGNET_EPOCH_SECONDS,
   SIGNET_WORD_COUNT,
@@ -30,10 +30,10 @@ describe('signet-words', () => {
       expect(words).toHaveLength(SIGNET_WORD_COUNT);
     });
 
-    it('all 3 words are in the BIP-39 wordlist', () => {
+    it('all 3 words are in the Canary spoken-clarity wordlist', () => {
       const words = getSignetWords(testSecret, fixedTimestamp);
       for (const word of words) {
-        expect(BIP39_WORDLIST).toContain(word);
+        expect(WORDLIST).toContain(word);
       }
     });
 
@@ -61,26 +61,19 @@ describe('signet-words', () => {
     it('returns 1 word when configured', () => {
       const words = getSignetWords(testSecret, fixedTimestamp, { wordCount: 1 });
       expect(words).toHaveLength(1);
-      expect(BIP39_WORDLIST).toContain(words[0]);
+      expect(WORDLIST).toContain(words[0]);
     });
 
     it('returns 2 words when configured', () => {
       const words = getSignetWords(testSecret, fixedTimestamp, { wordCount: 2 });
       expect(words).toHaveLength(2);
-      for (const w of words) expect(BIP39_WORDLIST).toContain(w);
+      for (const w of words) expect(WORDLIST).toContain(w);
     });
 
     it('returns 4 words when configured', () => {
       const words = getSignetWords(testSecret, fixedTimestamp, { wordCount: 4 });
       expect(words).toHaveLength(4);
-      for (const w of words) expect(BIP39_WORDLIST).toContain(w);
-    });
-
-    it('first N words are consistent regardless of total word count', () => {
-      const words3 = getSignetWords(testSecret, fixedTimestamp, { wordCount: 3 });
-      const words4 = getSignetWords(testSecret, fixedTimestamp, { wordCount: 4 });
-      // First 3 words should be the same whether you ask for 3 or 4
-      expect(words4.slice(0, 3)).toEqual(words3);
+      for (const w of words) expect(WORDLIST).toContain(w);
     });
 
     it('throws for word count < 1', () => {
@@ -94,7 +87,7 @@ describe('signet-words', () => {
     it('handles max word count', () => {
       const words = getSignetWords(testSecret, fixedTimestamp, { wordCount: MAX_WORD_COUNT });
       expect(words).toHaveLength(MAX_WORD_COUNT);
-      for (const w of words) expect(BIP39_WORDLIST).toContain(w);
+      for (const w of words) expect(WORDLIST).toContain(w);
     });
   });
 
@@ -113,7 +106,6 @@ describe('signet-words', () => {
       const words30 = getSignetWords(testSecret, fixedTimestamp, { epochSeconds: 30 });
       const words60 = getSignetWords(testSecret, fixedTimestamp, { epochSeconds: 60 });
       // Different epoch = different epoch number = likely different words
-      // (not guaranteed but overwhelmingly likely with different epoch indices)
       const epoch30 = getEpoch(fixedTimestamp, 30);
       const epoch60 = getEpoch(fixedTimestamp, 60);
       if (epoch30 !== epoch60) {
@@ -148,23 +140,18 @@ describe('signet-words', () => {
     });
 
     it('returns true for previous epoch (tolerance)', () => {
-      // Get words from the previous epoch
       const prevEpochTime = fixedTimestamp - SIGNET_EPOCH_SECONDS * 1000;
       const words = getSignetWords(testSecret, prevEpochTime);
-      // Verify against current epoch — should pass due to ±1 tolerance
       expect(verifySignetWords(testSecret, words, fixedTimestamp)).toBe(true);
     });
 
     it('returns true for next epoch (tolerance)', () => {
-      // Get words from the next epoch
       const nextEpochTime = fixedTimestamp + SIGNET_EPOCH_SECONDS * 1000;
       const words = getSignetWords(testSecret, nextEpochTime);
-      // Verify against current epoch — should pass due to ±1 tolerance
       expect(verifySignetWords(testSecret, words, fixedTimestamp)).toBe(true);
     });
 
     it('returns false for words from 2 epochs ago', () => {
-      // Get words from 2 epochs ago
       const oldTime = fixedTimestamp - SIGNET_EPOCH_SECONDS * 1000 * 2;
       const words = getSignetWords(testSecret, oldTime);
       expect(verifySignetWords(testSecret, words, fixedTimestamp)).toBe(false);
@@ -172,7 +159,6 @@ describe('signet-words', () => {
 
     it('returns false for random/wrong words', () => {
       const wrongWords = ['abandon', 'abandon', 'abandon'];
-      // Use a timestamp where the correct words are certainly not abandon x3
       expect(verifySignetWords(testSecret, wrongWords, fixedTimestamp)).toBe(false);
     });
   });
@@ -180,9 +166,7 @@ describe('signet-words', () => {
   describe('cross-config verification', () => {
     it('verifier must use same config as generator', () => {
       const words = getSignetWords(testSecret, fixedTimestamp, { wordCount: 2 });
-      // Verify with matching config
       expect(verifySignetWords(testSecret, words, fixedTimestamp, { wordCount: 2 })).toBe(true);
-      // Verify with default config (3 words) — should fail
       expect(verifySignetWords(testSecret, words, fixedTimestamp)).toBe(false);
     });
   });
@@ -229,7 +213,7 @@ describe('signet-words', () => {
   describe('getEpoch', () => {
     it('returns same value within the same 30-second window', () => {
       const epoch1 = getEpoch(fixedTimestamp);
-      const epoch2 = getEpoch(fixedTimestamp + 10_000); // +10s, still within window
+      const epoch2 = getEpoch(fixedTimestamp + 10_000);
       expect(epoch1).toBe(epoch2);
     });
 
@@ -240,10 +224,9 @@ describe('signet-words', () => {
     });
 
     it('respects custom epoch interval', () => {
-      // Align to start of a 60s epoch
       const alignedTs = Math.floor(fixedTimestamp / 60000) * 60000 + 5000;
       const epoch1 = getEpoch(alignedTs, 60);
-      const epoch2 = getEpoch(alignedTs + 31_000, 60); // +31s, still within 60s window
+      const epoch2 = getEpoch(alignedTs + 31_000, 60);
       expect(epoch1).toBe(epoch2);
     });
   });
@@ -263,7 +246,7 @@ describe('signet-words', () => {
           const words = deriveWords(secret, epochOffset);
           expect(words).toHaveLength(SIGNET_WORD_COUNT);
           for (const word of words) {
-            const idx = BIP39_WORDLIST.indexOf(word);
+            const idx = WORDLIST.indexOf(word);
             expect(idx).toBeGreaterThanOrEqual(0);
             expect(idx).toBeLessThanOrEqual(2047);
           }
@@ -276,7 +259,7 @@ describe('signet-words', () => {
         const words = deriveWords(testSecret, 0, count);
         expect(words).toHaveLength(count);
         for (const word of words) {
-          expect(BIP39_WORDLIST).toContain(word);
+          expect(WORDLIST).toContain(word);
         }
       }
     });

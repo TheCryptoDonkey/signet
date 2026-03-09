@@ -375,12 +375,13 @@ export {
 
 export type { BadgeInfo, TrustLevel } from './badge.js';
 
-// Signet Words (Time-Based Verification)
+// Signet Words (Time-Based Verification — powered by canary-kit)
 export {
   SIGNET_EPOCH_SECONDS,
   SIGNET_WORD_COUNT,
   SIGNET_TOLERANCE,
   MAX_WORD_COUNT,
+  SIGNET_WORDLIST,
   getEpoch,
   deriveWords,
   getSignetWords,

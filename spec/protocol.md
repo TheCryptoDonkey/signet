@@ -978,31 +978,31 @@ The core peer-to-peer identity verification feature. Given a connection with a s
 
 **The solution:** "Signet me." Both users open each other's profiles. Both see the same words. The caller reads them out. Match → it's really them.
 
-**Algorithm:**
+**Algorithm (powered by canary-kit):**
+
+Signet delegates word derivation to the [CANARY protocol](https://github.com/TheCryptoDonkey/canary-kit) for protocol alignment. Canary handles real-time spoken verification; Signet handles identity and trust.
 
 ```
 Inputs:
   S  = shared secret (32 bytes, from ECDH at connection time)
   t  = current Unix timestamp in milliseconds
-  N  = word count (1-23, default: 3)
+  N  = word count (1-16, default: 3)
   I  = epoch interval in seconds (default: 30)
   T  = tolerance in epochs (default: 1)
 
 Epoch:
   E = floor(t / (I × 1000))
 
-Derivation:
-  H = HMAC-SHA256(S, E.toString())   // 32-byte MAC
+Derivation (CANARY-DERIVE):
+  H = HMAC-SHA256(S, utf8("signet:verify") || E_be32)   // 32-byte MAC
 
-Word extraction (N × 11-bit indices from H):
+Word extraction (N × 16-bit indices from H):
   For i = 0 to N-1:
-    bitOffset = i × 11
-    byteIndex = floor(bitOffset / 8)
-    bitShift  = bitOffset mod 8
-    twoBytes  = (H[byteIndex] << 8) | H[byteIndex + 1]
-    index     = (twoBytes >> (5 - bitShift)) & 0x7FF
-    word[i]   = BIP39_WORDLIST[index]
+    index   = readUint16BE(H, i × 2) mod 2048
+    word[i] = CANARY_WORDLIST[index]
 ```
+
+**Wordlist:** The Canary spoken-clarity wordlist (2048 words, curated from BIP-39 with homophones and phonetic near-collisions removed). Optimised for verbal exchange.
 
 **Defaults:** 3 words, 30-second epoch, ±1 tolerance. These are the recommended settings for in-person and phone verification. Implementations MAY allow configuration of all three parameters for different use cases.
 
@@ -1025,7 +1025,7 @@ Word extraction (N × 11-bit indices from H):
 | 3 | 33 bits | ~8.6 billion |
 | 4 | 44 bits | ~17.6 trillion |
 
-**Maximum word count:** 23 (253 bits from 32 bytes of HMAC-SHA256 output).
+**Maximum word count:** 16 (32 bytes of HMAC output / 2 bytes per word index).
 
 **Properties:**
 - **Symmetric:** Both parties compute the same words from the same shared secret.
@@ -1034,6 +1034,7 @@ Word extraction (N × 11-bit indices from H):
 - **Offline:** No server, no relay, no network needed. Pure local computation.
 - **Configurable:** Word count, epoch interval, and tolerance are adjustable for different security/usability trade-offs.
 - **Consistent prefix:** The first N words are always the same regardless of the total word count requested. Asking for 4 words gives the same first 3 as asking for 3.
+- **Protocol aligned:** Uses canary-kit's CANARY-DERIVE primitive and spoken-clarity wordlist, ensuring consistent vocabulary across Signet (identity establishment) and Canary (ongoing verification, duress signalling).
 
 **Use cases:**
 

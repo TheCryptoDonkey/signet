@@ -1,10 +1,13 @@
 // Signet Words — Time-based word verification ("signet me")
-// Uses HMAC-SHA256 to derive rotating word sequences from a shared secret
+// Delegates word derivation to canary-kit for protocol alignment.
+// Signet handles identity (who you are). Canary handles verification (prove it's you).
 
-import { hmac } from '@noble/hashes/hmac';
-import { sha256 } from '@noble/hashes/sha256';
-import { hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
-import { BIP39_WORDLIST } from './wordlist.js';
+import { deriveTokenBytes } from 'canary-kit/token';
+import { encodeAsWords, type TokenEncoding } from 'canary-kit/encoding';
+import { WORDLIST } from 'canary-kit/wordlist';
+
+/** The Canary spoken-clarity wordlist used for Signet word verification. */
+export { WORDLIST as SIGNET_WORDLIST } from 'canary-kit/wordlist';
 
 /** Default: words rotate every 30 seconds */
 export const SIGNET_EPOCH_SECONDS = 30;
@@ -15,12 +18,15 @@ export const SIGNET_WORD_COUNT = 3;
 /** Default: accept +/-1 epoch window for clock skew tolerance */
 export const SIGNET_TOLERANCE = 1;
 
-/** Maximum supported word count (limited by HMAC output bytes) */
-export const MAX_WORD_COUNT = 23; // 23 × 11 = 253 bits, fits in 32 bytes of SHA-256 output
+/** Maximum supported word count (limited by HMAC output bytes: 32 bytes / 2 bytes per word = 16) */
+export const MAX_WORD_COUNT = 16;
+
+/** Context string for Signet word derivation via CANARY-DERIVE */
+const SIGNET_CONTEXT = 'signet:verify';
 
 /** Configuration options for signet words */
 export interface SignetWordsConfig {
-  /** Number of words to derive (1-23, default: 3) */
+  /** Number of words to derive (1-16, default: 3) */
   wordCount?: number;
   /** Epoch interval in seconds (default: 30) */
   epochSeconds?: number;
@@ -33,32 +39,15 @@ export function getEpoch(timestampMs?: number, epochSeconds: number = SIGNET_EPO
   return Math.floor((timestampMs ?? Date.now()) / (epochSeconds * 1000));
 }
 
-/** Derive N BIP-39 words from a shared secret and epoch number.
- *  Uses HMAC-SHA256 and extracts N x 11-bit indices. */
+/** Derive N words from a shared secret and epoch number.
+ *  Uses canary-kit's CANARY-DERIVE (HMAC-SHA256) and encodes as spoken-clarity words. */
 export function deriveWords(sharedSecret: string, epoch: number, wordCount: number = SIGNET_WORD_COUNT): string[] {
   if (wordCount < 1 || wordCount > MAX_WORD_COUNT) {
     throw new Error(`wordCount must be between 1 and ${MAX_WORD_COUNT}`);
   }
 
-  const key = hexToBytes(sharedSecret);
-  const message = utf8ToBytes(epoch.toString());
-  const mac = hmac(sha256, key, message);
-
-  // Extract wordCount x 11-bit indices from the HMAC output
-  const words: string[] = [];
-  for (let i = 0; i < wordCount; i++) {
-    const bitOffset = i * 11;
-    const byteIndex = Math.floor(bitOffset / 8);
-    const bitShift = bitOffset % 8;
-
-    // Read 3 bytes to cover the 11-bit window that may span byte boundaries
-    const threeBytes = ((mac[byteIndex] ?? 0) << 16) | ((mac[byteIndex + 1] ?? 0) << 8) | (mac[byteIndex + 2] ?? 0);
-    const index = (threeBytes >> (13 - bitShift)) & 0x7FF;
-
-    words.push(BIP39_WORDLIST[index]);
-  }
-
-  return words;
+  const bytes = deriveTokenBytes(sharedSecret, SIGNET_CONTEXT, epoch);
+  return encodeAsWords(bytes, wordCount, WORDLIST);
 }
 
 /** Get the current word sequence for a shared secret. */
