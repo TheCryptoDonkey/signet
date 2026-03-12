@@ -593,8 +593,8 @@ function checkChildDataRequirements(
     });
   }
 
-  // Check that the age range is within expected bounds
-  if (minAge < 0 || maxAge > j.childProtection.ageOfMajority) {
+  // Check that the age range is within expected bounds (skip upper check for open-ended "18+" ranges)
+  if (minAge < 0 || (!ageRange.endsWith('+') && maxAge > j.childProtection.ageOfMajority)) {
     issues.push({
       code: 'INVALID_AGE_RANGE',
       severity: 'warning',

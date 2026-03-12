@@ -274,8 +274,14 @@ export class RelayClient {
       switch (msg[0]) {
         case 'EVENT': {
           if (msg.length < 3 || typeof msg[1] !== 'string' || typeof msg[2] !== 'object' || msg[2] === null) break;
+          const raw = msg[2] as Record<string, unknown>;
+          // Validate required NostrEvent fields before casting
+          if (typeof raw.id !== 'string' || typeof raw.pubkey !== 'string' ||
+              typeof raw.kind !== 'number' || typeof raw.created_at !== 'number' ||
+              !Array.isArray(raw.tags) || typeof raw.content !== 'string' ||
+              typeof raw.sig !== 'string') break;
           const subId = msg[1] as string;
-          const event = msg[2] as NostrEvent;
+          const event = raw as unknown as NostrEvent;
           const sub = this.subscriptions.get(subId);
           if (sub) {
             if (this.options.verifyEvents !== false) {

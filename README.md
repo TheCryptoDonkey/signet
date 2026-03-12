@@ -35,9 +35,9 @@ The full specification is at [`spec/protocol.md`](spec/protocol.md).
 | 30475 | Verifier Revocation | Community confirms challenge, revokes verifier |
 | 30476 | Identity Bridge | Link two keypairs via ring signature |
 | 30477 | Delegation | Guardian or agent delegation with scoped permission |
-| 30478 | Election | Voting extension: define an election |
-| 30479 | Ballot | Voting extension: cast an anonymous ballot |
-| 30480 | Election Result | Voting extension: publish tallied result |
+| 30482 | Election | Voting extension: define an election |
+| 30483 | Ballot | Voting extension: cast an anonymous ballot |
+| 30484 | Election Result | Voting extension: publish tallied result |
 
 ### Crypto Stack
 

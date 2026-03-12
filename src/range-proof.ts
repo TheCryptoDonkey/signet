@@ -306,6 +306,9 @@ function verifySumBinding(
  * @returns A range proof and the commitment
  */
 export function createRangeProof(value: number, min: number, max: number, bindingContext?: string): RangeProof {
+  if (!Number.isSafeInteger(value) || !Number.isSafeInteger(min) || !Number.isSafeInteger(max)) {
+    throw new SignetValidationError('Range proof values must be safe integers');
+  }
   if (min < 0) throw new SignetValidationError('Minimum must be non-negative');
   if (max < min) throw new SignetValidationError('Maximum must be >= minimum');
   if (value < min || value > max) throw new SignetValidationError(`Value ${value} not in range [${min}, ${max}]`);
@@ -494,6 +497,9 @@ export function deserializeRangeProof(json: string): RangeProof {
   }
   if (!Array.isArray(parsed.lowerProof) || !Array.isArray(parsed.upperProof)) {
     throw new SignetValidationError('Invalid range proof: missing lowerProof/upperProof');
+  }
+  if (parsed.lowerProof.length > 64 || parsed.upperProof.length > 64) {
+    throw new SignetValidationError('Invalid range proof: proof arrays exceed maximum length (64)');
   }
   if (typeof parsed.lowerCommitment !== 'string' || typeof parsed.upperCommitment !== 'string') {
     throw new SignetValidationError('Invalid range proof: missing lowerCommitment/upperCommitment');

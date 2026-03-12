@@ -14,6 +14,7 @@ import {
   validateVouch,
   SIGNET_KINDS,
 } from '../src/index.js';
+import { validateFieldSizeBounds } from '../src/validation.js';
 
 describe('validation', () => {
   describe('validateEvent', () => {
@@ -139,6 +140,39 @@ describe('validation', () => {
       const result = validateCredential(tampered);
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.includes('age-range'))).toBe(true);
+    });
+  });
+
+  describe('field-size bounds', () => {
+    it('rejects tag values beyond index 1 that exceed max length', () => {
+      const longValue = 'x'.repeat(1025);
+      const errors: string[] = [];
+      validateFieldSizeBounds({
+        id: 'a'.repeat(64),
+        sig: 'b'.repeat(128),
+        kind: 30470,
+        pubkey: 'c'.repeat(64),
+        created_at: 0,
+        tags: [['result', 'option-a', longValue]],
+        content: '',
+      }, errors);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0]).toContain('index 2');
+    });
+
+    it('accepts tag values at all indices within bounds', () => {
+      const okValue = 'x'.repeat(1024);
+      const errors: string[] = [];
+      validateFieldSizeBounds({
+        id: 'a'.repeat(64),
+        sig: 'b'.repeat(128),
+        kind: 30470,
+        pubkey: 'c'.repeat(64),
+        created_at: 0,
+        tags: [['result', okValue, okValue, okValue]],
+        content: '',
+      }, errors);
+      expect(errors).toHaveLength(0);
     });
   });
 

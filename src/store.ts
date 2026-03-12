@@ -2,7 +2,7 @@
 // In-memory event storage with query support and JSON serialization
 
 import { SIGNET_KINDS } from './constants.js';
-import { getTagValue } from './validation.js';
+import { getTagValue, validateFieldSizeBounds } from './validation.js';
 import { SignetValidationError } from './errors.js';
 import type {
   NostrEvent,
@@ -241,6 +241,11 @@ export class SignetStore {
       ) {
         continue; // skip malformed entries
       }
+      // Validate field-size bounds on imported events
+      const boundsErrors: string[] = [];
+      validateFieldSizeBounds(item as NostrEvent, boundsErrors);
+      if (boundsErrors.length > 0) continue;
+
       events.push(item as NostrEvent);
     }
     let added = 0;

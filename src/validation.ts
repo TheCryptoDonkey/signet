@@ -4,9 +4,9 @@
 import { SIGNET_KINDS, SIGNET_LABEL } from './constants.js';
 import type { NostrEvent, SignetTier } from './types.js';
 
-const MAX_CONTENT_LENGTH = 65536;
-const MAX_TAG_VALUE_LENGTH = 1024;
-const MAX_TAGS_COUNT = 100;
+export const MAX_CONTENT_LENGTH = 65536;
+export const MAX_TAG_VALUE_LENGTH = 1024;
+export const MAX_TAGS_COUNT = 100;
 
 export interface ValidationResult {
   valid: boolean;
@@ -33,8 +33,10 @@ export function validateFieldSizeBounds(event: NostrEvent, errors: string[]): vo
     errors.push(`Event has too many tags (max ${MAX_TAGS_COUNT})`);
   }
   for (const t of event.tags) {
-    if (t[1] !== undefined && t[1].length > MAX_TAG_VALUE_LENGTH) {
-      errors.push(`Tag value for "${t[0]}" exceeds maximum length of ${MAX_TAG_VALUE_LENGTH} characters`);
+    for (let i = 1; i < t.length; i++) {
+      if (t[i] !== undefined && t[i].length > MAX_TAG_VALUE_LENGTH) {
+        errors.push(`Tag value at index ${i} for "${t[0]}" exceeds maximum length of ${MAX_TAG_VALUE_LENGTH} characters`);
+      }
     }
   }
 }
