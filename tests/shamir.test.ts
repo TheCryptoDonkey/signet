@@ -192,6 +192,14 @@ describe('shamir', () => {
       );
     });
 
+    it('throws when share ID exceeds 255', () => {
+      const shares = splitSecret(secret16, 2, 3);
+      const badShare = { id: 256, data: shares[0].data };
+      expect(() => reconstructSecret([badShare, shares[1]], 2)).toThrow(
+        'must be in [1, 255]',
+      );
+    });
+
     it('throws when shares have inconsistent data lengths', () => {
       const shares16 = splitSecret(secret16, 2, 3);
       const shares32 = splitSecret(secret32, 2, 3);
@@ -231,6 +239,10 @@ describe('shamir', () => {
         expect(recovered.id).toBe(share.id);
         expect(recovered.data).toEqual(share.data);
       }
+    });
+
+    it('wordsToShare throws on empty word list', () => {
+      expect(() => wordsToShare([])).toThrow('Cannot decode empty word list');
     });
 
     it('full pipeline: split -> words -> reconstruct', () => {

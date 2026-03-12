@@ -4,6 +4,7 @@
 
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
 import { SignetValidationError, SignetCryptoError } from './errors.js';
+import { constantTimeEqual } from './utils.js';
 import {
   Point,
   N,
@@ -75,7 +76,15 @@ export function computeKeyImage(privateKey: string, publicKey: string, electionI
 }
 
 export function hasDuplicateKeyImage(keyImage: string, existingImages: string[]): boolean {
-  return existingImages.includes(keyImage);
+  const target = hexToBytes(keyImage);
+  let found = false;
+  for (const img of existingImages) {
+    const candidate = hexToBytes(img);
+    if (candidate.length === target.length && constantTimeEqual(target, candidate)) {
+      found = true;
+    }
+  }
+  return found;
 }
 
 function challengeHash(

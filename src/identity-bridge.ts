@@ -213,12 +213,24 @@ export function parseIdentityBridge(event: NostrEvent): ParsedIdentityBridge | n
   try {
     const parsed = JSON.parse(event.content);
 
-    if (!parsed || !parsed.ringSig || !Array.isArray(parsed.ringSig.ring)) {
+    if (!parsed || typeof parsed !== 'object' ||
+        !parsed.ringSig || typeof parsed.ringSig !== 'object' ||
+        !Array.isArray(parsed.ringSig.ring) ||
+        typeof parsed.ringSig.message !== 'string' ||
+        typeof parsed.ringSig.c0 !== 'string' ||
+        !Array.isArray(parsed.ringSig.responses) ||
+        typeof parsed.timestamp !== 'number') {
+      return null;
+    }
+
+    // Validate ring elements are strings
+    if (!parsed.ringSig.ring.every((r: unknown) => typeof r === 'string')) {
       return null;
     }
 
     const ringMinTier = parseInt(getTagValue(event, 'ring-min-tier') || '1', 10) as SignetTier;
     const ringSize = parseInt(getTagValue(event, 'ring-size') || '0', 10);
+    if (isNaN(ringMinTier) || isNaN(ringSize)) return null;
 
     const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
 

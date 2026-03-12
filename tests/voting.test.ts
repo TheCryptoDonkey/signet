@@ -581,6 +581,19 @@ describe('security hardening', () => {
     expect(result.valid).toBe(false);
     expect(result.errors.some(e => e.includes('too many tags'))).toBe(true);
   });
+
+  it('parseElection returns null when opens/closes contain non-numeric strings', () => {
+    const event = {
+      kind: SIGNET_KINDS.ELECTION, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
+      created_at: 0, content: '',
+      tags: [
+        ['L', 'signet'], ['d', 'eid'], ['title', 'T'], ['scale', 'organisational'],
+        ['opens', 'not-a-number'], ['closes', 'also-not'], ['re-vote', 'allowed'],
+        ['option', 'A'], ['option', 'B'], ['tally-pubkey', 'c'.repeat(64)],
+      ],
+    } as any;
+    expect(parseElection(event)).toBeNull();
+  });
 });
 
 describe('structural validation', () => {

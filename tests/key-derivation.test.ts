@@ -157,3 +157,15 @@ describe('deriveChildAccount', () => {
     }
   });
 });
+
+describe('parsePath depth limit', () => {
+  it('rejects derivation paths deeper than 10 levels', () => {
+    const deepPath = "m/" + Array(11).fill("0'").join('/');
+    expect(() => parsePath(deepPath)).toThrow('Derivation path too deep');
+  });
+
+  it('accepts derivation paths up to 10 levels', () => {
+    const maxPath = "m/" + Array(10).fill("0'").join('/');
+    expect(() => parsePath(maxPath)).not.toThrow();
+  });
+});

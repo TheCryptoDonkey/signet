@@ -141,10 +141,17 @@ interface ExtendedKey {
   chainCode: Uint8Array; // 32 bytes
 }
 
+/** Maximum derivation path depth — prevents CPU-bound DoS on untrusted paths */
+const MAX_PATH_DEPTH = 10;
+
 /** Parse a BIP-32 derivation path into numeric indices */
 export function parsePath(path: string): number[] {
   if (!path.startsWith('m/')) {
     throw new SignetValidationError('Derivation path must start with m/');
+  }
+  const segments = path.slice(2).split('/');
+  if (segments.length > MAX_PATH_DEPTH) {
+    throw new SignetValidationError(`Derivation path too deep: ${segments.length} levels (max ${MAX_PATH_DEPTH})`);
   }
   return path
     .slice(2)

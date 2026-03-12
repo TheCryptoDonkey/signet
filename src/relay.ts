@@ -129,7 +129,7 @@ export class RelayClient {
 
       const timeout = setTimeout(() => {
         this.ws?.close();
-        reject(new Error(`Connection timeout after ${this.options.connectTimeout}ms`));
+        reject(new SignetValidationError(`Connection timeout after ${this.options.connectTimeout}ms`));
       }, this.options.connectTimeout);
 
       this.ws = new WebSocket(this.url);
@@ -154,7 +154,7 @@ export class RelayClient {
       this.ws.onerror = () => {
         clearTimeout(timeout);
         this.setState('error');
-        reject(new Error('WebSocket connection failed'));
+        reject(new SignetValidationError('WebSocket connection failed'));
       };
 
       this.ws.onmessage = (msg) => {

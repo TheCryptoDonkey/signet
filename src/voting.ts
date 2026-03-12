@@ -147,6 +147,16 @@ export function parseElection(event: NostrEvent): ParsedElection | null {
   const ringSizeStr = getTagValue(event, 'ring-size');
   const ringSize = ringSizeStr ? parseInt(ringSizeStr, 10) : undefined;
 
+  const opens = parseInt(opensStr, 10);
+  const closes = parseInt(closesStr, 10);
+  if (isNaN(opens) || isNaN(closes)) return null;
+
+  if (tallyThreshold) {
+    if (isNaN(tallyThreshold[0]) || isNaN(tallyThreshold[1])) return null;
+  }
+  if (ringSize !== undefined && isNaN(ringSize)) return null;
+  if (isNaN(eligibleMinTier)) return null;
+
   const parsed: ParsedElection = {
     electionId,
     title,
@@ -154,8 +164,8 @@ export function parseElection(event: NostrEvent): ParsedElection | null {
     scale,
     eligibleEntityTypes,
     eligibleMinTier,
-    opens: parseInt(opensStr, 10),
-    closes: parseInt(closesStr, 10),
+    opens,
+    closes,
     reVote,
     tallyPubkeys,
     authorityPubkey: event.pubkey,
@@ -430,7 +440,9 @@ export function verifyBallot(
 
   // Verify LSAG message is bound to the encrypted vote (not plaintext)
   const encryptedVote = getTagValue(ballot, 'encrypted-vote');
-  if (encryptedVote) {
+  if (!encryptedVote) {
+    errors.push('Missing encrypted-vote tag');
+  } else {
     const expectedHash = bytesToHex(sha256(utf8ToBytes(encryptedVote)));
     const expectedMessage = `${parsed.electionId}:${expectedHash}`;
     if (ringSig.message !== expectedMessage) {

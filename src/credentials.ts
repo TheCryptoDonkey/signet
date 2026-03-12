@@ -480,10 +480,14 @@ export async function createTwoCredentialCeremony(
   const merkleRoot = tree.getRoot();
 
   // 3. Compute age range from DOB if not provided
+  const VALID_AGE_RANGES = ['0-3', '4-7', '8-12', '13-17', '18+'];
   const ageRange = opts.ageRange || computeAgeRange(opts.dateOfBirth);
+  if (!VALID_AGE_RANGES.includes(ageRange)) {
+    throw new SignetValidationError(`Invalid age range: must be one of ${VALID_AGE_RANGES.join(', ')}`);
+  }
 
   // 4. Determine tier and scope
-  const isChild = !ageRange.startsWith('18');
+  const isChild = ageRange !== '18+';
   const tier: SignetTier = isChild ? 4 : 3;
   const scope: VerificationScope = isChild ? 'adult+child' : 'adult';
 
@@ -537,7 +541,7 @@ export async function createTwoCredentialCeremony(
 /** Compute age range string from ISO date of birth */
 function computeAgeRange(dateOfBirth: string): string {
   const dob = new Date(dateOfBirth);
-  if (isNaN(dob.getTime())) throw new SignetValidationError(`Invalid date of birth: ${dateOfBirth}`);
+  if (isNaN(dob.getTime())) throw new SignetValidationError('Invalid date of birth: value is not a parseable ISO date');
   const now = new Date();
   let age = now.getFullYear() - dob.getFullYear();
   const monthDiff = now.getMonth() - dob.getMonth();

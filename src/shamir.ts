@@ -182,10 +182,13 @@ export function reconstructSecret(
     throw new SignetValidationError('Duplicate share IDs detected — each share must have a unique ID');
   }
 
-  // Reject shares with ID 0: x=0 is the secret itself, not a valid share x-coordinate
+  // Reject invalid share IDs: x must be in [1, 255] for GF(256)
   for (const share of used) {
     if (share.id === 0) {
       throw new SignetValidationError('Invalid share ID: 0 is not a valid x-coordinate');
+    }
+    if (share.id > 255) {
+      throw new SignetValidationError('Invalid share ID: must be in [1, 255] for GF(256)');
     }
   }
   const secretLen = used[0].data.length;
@@ -265,6 +268,8 @@ export function shareToWords(share: ShamirShare): string[] {
  * Reverses the encoding from shareToWords.
  */
 export function wordsToShare(words: string[]): ShamirShare {
+  if (words.length === 0) throw new SignetValidationError('Cannot decode empty word list');
+
   // Convert words to 11-bit indices
   const indices: number[] = [];
   for (const word of words) {
