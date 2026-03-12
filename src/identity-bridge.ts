@@ -141,11 +141,23 @@ export async function createIdentityBridge(
   return signEvent(unsigned, anonPrivateKey);
 }
 
+/** Default maximum age for an identity bridge event: 24 hours */
+const DEFAULT_MAX_AGE_SECONDS = 24 * 60 * 60;
+
 /**
  * Verify an identity bridge event.
- * Checks: Nostr signature, ring signature validity, ring size >= minimum.
+ * Checks: Nostr signature, ring signature validity, ring size >= minimum,
+ * and optionally that the bridge is not too old (replay resistance).
+ *
+ * @param event - The identity bridge event to verify
+ * @param opts - Optional verification parameters
+ * @param opts.maxAgeSeconds - Maximum age of the bridge in seconds (default: 24h).
+ *                             Set to 0 to disable freshness checking.
  */
-export async function verifyIdentityBridge(event: NostrEvent): Promise<boolean> {
+export async function verifyIdentityBridge(
+  event: NostrEvent,
+  opts?: { maxAgeSeconds?: number }
+): Promise<boolean> {
   // Check kind
   if (event.kind !== SIGNET_KINDS.IDENTITY_BRIDGE) return false;
 
@@ -166,9 +178,19 @@ export async function verifyIdentityBridge(event: NostrEvent): Promise<boolean> 
   if (ringSize < MIN_BRIDGE_RING_SIZE) return false;
   if (parsed.ringSig.ring.length !== ringSize) return false;
 
-  // Verify binding message format
+  // Verify binding message format and timestamp consistency
   const expectedMessage = `signet:identity-bridge:${event.pubkey}:${parsed.timestamp}`;
   if (parsed.ringSig.message !== expectedMessage) return false;
+
+  // Verify timestamp in binding message matches event created_at
+  if (parsed.timestamp !== event.created_at) return false;
+
+  // Freshness check: reject bridges older than maxAgeSeconds (replay resistance)
+  const maxAge = opts?.maxAgeSeconds ?? DEFAULT_MAX_AGE_SECONDS;
+  if (maxAge > 0) {
+    const now = Math.floor(Date.now() / 1000);
+    if (now - parsed.timestamp > maxAge) return false;
+  }
 
   // Verify ring signature
   return ringVerify(parsed.ringSig);

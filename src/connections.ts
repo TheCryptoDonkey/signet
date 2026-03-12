@@ -15,6 +15,9 @@ export interface ContactInfo {
   childPubkeys?: string[];
 }
 
+/** SECURITY NOTE: sharedSecret is stored as a plain hex string in memory.
+ *  For production use, secrets should be encrypted at rest (e.g. via OS keychain
+ *  or encrypted storage). JS strings cannot be zeroed from memory. */
 export interface Connection {
   pubkey: string;           // their public key (hex)
   sharedSecret: string;     // ECDH-derived shared secret (hex, 32 bytes)

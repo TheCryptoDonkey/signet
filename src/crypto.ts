@@ -8,7 +8,12 @@ import { zeroBytes } from './utils.js';
 import type { UnsignedEvent, NostrEvent } from './types.js';
 
 /** Generate a new secp256k1 keypair. Returns { privateKey, publicKey } as hex strings.
- *  Public key is x-only (32 bytes) per BIP-340 / Nostr convention. */
+ *  Public key is x-only (32 bytes) per BIP-340 / Nostr convention.
+ *
+ *  SECURITY NOTE: The Uint8Array is zeroed after conversion, but the returned hex
+ *  strings are JS primitives and cannot be wiped from memory. This is a fundamental
+ *  limitation of the JavaScript runtime. Callers handling private keys should minimise
+ *  their lifetime and avoid logging or serialising them unnecessarily. */
 export function generateKeyPair(): { privateKey: string; publicKey: string } {
   const privateKeyRaw = schnorr.utils.randomPrivateKey();
   const publicKey = schnorr.getPublicKey(privateKeyRaw);

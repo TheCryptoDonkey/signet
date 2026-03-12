@@ -4,8 +4,11 @@ export function zeroBytes(buf: Uint8Array): void {
 }
 
 /**
- * Constant-time comparison of two Uint8Arrays.
- * Always compares all bytes; does not short-circuit.
+ * Constant-time comparison of two equal-length Uint8Arrays.
+ * Always compares all bytes; does not short-circuit on content.
+ *
+ * NOTE: The length check IS an early return (not constant-time w.r.t. length),
+ * but all callers compare fixed-size buffers (32-byte scalars), so this is safe.
  */
 export function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;

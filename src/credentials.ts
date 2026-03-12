@@ -239,8 +239,10 @@ export async function createRingProtectedCredential(
   const pubkey = getPublicKey(verifierPrivateKey);
   const expiresAt = opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS;
 
-  // Ring signature binds to subject + ring + timestamp (not event ID, which changes with content)
+  // Use a single timestamp for both the ring signature binding and the event
   const timestamp = Math.floor(Date.now() / 1000);
+
+  // Ring signature binds to subject + timestamp (not event ID, which changes with content)
   const ringSig = ringSign(
     `signet:credential:${subjectPubkey}:${timestamp}`,
     ring,
@@ -250,19 +252,25 @@ export async function createRingProtectedCredential(
 
   const content: RingProtectedContent = { ringSignature: ringSig };
 
-  const finalEvent = buildCredentialEvent(pubkey, {
-    subjectPubkey,
-    tier: 3,
-    type: 'professional',
-    scope: 'adult',
-    method: 'in-person-id',
-    profession: opts.profession,
-    jurisdiction: opts.jurisdiction,
-    expiresAt,
+  const event: UnsignedEvent = {
+    kind: SIGNET_KINDS.CREDENTIAL,
+    pubkey,
+    created_at: timestamp,
+    tags: buildCredentialEvent(pubkey, {
+      subjectPubkey,
+      tier: 3,
+      type: 'professional',
+      scope: 'adult',
+      method: 'in-person-id',
+      profession: opts.profession,
+      jurisdiction: opts.jurisdiction,
+      expiresAt,
+      content: JSON.stringify(content),
+    }).tags,
     content: JSON.stringify(content),
-  });
+  };
 
-  return signEvent(finalEvent, verifierPrivateKey);
+  return signEvent(event, verifierPrivateKey);
 }
 
 /**
@@ -284,11 +292,13 @@ export async function createRingProtectedChildCredential(
   const pubkey = getPublicKey(verifierPrivateKey);
   const expiresAt = opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS;
 
-  // Create the age range proof
-  const rangeProof = createAgeRangeProof(opts.actualAge, opts.ageRange);
-
-  // Ring signature binds to subject + ring + timestamp (not event ID, which changes with content)
+  // Use a single timestamp for both the ring signature binding and the event
   const timestamp = Math.floor(Date.now() / 1000);
+
+  // Create the age range proof, bound to the subject pubkey to prevent transplanting
+  const rangeProof = createAgeRangeProof(opts.actualAge, opts.ageRange, subjectPubkey);
+
+  // Ring signature binds to subject + timestamp (not event ID, which changes with content)
   const ringSig = ringSign(
     `signet:credential:${subjectPubkey}:${timestamp}`,
     ring,
@@ -301,20 +311,26 @@ export async function createRingProtectedChildCredential(
     rangeProof,
   };
 
-  const finalEvent = buildCredentialEvent(pubkey, {
-    subjectPubkey,
-    tier: 4,
-    type: 'professional',
-    scope: 'adult+child',
-    method: 'in-person-id',
-    profession: opts.profession,
-    jurisdiction: opts.jurisdiction,
-    ageRange: opts.ageRange,
-    expiresAt,
+  const event: UnsignedEvent = {
+    kind: SIGNET_KINDS.CREDENTIAL,
+    pubkey,
+    created_at: timestamp,
+    tags: buildCredentialEvent(pubkey, {
+      subjectPubkey,
+      tier: 4,
+      type: 'professional',
+      scope: 'adult+child',
+      method: 'in-person-id',
+      profession: opts.profession,
+      jurisdiction: opts.jurisdiction,
+      ageRange: opts.ageRange,
+      expiresAt,
+      content: JSON.stringify(content),
+    }).tags,
     content: JSON.stringify(content),
-  });
+  };
 
-  return signEvent(finalEvent, verifierPrivateKey);
+  return signEvent(event, verifierPrivateKey);
 }
 
 /**
@@ -337,6 +353,7 @@ export function verifyRingProtectedContent(event: NostrEvent): {
 
   try {
     const content = JSON.parse(event.content) as RingProtectedContent;
+    const subjectPubkey = getTagValue(event, 'd') || '';
 
     if (content.ringSignature) {
       result.hasRingSignature = true;
@@ -345,7 +362,6 @@ export function verifyRingProtectedContent(event: NostrEvent): {
       const cryptoValid = ringVerify(content.ringSignature);
 
       // Verify the binding message references this credential's subject
-      const subjectPubkey = getTagValue(event, 'd') || '';
       const expectedPrefix = `signet:credential:${subjectPubkey}:`;
       const messageBindsToSubject = content.ringSignature.message.startsWith(expectedPrefix);
 
@@ -354,7 +370,12 @@ export function verifyRingProtectedContent(event: NostrEvent): {
 
     if (content.rangeProof) {
       result.hasRangeProof = true;
-      result.rangeProofValid = verifyAgeRangeProof(content.rangeProof);
+      // If the proof has a context binding, verify it matches the credential's subject
+      if (content.rangeProof.context && content.rangeProof.context !== subjectPubkey) {
+        result.rangeProofValid = false;
+      } else {
+        result.rangeProofValid = verifyAgeRangeProof(content.rangeProof);
+      }
     }
   } catch {
     // Content is not JSON or not a RingProtectedContent — that's OK for Tier 1/2

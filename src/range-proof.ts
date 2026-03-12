@@ -24,6 +24,9 @@ function pointToBytes(p: ProjectivePoint): Uint8Array {
 const DOMAIN_BIT_PROOF = 'signet-bit-proof';
 const DOMAIN_SUM_BINDING = 'signet-sum-binding';
 
+/** Empty context (no binding) */
+const EMPTY_CONTEXT = new Uint8Array(0);
+
 // --- Pedersen Commitment ---
 
 export interface PedersenCommitment {
@@ -93,8 +96,11 @@ interface BitProof {
  * Statement: "∃r: C = r*H" (bit=0) OR "∃r: C - G = r*H" (bit=1)
  *
  * Schnorr convention: s = k - e*r, verify R = s*H + e*P
+ *
+ * @param context - Optional binding context included in Fiat-Shamir hash
+ *                  (e.g. subject pubkey) to prevent proof transplanting
  */
-function proveBit(bit: 0 | 1, blinding: bigint, commitmentPoint: ProjectivePoint): BitProof {
+function proveBit(bit: 0 | 1, blinding: bigint, commitmentPoint: ProjectivePoint, context: Uint8Array = EMPTY_CONTEXT): BitProof {
   const C = commitmentPoint;
   const commitHex = C.toHex(true);
 
@@ -111,9 +117,10 @@ function proveBit(bit: 0 | 1, blinding: bigint, commitmentPoint: ProjectivePoint
     const CminusG = C.add(G.negate());
     const R1 = safeMultiply(H, fakeS1).add(safeMultiply(CminusG, fakeE1));
 
-    // Fiat-Shamir challenge
+    // Fiat-Shamir challenge (includes context to bind proof to credential)
     const e = hashToScalar(
       utf8ToBytes(DOMAIN_BIT_PROOF),
+      context,
       hexToBytes(commitHex),
       pointToBytes(R0),
       pointToBytes(R1)
@@ -145,9 +152,10 @@ function proveBit(bit: 0 | 1, blinding: bigint, commitmentPoint: ProjectivePoint
     //   Verifier checks s*H + e*C = k*H = R
     const R0 = safeMultiply(H, fakeS0).add(safeMultiply(C, fakeE0));
 
-    // Fiat-Shamir challenge
+    // Fiat-Shamir challenge (includes context to bind proof to credential)
     const e = hashToScalar(
       utf8ToBytes(DOMAIN_BIT_PROOF),
+      context,
       hexToBytes(commitHex),
       pointToBytes(R0),
       pointToBytes(R1)
@@ -170,7 +178,7 @@ function proveBit(bit: 0 | 1, blinding: bigint, commitmentPoint: ProjectivePoint
 /**
  * Verify a bit proof: the commitment contains either 0 or 1.
  */
-function verifyBitProof(proof: BitProof): boolean {
+function verifyBitProof(proof: BitProof, context: Uint8Array = EMPTY_CONTEXT): boolean {
   try {
     const C = Point.fromHex(proof.commitment);
     const e0 = hexToScalar(proof.e0);
@@ -190,6 +198,7 @@ function verifyBitProof(proof: BitProof): boolean {
     // Check Fiat-Shamir: e0 + e1 = H(...)
     const e = hashToScalar(
       utf8ToBytes(DOMAIN_BIT_PROOF),
+      context,
       hexToBytes(proof.commitment),
       pointToBytes(R0),
       pointToBytes(R1)
@@ -223,6 +232,9 @@ export interface RangeProof {
   /** Sum-binding proof: DLog of (lowerC + upperC - range*G) w.r.t. H */
   sumBindingE: string;
   sumBindingS: string;
+  /** Optional binding context (e.g. subject pubkey hex) included in Fiat-Shamir
+   *  challenges to prevent proof transplanting between credentials. */
+  context?: string;
 }
 
 /**
@@ -240,13 +252,15 @@ function bitsNeeded(maxVal: number): number {
  */
 function proveSumBinding(
   rTotal: bigint,
-  D: ProjectivePoint
+  D: ProjectivePoint,
+  context: Uint8Array = EMPTY_CONTEXT
 ): { e: string; s: string } {
   const k = randomScalar();
   const R = safeMultiply(H, k);
 
   const e = hashToScalar(
     utf8ToBytes(DOMAIN_SUM_BINDING),
+    context,
     pointToBytes(D),
     pointToBytes(R)
   );
@@ -259,7 +273,8 @@ function proveSumBinding(
 function verifySumBinding(
   D: ProjectivePoint,
   eHex: string,
-  sHex: string
+  sHex: string,
+  context: Uint8Array = EMPTY_CONTEXT
 ): boolean {
   try {
     const e = hexToScalar(eHex);
@@ -269,6 +284,7 @@ function verifySumBinding(
     const R = safeMultiply(H, s).add(safeMultiply(D, e));
     const eCheck = hashToScalar(
       utf8ToBytes(DOMAIN_SUM_BINDING),
+      context,
       pointToBytes(D),
       pointToBytes(R)
     );
@@ -284,11 +300,15 @@ function verifySumBinding(
  * @param value - The secret value
  * @param min - Minimum of the range (inclusive)
  * @param max - Maximum of the range (inclusive)
+ * @param bindingContext - Optional context string (e.g. subject pubkey) included
+ *                         in Fiat-Shamir challenges to prevent proof transplanting
  * @returns A range proof and the commitment
  */
-export function createRangeProof(value: number, min: number, max: number): RangeProof {
+export function createRangeProof(value: number, min: number, max: number, bindingContext?: string): RangeProof {
   if (value < min || value > max) throw new Error(`Value ${value} not in range [${min}, ${max}]`);
   if (min < 0) throw new Error('Minimum must be non-negative');
+
+  const context = bindingContext ? utf8ToBytes(bindingContext) : EMPTY_CONTEXT;
 
   const range = max - min;
   const bits = bitsNeeded(range);
@@ -309,7 +329,7 @@ export function createRangeProof(value: number, min: number, max: number): Range
     lowerBlindingSum = mod(lowerBlindingSum + (1n << BigInt(i)) * r_i);
 
     const bitCommitment = safeMultiply(G, BigInt(bit)).add(safeMultiply(H, r_i));
-    lowerBitProofs.push(proveBit(bit, r_i, bitCommitment));
+    lowerBitProofs.push(proveBit(bit, r_i, bitCommitment, context));
   }
 
   // Commitment to (value - min)
@@ -326,7 +346,7 @@ export function createRangeProof(value: number, min: number, max: number): Range
     upperBlindingSum = mod(upperBlindingSum + (1n << BigInt(i)) * r_i);
 
     const bitCommitment = safeMultiply(G, BigInt(bit)).add(safeMultiply(H, r_i));
-    upperBitProofs.push(proveBit(bit, r_i, bitCommitment));
+    upperBitProofs.push(proveBit(bit, r_i, bitCommitment, context));
   }
 
   const upperC = safeMultiply(G, BigInt(upperVal)).add(safeMultiply(H, upperBlindingSum));
@@ -336,7 +356,7 @@ export function createRangeProof(value: number, min: number, max: number): Range
   const rTotal = mod(lowerBlindingSum + upperBlindingSum);
   const rangeG = safeMultiply(G, BigInt(range));
   const D = lowerC.add(upperC).add(rangeG.negate());
-  const sumBinding = proveSumBinding(rTotal, D);
+  const sumBinding = proveSumBinding(rTotal, D, context);
 
   return {
     commitment: C.toHex(true),
@@ -349,6 +369,7 @@ export function createRangeProof(value: number, min: number, max: number): Range
     upperCommitment: upperC.toHex(true),
     sumBindingE: sumBinding.e,
     sumBindingS: sumBinding.s,
+    context: bindingContext,
   };
 }
 
@@ -361,17 +382,18 @@ export function createRangeProof(value: number, min: number, max: number): Range
 export function verifyRangeProof(proof: RangeProof): boolean {
   try {
     const { min, max, bits, lowerProof, upperProof } = proof;
+    const context = proof.context ? utf8ToBytes(proof.context) : EMPTY_CONTEXT;
 
     if (lowerProof.length !== bits || upperProof.length !== bits) return false;
 
     // 1. Verify all bit proofs for lower (value - min)
     for (const bp of lowerProof) {
-      if (!verifyBitProof(bp)) return false;
+      if (!verifyBitProof(bp, context)) return false;
     }
 
     // 2. Verify all bit proofs for upper (max - value)
     for (const bp of upperProof) {
-      if (!verifyBitProof(bp)) return false;
+      if (!verifyBitProof(bp, context)) return false;
     }
 
     // 3. Verify bit commitments sum to the aggregate commitment (lower)
@@ -398,7 +420,7 @@ export function verifyRangeProof(proof: RangeProof): boolean {
     // This proves the two sub-values sum to exactly (max - min)
     const rangeG = safeMultiply(G, BigInt(max - min));
     const D = lowerC.add(upperC).add(rangeG.negate());
-    if (!verifySumBinding(D, proof.sumBindingE, proof.sumBindingS)) {
+    if (!verifySumBinding(D, proof.sumBindingE, proof.sumBindingS, context)) {
       return false;
     }
 
@@ -413,14 +435,15 @@ export function verifyRangeProof(proof: RangeProof): boolean {
  *
  * @param age - The child's actual age (secret)
  * @param ageRange - The range to prove, e.g. "8-12"
+ * @param subjectPubkey - Optional subject pubkey to bind the proof to this credential
  * @returns The range proof (to be placed in event content)
  */
-export function createAgeRangeProof(age: number, ageRange: string): RangeProof {
+export function createAgeRangeProof(age: number, ageRange: string, subjectPubkey?: string): RangeProof {
   // Handle "18+" format (adults, no upper bound — use 150 as practical max)
   if (ageRange.endsWith('+')) {
     const min = parseInt(ageRange.slice(0, -1), 10);
     if (isNaN(min)) throw new Error(`Invalid age range format: ${ageRange}`);
-    return createRangeProof(age, min, 150);
+    return createRangeProof(age, min, 150, subjectPubkey);
   }
 
   const [minStr, maxStr] = ageRange.split('-');
@@ -429,7 +452,7 @@ export function createAgeRangeProof(age: number, ageRange: string): RangeProof {
 
   if (isNaN(min) || isNaN(max)) throw new Error(`Invalid age range format: ${ageRange}`);
 
-  return createRangeProof(age, min, max);
+  return createRangeProof(age, min, max, subjectPubkey);
 }
 
 /**
@@ -460,6 +483,23 @@ export function deserializeRangeProof(json: string): RangeProof {
   }
   if (!Array.isArray(parsed.lowerProof) || !Array.isArray(parsed.upperProof)) {
     throw new Error('Invalid range proof: missing lowerProof/upperProof');
+  }
+  if (typeof parsed.lowerCommitment !== 'string' || typeof parsed.upperCommitment !== 'string') {
+    throw new Error('Invalid range proof: missing lowerCommitment/upperCommitment');
+  }
+  if (typeof parsed.sumBindingE !== 'string' || typeof parsed.sumBindingS !== 'string') {
+    throw new Error('Invalid range proof: missing sumBindingE/sumBindingS');
+  }
+  // Validate bit proof array contents
+  for (const bp of [...parsed.lowerProof, ...parsed.upperProof]) {
+    if (typeof bp !== 'object' || bp === null) throw new Error('Invalid range proof: bit proof is not an object');
+    if (typeof bp.commitment !== 'string' || typeof bp.e0 !== 'string' ||
+        typeof bp.s0 !== 'string' || typeof bp.e1 !== 'string' || typeof bp.s1 !== 'string') {
+      throw new Error('Invalid range proof: bit proof missing required fields');
+    }
+  }
+  if (parsed.context !== undefined && typeof parsed.context !== 'string') {
+    throw new Error('Invalid range proof: context must be a string if present');
   }
   return parsed as RangeProof;
 }

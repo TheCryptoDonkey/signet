@@ -227,7 +227,11 @@ export function deriveKeyFromSeed(seed: Uint8Array, path: string): Uint8Array {
   return current.key;
 }
 
-/** Derive a Nostr keypair from a BIP-39 mnemonic using NIP-06 path */
+/** Derive a Nostr keypair from a BIP-39 mnemonic using NIP-06 path.
+ *
+ *  SECURITY NOTE: Intermediate Uint8Arrays (seed, key bytes) are zeroed after use,
+ *  but the returned hex strings are JS primitives and cannot be wiped from memory.
+ *  This is a fundamental limitation of the JavaScript runtime. */
 export function deriveNostrKeyPair(
   mnemonic: string,
   passphrase?: string

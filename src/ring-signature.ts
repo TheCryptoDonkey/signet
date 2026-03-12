@@ -28,9 +28,17 @@ export interface RingSignature {
   message: string;
 }
 
+/** Validate an x-only public key is exactly 64 hex characters. */
+function validatePubkeyHex(pubkeyHex: string): void {
+  if (!/^[0-9a-f]{64}$/i.test(pubkeyHex)) {
+    throw new Error(`Invalid x-only public key: expected 64 hex chars, got ${pubkeyHex.length} chars`);
+  }
+}
+
 /** Load a public key from x-only hex (32 bytes) to a curve point.
  *  Assumes even y-coordinate (BIP-340 convention). */
 function pubkeyToPoint(pubkeyHex: string): ProjectivePoint {
+  validatePubkeyHex(pubkeyHex);
   // x-only pubkey: prepend 02 for even y
   return Point.fromHex('02' + pubkeyHex);
 }
