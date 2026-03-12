@@ -277,6 +277,9 @@ export function deriveChildAccount(
   accountIndex: number,
   passphrase?: string
 ): { privateKey: string; publicKey: string } {
+  if (!Number.isSafeInteger(accountIndex) || accountIndex < 0 || accountIndex > 0x7fffffff) {
+    throw new SignetValidationError('accountIndex must be an integer in [0, 2^31 - 1]');
+  }
   const seed = mnemonicToSeedSync(mnemonic, passphrase);
   const path = `m/44'/1237'/${accountIndex}'/0/0`;
   const privateKeyBytes = deriveKeyFromSeed(seed, path);
