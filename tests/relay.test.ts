@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { RelayClient } from '../src/relay.js';
-import type { NostrEvent } from '../src/types.js';
+import { generateKeyPair, signEvent } from '../src/crypto.js';
+import type { NostrEvent, UnsignedEvent } from '../src/types.js';
 
 // --- Mock WebSocket ---
 
@@ -229,8 +230,8 @@ describe('RelayClient', () => {
       expect(sent[2]).toEqual({ kinds: [30470] });
     });
 
-    it('delivers events to the callback', async () => {
-      const client = new RelayClient('wss://relay.example.com');
+    it('delivers events to the callback (verification disabled)', async () => {
+      const client = new RelayClient('wss://relay.example.com', { verifyEvents: false });
       const p = client.connect();
       lastWS().simulateOpen();
       await p;
@@ -268,7 +269,7 @@ describe('RelayClient', () => {
 
   describe('closeSubscription', () => {
     it('sends CLOSE and removes subscription', async () => {
-      const client = new RelayClient('wss://relay.example.com');
+      const client = new RelayClient('wss://relay.example.com', { verifyEvents: false });
       const p = client.connect();
       lastWS().simulateOpen();
       await p;
@@ -293,7 +294,7 @@ describe('RelayClient', () => {
 
   describe('fetch', () => {
     it('collects events until EOSE then resolves', async () => {
-      const client = new RelayClient('wss://relay.example.com');
+      const client = new RelayClient('wss://relay.example.com', { verifyEvents: false });
       const p = client.connect();
       lastWS().simulateOpen();
       await p;
@@ -429,6 +430,127 @@ describe('RelayClient', () => {
       // Should not throw
       lastWS().simulateMessage(['NOTICE', 'relay message']);
       expect(client.getState()).toBe('connected');
+    });
+  });
+
+  describe('event verification', () => {
+    // These tests need real timers for async crypto verification
+    beforeEach(() => {
+      vi.useRealTimers();
+    });
+
+    afterEach(() => {
+      vi.useFakeTimers();
+    });
+
+    it('delivers valid signed events when verification is enabled', async () => {
+      const client = new RelayClient('wss://relay.example.com', { verifyEvents: true });
+      const p = client.connect();
+      lastWS().simulateOpen();
+      await p;
+
+      // Create a properly signed event
+      const kp = generateKeyPair();
+      const unsigned: UnsignedEvent = {
+        kind: 30470,
+        pubkey: kp.publicKey,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [['d', 'test']],
+        content: '',
+      };
+      const validEvent = await signEvent(unsigned, kp.privateKey);
+
+      const events: NostrEvent[] = [];
+      const subId = client.subscribe(
+        [{ kinds: [30470] }],
+        (event) => events.push(event)
+      );
+
+      lastWS().simulateMessage(['EVENT', subId, validEvent]);
+
+      // Verification is async; wait for it
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(events).toHaveLength(1);
+      expect(events[0].id).toBe(validEvent.id);
+    });
+
+    it('drops events with invalid signatures', async () => {
+      const rejected: Array<{ event: NostrEvent; reason: string }> = [];
+      const client = new RelayClient('wss://relay.example.com', {
+        verifyEvents: true,
+        onEventRejected: (event, reason) => rejected.push({ event, reason }),
+      });
+      const p = client.connect();
+      lastWS().simulateOpen();
+      await p;
+
+      const events: NostrEvent[] = [];
+      const subId = client.subscribe(
+        [{ kinds: [30470] }],
+        (event) => events.push(event)
+      );
+
+      // Send the dummy event (invalid signature)
+      lastWS().simulateMessage(['EVENT', subId, dummyEvent]);
+
+      // Verification is async; wait for it
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(events).toHaveLength(0);
+      expect(rejected).toHaveLength(1);
+      expect(rejected[0].reason).toContain('invalid signature');
+    });
+
+    it('drops events with tampered content', async () => {
+      const client = new RelayClient('wss://relay.example.com', { verifyEvents: true });
+      const p = client.connect();
+      lastWS().simulateOpen();
+      await p;
+
+      // Create a valid event then tamper with it
+      const kp = generateKeyPair();
+      const unsigned: UnsignedEvent = {
+        kind: 30470,
+        pubkey: kp.publicKey,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [['d', 'test']],
+        content: 'original',
+      };
+      const validEvent = await signEvent(unsigned, kp.privateKey);
+      const tampered = { ...validEvent, content: 'tampered' };
+
+      const events: NostrEvent[] = [];
+      const subId = client.subscribe(
+        [{ kinds: [30470] }],
+        (event) => events.push(event)
+      );
+
+      lastWS().simulateMessage(['EVENT', subId, tampered]);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(events).toHaveLength(0);
+    });
+
+    it('verification is enabled by default', async () => {
+      const client = new RelayClient('wss://relay.example.com');
+      const p = client.connect();
+      lastWS().simulateOpen();
+      await p;
+
+      const events: NostrEvent[] = [];
+      const subId = client.subscribe(
+        [{ kinds: [30470] }],
+        (event) => events.push(event)
+      );
+
+      // Fake event should be rejected by default
+      lastWS().simulateMessage(['EVENT', subId, dummyEvent]);
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(events).toHaveLength(0);
     });
   });
 });

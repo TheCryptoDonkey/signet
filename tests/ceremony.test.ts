@@ -408,6 +408,15 @@ describe('Nullifier Utilities', () => {
     expect(n1).not.toBe(n2);
   });
 
+  it('length-prefixed encoding prevents field-boundary collisions', () => {
+    // With naive delimiter concatenation, these would collide:
+    // "A||B" + "C" + "D" === "A" + "B||C" + "D" (both produce "A||B||C||D||...")
+    // With length-prefixed encoding, they must differ.
+    const n1 = computeNullifier('passport||GB', 'X', '123');
+    const n2 = computeNullifier('passport', 'GB||X', '123');
+    expect(n1).not.toBe(n2);
+  });
+
   it('checkNullifierDuplicate detects duplicates', async () => {
     const verifier = generateKeyPair();
     const np = generateKeyPair();

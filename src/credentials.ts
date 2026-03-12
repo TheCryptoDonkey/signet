@@ -2,7 +2,7 @@
 // Create, sign, verify, and parse Signet credentials for all 4 tiers
 
 import { SIGNET_KINDS, SIGNET_LABEL, DEFAULT_CREDENTIAL_EXPIRY_SECONDS, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
-import { signEvent, verifyEvent, getPublicKey, hashString } from './crypto.js';
+import { signEvent, verifyEvent, getPublicKey, hash } from './crypto.js';
 import { validateCredential, getTagValue, getTagValues } from './validation.js';
 import { ringSign, ringVerify, type RingSignature } from './ring-signature.js';
 import { createAgeRangeProof, verifyAgeRangeProof, type RangeProof } from './range-proof.js';
@@ -628,10 +628,33 @@ export function isSuperseded(event: NostrEvent): boolean {
 
 /**
  * Compute a deterministic nullifier from document details.
- * Hash of documentType || countryCode || documentNumber || salt.
+ * Uses length-prefixed encoding to prevent field-boundary collisions:
+ *   SHA-256( len(docType) + docType + len(country) + country + len(docNum) + docNum + domainTag )
+ *
+ * Each field is prefixed with its UTF-8 byte length as a 2-byte big-endian uint16,
+ * followed by a fixed domain separation tag.
  */
 export function computeNullifier(documentType: string, countryCode: string, documentNumber: string): string {
-  return hashString(`${documentType}||${countryCode}||${documentNumber}||signet-uniqueness-v1`);
+  const domainTag = 'signet-nullifier-v2';
+  const fields = [documentType, countryCode, documentNumber, domainTag];
+
+  // Calculate total buffer size: 2 bytes length prefix + field bytes for each field
+  const encoder = new TextEncoder();
+  const encoded = fields.map(f => encoder.encode(f));
+  const totalLen = encoded.reduce((sum, buf) => sum + 2 + buf.length, 0);
+
+  const buffer = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const fieldBytes of encoded) {
+    // 2-byte big-endian length prefix
+    buffer[offset] = (fieldBytes.length >> 8) & 0xff;
+    buffer[offset + 1] = fieldBytes.length & 0xff;
+    offset += 2;
+    buffer.set(fieldBytes, offset);
+    offset += fieldBytes.length;
+  }
+
+  return hash(buffer);
 }
 
 /**

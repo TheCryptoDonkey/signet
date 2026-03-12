@@ -23,7 +23,7 @@ This repo contains:
 - **3 voting extension event kinds** (30478-30480): election, ballot, election result
 - **9 entity types**: Natural Person, Persona, Personal Agent, Free Personal Agent, Juridical Person, Juridical Persona, Organised Agent, Free Organised Agent, Free Agent
 - **Two-credential ceremony**: Professional verification issues Natural Person credential (with nullifier, Merkle root) + Persona credential (anonymous, age-range only) simultaneously
-- **Document-based nullifiers**: SHA-256(docType||country||docNumber||"signet-uniqueness-v1") prevents duplicate identity without revealing documents
+- **Document-based nullifiers**: SHA-256 of length-prefixed fields (docType, country, docNumber, "signet-nullifier-v2") prevents duplicate identity without revealing documents
 - **Multi-document nullifier families**: All documents presented during verification produce nullifiers; collision with ANY nullifier detects duplicates
 - **Jurisdiction confidence**: Scored 0-100 based on professional body coverage, public registers, digital credentials, data protection maturity, mutual recognition
 - **3 implementation levels**: Level 1 (read badges, a weekend) → Level 2 (issue vouches, days) → Level 3 (full protocol, weeks+)

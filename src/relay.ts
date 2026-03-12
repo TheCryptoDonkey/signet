@@ -1,7 +1,7 @@
 // Nostr Relay Client
 // WebSocket-based publish/subscribe with NIP-42 AUTH support
 
-import { signEvent, getPublicKey } from './crypto.js';
+import { signEvent, getPublicKey, verifyEvent } from './crypto.js';
 import type { NostrEvent, UnsignedEvent } from './types.js';
 
 /** NIP-42 client authentication event kind */
@@ -47,6 +47,11 @@ export interface RelayOptions {
   reconnectDelay?: number;
   /** Max reconnect attempts (default: 5) */
   maxReconnectAttempts?: number;
+  /** Verify event signatures before delivering to callbacks (default: true).
+   *  Events that fail verification are silently dropped. */
+  verifyEvents?: boolean;
+  /** Callback for rejected events (signature or ID verification failed) */
+  onEventRejected?: (event: NostrEvent, reason: string) => void;
 }
 
 interface PendingSubscription {
@@ -84,6 +89,7 @@ export class RelayClient {
       autoReconnect: true,
       reconnectDelay: 3000,
       maxReconnectAttempts: 5,
+      verifyEvents: true,
       ...options,
     };
   }
@@ -250,7 +256,19 @@ export class RelayClient {
         case 'EVENT': {
           const [, subId, event] = msg;
           const sub = this.subscriptions.get(subId);
-          sub?.callback(event);
+          if (sub) {
+            if (this.options.verifyEvents !== false) {
+              verifyEvent(event).then((valid) => {
+                if (valid) {
+                  sub.callback(event);
+                } else {
+                  this.options.onEventRejected?.(event, 'invalid signature or event ID');
+                }
+              });
+            } else {
+              sub.callback(event);
+            }
+          }
           break;
         }
 

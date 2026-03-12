@@ -1475,7 +1475,7 @@ The two-credential ceremony follows these steps:
 2. Subject presents identity documents (passport, national ID, birth certificate)
 3. Verifier examines documents and confirms identity of the person present
 4. Verifier builds a Merkle tree from verified attributes (name, nationality, document type, DOB, nullifier)
-5. Verifier computes nullifier: `H(document_type || country_code || document_number || "signet-uniqueness-v1")`
+5. Verifier computes nullifier using length-prefixed encoding (see §20.7)
 6. Verifier generates Bulletproof age-range proof from date of birth
 7. Verifier issues Natural Person credential (keypair A) with: entity-type, merkle-root, nullifier, age-range, guardian tags (if child)
 8. Verifier issues Persona credential (keypair B) with: entity-type=persona, age-range (same proof), guardian tags (if child), NO nullifier, NO merkle-root
@@ -1549,16 +1549,25 @@ Clients MUST display the entity type. A Persona MUST NOT be displayed as a verif
 
 ### 20.7 Document-Based Nullifiers
 
-Nullifiers prevent duplicate identity creation. The nullifier is computed as:
+Nullifiers prevent duplicate identity creation. The nullifier is computed using length-prefixed encoding to prevent field-boundary collisions:
 
 ```
-nullifier = SHA-256(document_type || "||" || country_code || "||" || document_number || "||" || "signet-uniqueness-v1")
+nullifier = SHA-256(
+  uint16be(len(document_type)) || document_type ||
+  uint16be(len(country_code))  || country_code  ||
+  uint16be(len(document_number)) || document_number ||
+  uint16be(len(domain_tag))    || domain_tag
+)
+
+where domain_tag = "signet-nullifier-v2"
 ```
+
+Each field is prefixed with its UTF-8 byte length as a 2-byte big-endian unsigned integer. This prevents ambiguity where field values containing delimiters could produce colliding nullifiers (e.g., docType="A||B" + country="C" must not collide with docType="A" + country="B||C").
 
 Properties:
 - **Deterministic:** Same document always produces the same nullifier
 - **One-way:** Cannot recover document details from the nullifier
-- **Collision-resistant:** Different documents produce different nullifiers
+- **Collision-resistant:** Different documents produce different nullifiers; length-prefixed encoding prevents field-boundary ambiguity
 - **Cross-verifier consistent:** Any verifier with the same document computes the same nullifier
 
 When a verifier encounters a nullifier that already exists on a relay, this indicates either:
@@ -1570,9 +1579,11 @@ When a verifier encounters a nullifier that already exists on a relay, this indi
 When a subject presents multiple identity documents during a verification ceremony (e.g., passport AND driving licence AND national ID), the verifier SHOULD compute nullifiers for ALL documents, not just the primary. These form a **nullifier family** — a set of nullifiers that all belong to the same person.
 
 ```
-nullifier_passport   = SHA-256("passport||GB||123456789||signet-uniqueness-v1")
-nullifier_licence    = SHA-256("driving_licence||GB||SMITH901150J99XX||signet-uniqueness-v1")
-nullifier_national_id = SHA-256("national_id||GB||AB123456C||signet-uniqueness-v1")
+nullifier_passport    = SHA-256(LP("passport") || LP("GB") || LP("123456789") || LP("signet-nullifier-v2"))
+nullifier_licence     = SHA-256(LP("driving_licence") || LP("GB") || LP("SMITH901150J99XX") || LP("signet-nullifier-v2"))
+nullifier_national_id = SHA-256(LP("national_id") || LP("GB") || LP("AB123456C") || LP("signet-nullifier-v2"))
+
+where LP(s) = uint16be(len(s)) || s
 ```
 
 The credential event includes:
@@ -1590,7 +1601,7 @@ This significantly strengthens duplicate prevention: a person cannot circumvent 
 | Document shared between family members | Nullifier collision detected; professional investigates |
 | Document number guessable (sequential) | Hash includes document type + country; brute-force requires knowing all three components |
 | Multiple documents (passport + national ID) | Multi-document nullifier families (§20.8) — each document produces a nullifier, all are cross-checked |
-| Country changes document format | Salt version ("signet-uniqueness-v1") allows migration to new formula |
+| Country changes document format | Domain tag version ("signet-nullifier-v2") allows migration to new formula |
 | Verifier collusion (issue without real document) | Anti-corruption framework (§7) applies; nullifier without document is detectable via anomaly patterns |
 | eIDAS wallet credentials | When available, the eIDAS unique person identifier can serve as an additional nullifier source for EU citizens (§20.10) |
 
@@ -1599,8 +1610,12 @@ This significantly strengthens duplicate prevention: a person cannot circumvent 
 EU eIDAS 2.0 mandates unique person identifiers for ~450M EU citizens by December 2026. When a subject presents an eIDAS wallet credential during a Signet verification ceremony, the verifier MAY use the eIDAS unique person identifier as an additional nullifier source:
 
 ```
-nullifier_eidas = SHA-256("eidas||" || eidas_unique_id || "||signet-uniqueness-v1")
+nullifier_eidas = SHA-256(LP("eidas") || LP(eidas_unique_id) || LP("signet-nullifier-v2"))
+
+where LP(s) = uint16be(len(s)) || s
 ```
+
+Note: The eIDAS nullifier uses only two data fields (type + identifier) since there is no country code or document number; the length-prefixed encoding ensures this cannot collide with document-based nullifiers which always have three data fields.
 
 This provides a de facto perfect nullifier for EU citizens, as the eIDAS identifier is government-issued, unique, and machine-verifiable. The eIDAS nullifier is included in the nullifier family alongside document-based nullifiers.
 
