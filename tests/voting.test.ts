@@ -10,6 +10,12 @@ import type {
   ElectionResultParams,
   ParsedElectionResult,
 } from '../src/types.js';
+import {
+  createElection, parseElection, castBallot, verifyBallot, tallyElection,
+  encryptBallotContent, decryptBallotContent,
+} from '../src/voting.js';
+import { computeKeyImage } from '../src/lsag.js';
+import { generateKeyPair } from '../src/crypto.js';
 
 describe('voting extension', () => {
   describe('event kind constants', () => {
@@ -137,6 +143,324 @@ describe('voting extension', () => {
         algorithm: 'secp256k1',
       };
       expect(parsed.tallierPubkey).toBe('tallier-key');
+    });
+  });
+});
+
+// Helper to build a standard election params object with configurable time window
+function makeElectionParams(overrides: Partial<ElectionParams> = {}): ElectionParams {
+  const now = Math.floor(Date.now() / 1000);
+  return {
+    electionId: 'test-election',
+    title: 'Test Election',
+    options: ['Option A', 'Option B', 'Option C'],
+    scale: 'community',
+    eligibleEntityTypes: ['natural_person'],
+    eligibleMinTier: 1,
+    opens: now - 3600,     // opened 1 hour ago
+    closes: now + 3600,    // closes in 1 hour
+    reVote: 'allowed',
+    tallyPubkeys: [],      // filled in per test
+    ...overrides,
+  };
+}
+
+describe('voting protocol', () => {
+  // Generate keys used across tests
+  const authority = generateKeyPair();
+  const tally = generateKeyPair();
+  const voter1 = generateKeyPair();
+  const voter2 = generateKeyPair();
+  const voter3 = generateKeyPair();
+
+  // Ring of eligible voters (minimum 2 for LSAG)
+  const eligibleRing = [voter1.publicKey, voter2.publicKey, voter3.publicKey];
+
+  describe('createElection', () => {
+    it('creates a valid kind 30482 event', async () => {
+      const params = makeElectionParams({ tallyPubkeys: [tally.publicKey] });
+      const event = await createElection(authority.privateKey, params);
+
+      expect(event.kind).toBe(SIGNET_KINDS.ELECTION);
+      expect(event.id).toBeDefined();
+      expect(event.sig).toBeDefined();
+      expect(event.pubkey).toBe(authority.publicKey);
+    });
+
+    it('includes all required tags', async () => {
+      const params = makeElectionParams({
+        tallyPubkeys: [tally.publicKey],
+        description: 'A test election',
+        tallyThreshold: [2, 3],
+        ringSize: 5,
+        eligibleCommunity: 'test-community',
+      });
+      const event = await createElection(authority.privateKey, params);
+
+      const tagMap = new Map<string, string[]>();
+      for (const tag of event.tags) {
+        if (!tagMap.has(tag[0])) tagMap.set(tag[0], []);
+        tagMap.get(tag[0])!.push(tag[1]);
+      }
+
+      expect(tagMap.get('d')).toEqual([params.electionId]);
+      expect(tagMap.get('title')).toEqual([params.title]);
+      expect(tagMap.get('scale')).toEqual(['community']);
+      expect(tagMap.get('opens')).toEqual([String(params.opens)]);
+      expect(tagMap.get('closes')).toEqual([String(params.closes)]);
+      expect(tagMap.get('re-vote')).toEqual(['allowed']);
+      expect(tagMap.get('algo')).toEqual(['secp256k1']);
+      expect(tagMap.get('L')).toEqual(['signet']);
+      expect(tagMap.get('l')).toEqual(['signet']);
+      expect(tagMap.get('description')).toEqual(['A test election']);
+      expect(tagMap.get('option')).toEqual(['Option A', 'Option B', 'Option C']);
+      expect(tagMap.get('tally-pubkey')).toEqual([tally.publicKey]);
+      expect(tagMap.get('tally-threshold')).toEqual(['2/3']);
+      expect(tagMap.get('ring-size')).toEqual(['5']);
+      expect(tagMap.get('eligible-community')).toEqual(['test-community']);
+    });
+
+    it('rejects fewer than 2 options', async () => {
+      const params = makeElectionParams({
+        options: ['Only one'],
+        tallyPubkeys: [tally.publicKey],
+      });
+      await expect(createElection(authority.privateKey, params)).rejects.toThrow('at least 2 options');
+    });
+
+    it('rejects closes <= opens', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const params = makeElectionParams({
+        opens: now + 100,
+        closes: now + 100,
+        tallyPubkeys: [tally.publicKey],
+      });
+      await expect(createElection(authority.privateKey, params)).rejects.toThrow('closing time must be after opening');
+    });
+
+    it('rejects empty tally pubkeys', async () => {
+      const params = makeElectionParams({ tallyPubkeys: [] });
+      await expect(createElection(authority.privateKey, params)).rejects.toThrow('at least 1 tally pubkey');
+    });
+  });
+
+  describe('parseElection', () => {
+    it('round-trips create and parse', async () => {
+      const params = makeElectionParams({
+        tallyPubkeys: [tally.publicKey],
+        description: 'Round-trip test',
+      });
+      const event = await createElection(authority.privateKey, params);
+      const parsed = parseElection(event);
+
+      expect(parsed).not.toBeNull();
+      expect(parsed!.electionId).toBe(params.electionId);
+      expect(parsed!.title).toBe(params.title);
+      expect(parsed!.options).toEqual(params.options);
+      expect(parsed!.scale).toBe(params.scale);
+      expect(parsed!.opens).toBe(params.opens);
+      expect(parsed!.closes).toBe(params.closes);
+      expect(parsed!.reVote).toBe(params.reVote);
+      expect(parsed!.tallyPubkeys).toEqual([tally.publicKey]);
+      expect(parsed!.authorityPubkey).toBe(authority.publicKey);
+      expect(parsed!.algorithm).toBe('secp256k1');
+      expect(parsed!.description).toBe('Round-trip test');
+    });
+
+    it('returns null for wrong kind', async () => {
+      const params = makeElectionParams({ tallyPubkeys: [tally.publicKey] });
+      const event = await createElection(authority.privateKey, params);
+      const fakeEvent = { ...event, kind: 30470 };
+      expect(parseElection(fakeEvent)).toBeNull();
+    });
+  });
+
+  describe('ballot encryption', () => {
+    it('round-trips encrypted content', async () => {
+      const plaintext = JSON.stringify({ option: 'Option A' });
+      const encrypted = await encryptBallotContent(plaintext, tally.publicKey);
+      const decrypted = await decryptBallotContent(encrypted, tally.privateKey);
+      expect(decrypted).toBe(plaintext);
+    });
+
+    it('different encryptions produce different ciphertext', async () => {
+      const plaintext = 'same message';
+      const enc1 = await encryptBallotContent(plaintext, tally.publicKey);
+      const enc2 = await encryptBallotContent(plaintext, tally.publicKey);
+      // Ephemeral keys and nonces differ, so ciphertext should differ
+      expect(enc1).not.toBe(enc2);
+    });
+  });
+
+  describe('castBallot and verifyBallot', () => {
+    it('casts a valid ballot with correct kind and key-image tag', async () => {
+      const params = makeElectionParams({ tallyPubkeys: [tally.publicKey] });
+      const election = await createElection(authority.privateKey, params);
+
+      const { event, ephemeralPubkey } = await castBallot(
+        voter1.privateKey, election, 'Option A', eligibleRing,
+      );
+
+      expect(event.kind).toBe(SIGNET_KINDS.BALLOT);
+      expect(event.pubkey).toBe(ephemeralPubkey);
+
+      // Key image tag should be present
+      const keyImageTag = event.tags.find((t) => t[0] === 'key-image');
+      expect(keyImageTag).toBeDefined();
+      expect(keyImageTag![1]).toHaveLength(66); // compressed point hex
+    });
+
+    it('verifies a valid ballot', async () => {
+      const params = makeElectionParams({ tallyPubkeys: [tally.publicKey] });
+      const election = await createElection(authority.privateKey, params);
+
+      const { event } = await castBallot(
+        voter1.privateKey, election, 'Option B', eligibleRing,
+      );
+
+      const result = verifyBallot(event, election, eligibleRing);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('rejects voter not in ring', async () => {
+      const params = makeElectionParams({ tallyPubkeys: [tally.publicKey] });
+      const election = await createElection(authority.privateKey, params);
+      const outsider = generateKeyPair();
+
+      await expect(
+        castBallot(outsider.privateKey, election, 'Option A', eligibleRing),
+      ).rejects.toThrow('not found in eligible ring');
+    });
+
+    it('rejects invalid option', async () => {
+      const params = makeElectionParams({ tallyPubkeys: [tally.publicKey] });
+      const election = await createElection(authority.privateKey, params);
+
+      await expect(
+        castBallot(voter1.privateKey, election, 'Nonexistent Option', eligibleRing),
+      ).rejects.toThrow('not valid for this election');
+    });
+
+    it('rejects not-yet-open election', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const params = makeElectionParams({
+        opens: now + 7200,
+        closes: now + 86400,
+        tallyPubkeys: [tally.publicKey],
+      });
+      const election = await createElection(authority.privateKey, params);
+
+      await expect(
+        castBallot(voter1.privateKey, election, 'Option A', eligibleRing),
+      ).rejects.toThrow('not yet opened');
+    });
+
+    it('rejects already-closed election', async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const params = makeElectionParams({
+        opens: now - 86400,
+        closes: now - 3600,
+        tallyPubkeys: [tally.publicKey],
+      });
+      const election = await createElection(authority.privateKey, params);
+
+      await expect(
+        castBallot(voter1.privateKey, election, 'Option A', eligibleRing),
+      ).rejects.toThrow('already closed');
+    });
+  });
+
+  describe('tallyElection', () => {
+    it('tallies multiple ballots correctly', async () => {
+      const params = makeElectionParams({ tallyPubkeys: [tally.publicKey] });
+      const election = await createElection(authority.privateKey, params);
+
+      const ballot1 = await castBallot(voter1.privateKey, election, 'Option A', eligibleRing);
+      const ballot2 = await castBallot(voter2.privateKey, election, 'Option B', eligibleRing);
+      const ballot3 = await castBallot(voter3.privateKey, election, 'Option A', eligibleRing);
+
+      const result = await tallyElection(
+        [ballot1.event, ballot2.event, ballot3.event],
+        election, tally.privateKey, eligibleRing,
+      );
+
+      expect(result.kind).toBe(SIGNET_KINDS.ELECTION_RESULT);
+
+      // Check result tags
+      const resultTags = result.tags.filter((t) => t[0] === 'result');
+      const optionA = resultTags.find((t) => t[1] === 'Option A');
+      const optionB = resultTags.find((t) => t[1] === 'Option B');
+      const optionC = resultTags.find((t) => t[1] === 'Option C');
+
+      expect(optionA).toBeDefined();
+      expect(optionA![2]).toBe('2');
+      expect(optionB).toBeDefined();
+      expect(optionB![2]).toBe('1');
+      expect(optionC).toBeDefined();
+      expect(optionC![2]).toBe('0');
+
+      const totalBallots = result.tags.find((t) => t[0] === 'total-ballots');
+      expect(totalBallots![1]).toBe('3');
+    });
+
+    it('deduplicates by key image (re-vote allowed: latest wins)', async () => {
+      const params = makeElectionParams({
+        tallyPubkeys: [tally.publicKey],
+        reVote: 'allowed',
+      });
+      const election = await createElection(authority.privateKey, params);
+
+      // voter1 votes twice for different options
+      const ballot1a = await castBallot(voter1.privateKey, election, 'Option A', eligibleRing);
+      const ballot1b = await castBallot(voter1.privateKey, election, 'Option B', eligibleRing);
+      // Ensure ballot1b is later
+      (ballot1b.event as any).created_at = ballot1a.event.created_at + 1;
+
+      const ballot2 = await castBallot(voter2.privateKey, election, 'Option A', eligibleRing);
+
+      const result = await tallyElection(
+        [ballot1a.event, ballot1b.event, ballot2.event],
+        election, tally.privateKey, eligibleRing,
+      );
+
+      const totalBallots = result.tags.find((t) => t[0] === 'total-ballots');
+      expect(totalBallots![1]).toBe('2'); // deduplicated: voter1 counted once
+
+      // voter1's latest vote was Option B
+      const resultTags = result.tags.filter((t) => t[0] === 'result');
+      const optionA = resultTags.find((t) => t[1] === 'Option A');
+      const optionB = resultTags.find((t) => t[1] === 'Option B');
+      expect(optionA![2]).toBe('1'); // only voter2
+      expect(optionB![2]).toBe('1'); // voter1's latest
+    });
+
+    it('rejects duplicate key images when re-vote denied', async () => {
+      const params = makeElectionParams({
+        tallyPubkeys: [tally.publicKey],
+        reVote: 'denied',
+      });
+      const election = await createElection(authority.privateKey, params);
+
+      const ballot1a = await castBallot(voter1.privateKey, election, 'Option A', eligibleRing);
+      const ballot1b = await castBallot(voter1.privateKey, election, 'Option B', eligibleRing);
+      const ballot2 = await castBallot(voter2.privateKey, election, 'Option A', eligibleRing);
+
+      const result = await tallyElection(
+        [ballot1a.event, ballot1b.event, ballot2.event],
+        election, tally.privateKey, eligibleRing,
+      );
+
+      const totalBallots = result.tags.find((t) => t[0] === 'total-ballots');
+      expect(totalBallots![1]).toBe('2'); // first from voter1 kept, duplicate rejected
+
+      const totalInvalid = result.tags.find((t) => t[0] === 'total-invalid');
+      expect(parseInt(totalInvalid![1], 10)).toBeGreaterThanOrEqual(1);
+
+      // voter1's first vote was Option A
+      const resultTags = result.tags.filter((t) => t[0] === 'result');
+      const optionA = resultTags.find((t) => t[1] === 'Option A');
+      expect(optionA![2]).toBe('2'); // voter1 first + voter2
     });
   });
 });
