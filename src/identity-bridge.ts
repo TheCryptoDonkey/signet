@@ -228,9 +228,10 @@ export function parseIdentityBridge(event: NostrEvent): ParsedIdentityBridge | n
       return null;
     }
 
-    const ringMinTier = parseInt(getTagValue(event, 'ring-min-tier') || '1', 10) as SignetTier;
+    const rawMinTier = parseInt(getTagValue(event, 'ring-min-tier') || '1', 10);
+    const ringMinTier = (rawMinTier >= 1 && rawMinTier <= 4 ? rawMinTier : 1) as SignetTier;
     const ringSize = parseInt(getTagValue(event, 'ring-size') || '0', 10);
-    if (isNaN(ringMinTier) || isNaN(ringSize)) return null;
+    if (isNaN(ringSize) || ringSize < 0 || ringSize > 1000) return null;
 
     const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
 

@@ -110,7 +110,7 @@ export function checkCredentialCompliance(
   if (expiresStr) {
     const expires = parseInt(expiresStr, 10);
     const now = Math.floor(Date.now() / 1000);
-    if (expires < now) {
+    if (isNaN(expires) || expires < now) {
       issues.push({
         code: 'CREDENTIAL_EXPIRED',
         severity: 'error',

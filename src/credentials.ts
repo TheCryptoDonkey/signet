@@ -166,7 +166,7 @@ export async function verifyCredential(event: NostrEvent): Promise<{
   const signatureValid = await verifyEvent(event);
   const validation = validateCredential(event);
   const expiresStr = getTagValue(event, 'expires');
-  const expired = expiresStr ? parseInt(expiresStr, 10) < Math.floor(Date.now() / 1000) : false;
+  const expired = expiresStr ? (() => { const exp = parseInt(expiresStr, 10); return isNaN(exp) || exp < Math.floor(Date.now() / 1000); })() : false;
 
   return {
     signatureValid,
@@ -180,7 +180,9 @@ export async function verifyCredential(event: NostrEvent): Promise<{
 export function isCredentialExpired(event: NostrEvent): boolean {
   const expiresStr = getTagValue(event, 'expires');
   if (!expiresStr) return false;
-  return parseInt(expiresStr, 10) < Math.floor(Date.now() / 1000);
+  const exp = parseInt(expiresStr, 10);
+  // NaN expires is treated as expired (not perpetually valid)
+  return isNaN(exp) || exp < Math.floor(Date.now() / 1000);
 }
 
 /** Parse a credential event into a structured object */

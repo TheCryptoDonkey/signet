@@ -86,7 +86,8 @@ export function countQualifyingVouches(
     if (subject !== subjectPubkey) continue;
 
     const tier = getTagValue(vouch, 'voucher-tier');
-    if (!tier || parseInt(tier, 10) < minVoucherTier) continue;
+    const tierNum = tier ? parseInt(tier, 10) : 0;
+    if (isNaN(tierNum) || tierNum < minVoucherTier) continue;
 
     // One vouch per voucher
     if (seen.has(vouch.pubkey)) continue;

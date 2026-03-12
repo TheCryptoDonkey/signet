@@ -153,5 +153,25 @@ describe('credentials', () => {
       const cred = await createSelfDeclaredCredential(kp.privateKey, 'adult', pastTime);
       expect(isCredentialExpired(cred)).toBe(true);
     });
+
+    it('treats NaN expires as expired', async () => {
+      const kp = generateKeyPair();
+      const cred = await createSelfDeclaredCredential(kp.privateKey);
+      // Replace the valid expires tag with a NaN value
+      cred.tags = cred.tags.filter(t => t[0] !== 'expires');
+      cred.tags.push(['expires', 'not-a-number']);
+      expect(isCredentialExpired(cred)).toBe(true);
+    });
+  });
+
+  describe('verifyCredential — expires edge cases', () => {
+    it('treats NaN expires as expired', async () => {
+      const kp = generateKeyPair();
+      const cred = await createSelfDeclaredCredential(kp.privateKey);
+      cred.tags = cred.tags.filter(t => t[0] !== 'expires');
+      cred.tags.push(['expires', 'garbage']);
+      const result = await verifyCredential(cred);
+      expect(result.expired).toBe(true);
+    });
   });
 });
