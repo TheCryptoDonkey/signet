@@ -1,0 +1,3030 @@
+# Signet Protocol
+
+> Nostr has no identity layer — anyone can impersonate anyone, and there's no way to verify age for child safety. Signet is a decentralised identity verification protocol for Nostr that lets users prove claims about their identity (age, profession, parenthood) using zero-knowledge proofs, without revealing personal data or relying on a central authority.
+
+Signet is for Nostr client developers, relay operators, and anyone building identity-aware applications on Nostr. It provides a TypeScript library (`signet-protocol`) that handles credentials, vouches, trust scoring, and ZKP age proofs. Unlike centralised identity services, Signet anchors trust to professional bodies (law societies, medical boards, notary commissions) and uses cryptographic proofs instead of data collection.
+
+## Getting Started
+
+```bash
+npm install signet-protocol
+```
+
+Display a verification badge for any Nostr pubkey (Level 1 integration — a weekend):
+
+```typescript
+import { computeBadge, buildBadgeFilters, meetsMinimumTier } from 'signet-protocol';
+
+// Build relay filters and fetch events
+const filters = buildBadgeFilters(['<hex-pubkey>']);
+const events = await fetchFromRelay(filters);
+
+// Compute badge
+const badge = computeBadge('<hex-pubkey>', events, { verifySignatures: true });
+// badge.tier => 3, badge.score => 106, badge.displayLabel => "Verified (Tier 3)"
+
+// Gate features on verification level
+if (meetsMinimumTier(badge, 2)) {
+  // allow posting in verified-only community
+}
+```
+
+## Key Concepts
+
+- **4 verification tiers**: Self-declared (Tier 1) → Web-of-trust via peer vouches (Tier 2) → Professional verification with ZKP age proof (Tier 3) → Professional + child safety (Tier 4)
+- **Signet IQ** (0–200): A continuous trust score weighted by professional verification, in-person vouches, online vouches, account age, and identity bridges. 100 represents the current government standard.
+- **Zero-knowledge age proofs**: Bulletproofs on secp256k1 prove age ranges (e.g. "adult" or "child aged 8–12") without revealing date of birth.
+- **Document nullifiers**: SHA-256 of document fields prevents duplicate identity registration without storing any personal data.
+- **11 event kinds** (30470–30477, 30482–30484): Credentials, vouches, policies, verifier management, challenges, revocations, identity bridges, delegation, elections, ballots, and results.
+
+## API Surface
+
+### Credentials (kind 30470)
+- `createSelfDeclaredCredential(privateKey)` — Tier 1
+- `createPeerVouchedCredential(issuerKey, subjectPubkey)` — Tier 2
+- `createProfessionalCredential(verifierKey, subjectPubkey, opts)` — Tier 3
+- `createChildSafetyCredential(verifierKey, parentPubkey, opts)` — Tier 4
+- `verifyCredential(event)` — verify signature and structure
+- `parseCredential(event)` — extract structured fields
+
+### Vouches (kind 30471)
+- `createVouch(privateKey, params)` — vouch for another user
+- `hasEnoughVouches(vouches, pubkey)` — check Tier 2 threshold
+
+### Trust & Badges
+- `computeBadge(pubkey, events, opts)` — Level 1 badge display
+- `computeTrustScore(pubkey, credentials, vouches, accountCreatedAt)` — full Signet IQ
+
+### Policies (kind 30472)
+- `createPolicy(privateKey, params)` — community verification requirements
+- `PolicyChecker` — check users against a policy
+
+### Verifiers (kind 30473)
+- `createVerifierCredential(privateKey, params)` — register as professional verifier
+- `checkCrossVerification(pubkey, vouches, verifiers)` — activation check
+
+### Identity Bridge (kind 30476)
+- `createIdentityBridge(anonKey, realKey, ring, signerIndex, minTier)` — link anonymous account to verified identity via ring signature
+
+### ZKP Age Proofs
+- `createAgeRangeProof(age, minAge, maxAge)` — Bulletproof range proof
+- `verifyAgeRangeProof(proof)` — verify without learning the age
+
+### Voting Extension (kinds 30482–30484)
+- `createElection(privateKey, params)` — define an election
+- `castBallot(privateKey, params)` — anonymous ballot via LSAG
+- `tallyElection(election, ballots, decryptionKey)` — tally results
+
+## Optional
+
+- [Full protocol specification](spec/protocol.md)
+- [Voting extension specification](spec/voting.md)
+- [Signet in 5 Minutes — developer overview](docs/signet-in-5-minutes.md)
+- [Implementation levels guide](docs/implementation-levels.md)
+- [Full flow example](examples/full-flow.ts)
+- [Jurisdiction-specific examples](examples/jurisdictions/)
+- [Regulatory compatibility](README.md#regulatory-compatibility)
+
+
+---
+
+# The Signet Protocol
+
+**Decentralised Identity Verification for Nostr**
+
+**Version:** 0.1.0 (Draft)
+**Date:** 2026-03-02
+**Status:** Draft specification — seeking community feedback
+**Licence:** MIT
+
+---
+
+## Abstract
+
+Signet is an open protocol for decentralised identity verification on Nostr. It enables users to prove claims about their identity — age, parenthood, professional status — using zero-knowledge proofs, without revealing personal data or relying on a central authority.
+
+The protocol defines four verification tiers, nine entity types, a continuous Signet IQ score (Identification Quotient), a verifier accountability framework, and eleven Nostr event kinds (30470–30480, including the voting extension). Every professionally verified person receives two credentials — a Natural Person (real identity with Merkle-bound attributes and document nullifier) and a Persona (anonymous alias with age-range proof only). This two-credential model makes privacy a first-class design goal.
+
+Any Nostr client can implement Signet. Any community can set verification policies. Any licensed professional can become a verifier.
+
+**Child safety is the killer app. Social proof (blue checkmarks) drives adoption across all of Nostr.**
+
+---
+
+## Table of Contents
+
+1. [Motivation](#1-motivation)
+2. [Design Principles](#2-design-principles)
+3. [Credential Tiers](#3-credential-tiers)
+4. [Signet IQ (Identification Quotient)](#4-signet-iq-identification-quotient)
+5. [Service Policies](#5-service-policies)
+6. [Verifier Network](#6-verifier-network)
+7. [Anti-Corruption Framework](#7-anti-corruption-framework)
+8. [Event Kinds](#8-event-kinds)
+9. [Cryptographic Stack](#9-cryptographic-stack)
+10. [Social Proof — The Blue Checkmark](#10-social-proof--the-blue-checkmark)
+11. [Alignment with Existing Standards](#11-alignment-with-existing-standards)
+12. [Regulatory Compatibility](#12-regulatory-compatibility)
+13. [Limitations](#13-limitations)
+14. [Reference Implementation](#14-reference-implementation)
+15. [Identity Management & Peer Verification](#15-identity-management--peer-verification)
+16. [Identity Bridge](#16-identity-bridge)
+17. [Entity Type Classification](#17-entity-type-classification)
+18. [Adversarial Resilience](#18-adversarial-resilience)
+19. [Civic Identity](#19-civic-identity)
+20. [Two-Credential Verification](#20-two-credential-verification)
+21. [Credential Lifecycle](#21-credential-lifecycle)
+22. [Child Online Safety](#22-child-online-safety)
+23. [Inclusivity](#23-inclusivity)
+24. [Jurisdiction Confidence](#24-jurisdiction-confidence)
+25. [Implementation Levels](#25-implementation-levels)
+
+---
+
+## 1. Motivation
+
+### The Identity Gap on Nostr
+
+Nostr has no identity verification. Anyone can claim to be anyone. There is no blue checkmark, no web-of-trust scoring, no way to prove "I met this person" or "a professional verified this person's identity." The result: spam, impersonation, and zero basis for trust beyond "I recognise this pubkey."
+
+### For Children
+
+Every kids' social platform that failed (Club Penguin, Messenger Kids, Wizz, Yubo) collapsed because safety was policy-based, not cryptographic. Adults could create child accounts to impersonate children. Age verification was self-declaration or nonexistent. No platform could prove:
+
+- This parent is a real person
+- This child is a real child
+- This parent actually has this child
+
+### For Everyone
+
+Nostr needs a trust layer that:
+
+- Proves claims without revealing personal data
+- Works without a central authority
+- Starts with nothing (any account can get verified retroactively)
+- Scales from casual peer vouching to professional identity verification
+- Lets communities set their own policies
+
+### The Regulatory Landscape
+
+The world is moving to mandatory age verification:
+
+- **EU eIDAS 2.0** (December 2026): Every Member State must offer a digital identity wallet with selective disclosure
+- **France SREN law** (April 2025): Adult sites must implement ZKP-based age verification
+- **UK Online Safety Act** (2023): Platforms liable for children's exposure; Ofcom requires "highly effective age assurance"
+- **US COPPA 2.0** (pending): Extends protections to under-17
+- **US FTC COPPA flexibility** (March 2026): FTC will not enforce against data collected solely for age verification — but requires robust deletion and clear notice. Signet exceeds this: no personal data is collected at all.
+- **Australia under-16 ban** (2024): $50M AUD fines on platforms
+- **ISO/IEC 27566-1:2025**: New global age assurance standard
+
+Nobody has built this for the decentralised world. Signet fills that gap.
+
+---
+
+## 2. Design Principles
+
+1. **The credential states facts, the service sets policy.** Credentials say "here's what was verified and how." Communities decide "here's what we require." Separation of attestation and enforcement.
+
+2. **Privacy by default.** ZKP means proving a claim without revealing the underlying data. "This parent has a child aged 8-12" without revealing which parent, which child, or the exact age.
+
+3. **No central authority.** Professional bodies (Law Society, Medical Board, notary commissions) are the trust anchors. No single entity approves verifiers. No DAO. No token.
+
+4. **Progressive — more than nothing is better than nothing.** Users who refuse to show documents can still accumulate peer vouches. Less trust weight, but more than zero, which is what everyone has today.
+
+5. **Retroactive.** Verification attaches to existing accounts. Any active Nostr identity — adult or child — can get verified at any time. Not tied to account creation.
+
+6. **Composable.** Discrete tiers for policy gates + continuous score for reputation. Simple for end users, nuanced for power users.
+
+7. **Nostr-native.** Built on secp256k1. Uses existing Nostr event infrastructure. Zero new dependencies for basic functionality.
+
+---
+
+## 3. Credential Tiers
+
+Four tiers of verification, each declaring what was proven and by whom.
+
+### Tier 1 — Self-Declared
+
+| Aspect | Detail |
+|--------|--------|
+| **What's proven** | Nothing — a signed claim: "I say I'm X" |
+| **Issuer** | Self |
+| **ZKP hides** | N/A |
+| **Use case** | Baseline. What every Nostr account has today. |
+| **Trust weight** | Minimal |
+
+### Tier 2 — Web-of-Trust Vouched
+
+| Aspect | Detail |
+|--------|--------|
+| **What's proven** | N verified people (Tier 2+) attest: "I know this person/family" |
+| **Issuer** | Peers |
+| **ZKP hides** | Who vouched (proves count and minimum tier of vouchers without revealing identities) |
+| **Use case** | Local communities, meetup groups, conferences. People who know each other. |
+| **Trust weight** | Moderate. In-person vouches carry more weight than online vouches. |
+| **Threshold** | Configurable per community. Default: 3 vouches from Tier 2+ accounts. |
+
+### Tier 3 — Professional Verified (Adult)
+
+| Aspect | Detail |
+|--------|--------|
+| **What's proven** | A licensed professional verified this adult's government-issued ID in person |
+| **Issuer** | Professional (lawyer, doctor, notary) |
+| **ZKP hides** | Which professional, the adult's real name, ID number, address — everything except "a professional verified this person" |
+| **Use case** | High-trust communities. Adults who want strong verification without publishing their identity. |
+| **Trust weight** | High |
+
+### Tier 4 — Professional Verified (Adult + Child)
+
+| Aspect | Detail |
+|--------|--------|
+| **What's proven** | A licensed professional verified the adult's ID AND confirmed a child exists in a specific age range |
+| **Issuer** | Professional |
+| **ZKP hides** | Everything in Tier 3 + child's identity, exact age, which documents were shown |
+| **Evidence the professional sees** | Parent's ID (passport, driving licence) + child evidence (birth certificate, passport, school record) |
+| **Use case** | Maximum safety spaces. Proves the child is real and the parent is real. |
+| **Trust weight** | Maximum |
+
+### Why Tier 4 Stops Predators
+
+A predator who is a verified real adult (Tier 3) could still create a fake child account. Tier 4 prevents this because:
+
+- A professional independently confirms the child exists
+- The professional sees evidence of the child (birth cert, passport)
+- The professional's licence is on the line — fraudulent attestation = professional misconduct
+- The ZKP cryptographically binds the parent's identity to the child's verified age range
+- An adult pretending to have a child cannot produce a child's birth certificate to a lawyer
+
+---
+
+## 4. Signet IQ (Identification Quotient)
+
+On top of discrete tiers, a continuous Signet IQ score (0-200) provides nuanced reputation. A score of 100 represents the current UK/US standard that governments deem acceptable. Scores above 100 indicate multiple verifications, strong peer trust, bridges, and time on the network.
+
+### Score Components
+
+| Signal | Weight | Notes |
+|--------|--------|-------|
+| Professional verification (Tier 3/4) | Heavy | Single event, large impact |
+| Identity bridge (kind 30476) | Medium | Ring-sig proof linking anon account to verified identity, scaled by ring min tier |
+| In-person peer signature | Strong | Met in person, signed keys face-to-face |
+| Online vouch from verified user | Light | Accumulates — many light vouches add up |
+| Account age | Passive | Time on the network adds weight gradually |
+| Voucher's own Signet IQ | Multiplier | A vouch from someone at IQ 150 carries more than from someone at IQ 40 |
+
+### Score Algorithm
+
+The exact algorithm is implementation-defined (clients can weight signals differently), but the protocol specifies the **signal types and their relative ordering**:
+
+```
+professional verification > identity bridge > in-person vouch > online vouch > account age
+```
+
+Clients MUST respect this ordering. A single professional verification always outweighs any number of online vouches. This prevents gaming through vouch farms.
+
+### Display
+
+```
+┌───────────────────────────────────┐
+│  Alice ✓✓               Tier 3   │
+│  Signet IQ: 106                   │
+│                                   │
+│  ● Prof verified (lawyer)         │
+│  ● 4 in-person vouches            │
+│  ● 12 online vouches              │
+│  ● Account age: 2 years           │
+└───────────────────────────────────┘
+```
+
+- **Tier** = the gate (can you enter this space?)
+- **Signet IQ** = the reputation (how much should I trust this person?)
+- End users see a simple tier badge. Power users can drill into the score breakdown.
+
+---
+
+## 5. Service Policies
+
+Each community, circle, relay, or client sets a minimum verification requirement.
+
+### Policy Matrix
+
+| Community Type | Adult Minimum | Child Minimum | Example |
+|----------------|---------------|---------------|---------|
+| Open | Tier 1 | Tier 1 | Public Nostr feed |
+| Casual group | Tier 2 | Tier 2 | Local meetup group |
+| Curated circle | Tier 3 | Tier 3 | Trusted community |
+| Max safety | Tier 3 | Tier 4 | Children's learning space |
+
+### Policy Options
+
+Services can also set:
+
+- **Minimum Signet IQ**: "Tier 2 AND iq > 100"
+- **Per-role requirements**: "moderators need Tier 3, members need Tier 2"
+- **Child-specific overrides**: "adults can be Tier 2, child accounts must be Tier 4"
+
+### Policy Enforcement
+
+Policy is enforced at the **client level** and optionally at the **relay level**:
+
+- **Client-side**: Clients check Signet credentials before displaying content or allowing interaction.
+- **Relay-side** (optional): AUTH-gated relays can require minimum verification tier before accepting events. This prevents unverified accounts from even publishing to protected spaces.
+
+---
+
+## 6. Verifier Network
+
+### Open With Credentials — No Central Authority
+
+Anyone can become a verifier if they meet the criteria. No single entity approves verifiers. No DAO. No token.
+
+### Professional Verifiers (Issue Tier 3/4)
+
+**Becoming a professional verifier:**
+
+1. Publish a verifier credential (kind 30473) containing your professional licence information (bar number, medical licence number, notary commission ID)
+2. Get cross-verified by other professional verifiers (prevents fraudulent licence claims)
+3. You can now issue Tier 3 and Tier 4 attestations
+4. Your professional body is your accountability — fraudulent attestations = professional misconduct, loss of licence, potential criminal liability
+
+**Professional bodies as trust anchors:**
+
+The system doesn't create a new trust hierarchy. It uses the ones that already exist: the Law Society, medical licensing boards, notary commissions. These bodies already:
+
+- Verify practitioners' identities
+- Hold them to ethical standards
+- Have disciplinary procedures
+- Can revoke licences
+
+Signet gives these existing trust relationships a cryptographic expression.
+
+**Cross-verification prevents gaming:**
+
+A fake lawyer can't just publish a credential claiming to be a lawyer. Other verified lawyers in the network must vouch for the credential. This creates a self-policing professional network — the same professionals who risk their licences have every incentive to call out fakes.
+
+### Peer Verifiers (Contribute to Tier 2 and Score)
+
+**Becoming a peer verifier:**
+
+1. Reach Tier 2+ yourself
+2. You can vouch for others you know
+3. In-person vouches (key signing at meetups, conferences) carry more weight than online vouches
+4. Your vouches' weight scales with your own Signet IQ
+
+**The already-doxed advantage:**
+
+People who are already public figures (conference speakers, known community members) can vouch freely for people they meet in person. Their public identity IS their credential. When they sign someone's key at a meetup, that signature carries real weight because the voucher is already publicly accountable.
+
+### Verification Flow
+
+```
+Professional Verification (Tier 3/4):
+
+  User ──── meets in person ────► Lawyer/Doctor/Notary
+                                       │
+                                  sees passport
+                                  (+ child evidence for Tier 4)
+                                       │
+                                  issues Signet credential
+                                       │
+                                  publishes to Nostr relay
+                                       │
+  User's account ◄──── credential attached ────┘
+
+
+Peer Verification (Tier 2 / score):
+
+  User A ──── meets User B in person ────► key signing
+                                              │
+                                         mutual vouch events
+                                         published to relay
+                                              │
+  Both users' scores increase ◄───────────────┘
+
+
+Online Vouching (score only):
+
+  Verified User ──── "I vouch for this person" ────► vouch event
+                                                        │
+  Target user's score increases ◄───────────────────────┘
+  (weight depends on voucher's own score)
+```
+
+---
+
+## 7. Anti-Corruption Framework
+
+A registered professional can still be corrupt — doctors sell black market prescriptions, lawyers take bribes. No single measure prevents this. The defence is layered: make corruption expensive, detectable, and permanently traceable.
+
+### Layer 1 — Public Registry Verification
+
+Every verifier credential (kind 30473) includes a licence number and jurisdiction. Any client can link directly to the relevant public register for users to verify:
+
+| Jurisdiction | Register | URL |
+|-------------|----------|-----|
+| UK solicitors | SRA | sra.org.uk/consumers/register |
+| UK doctors | GMC | gmc-uk.org/registration-and-licensing |
+| US lawyers | State bar (per state) | Varies by state |
+| Notaries | State/county register | Varies by jurisdiction |
+
+A fake professional is caught immediately — anyone can look up whether the licence number corresponds to a real, active practitioner. Clients can automate this check where registers expose APIs.
+
+### Layer 2 — Cross-Professional Verification
+
+A new verifier needs vouches from verified professionals in **other** fields. A corrupt doctor needs corrupt friends who are lawyers, notaries, or accountants. Cross-profession collusion rings are exponentially harder to build than single-profession ones.
+
+Minimum requirement for verifier activation:
+
+- At least 2 vouches from verified professionals
+- At least 2 different professions represented
+- Vouchers must themselves be active, non-revoked verifiers
+
+### Layer 3 — Rate Limiting / Anomaly Detection
+
+All credentials are public Nostr events. Issuance volume is visible to the entire network.
+
+Clients perform statistical anomaly detection:
+
+- **Volume flags:** A doctor issuing 200 verifications/week vs. the network average of 5/week is automatically flagged.
+- **Geographic flags:** A solicitor in Manchester verifying 50 families in Tokyo is suspicious.
+- **Temporal flags:** 30 verifications in one hour suggests rubber-stamping, not in-person ID checks.
+- **Display:** Clients show a warning badge on credentials from flagged verifiers: "This verifier's issuance pattern is unusual."
+
+This is purely client-side — no central authority decides what's suspicious. Each client applies its own heuristics. The transparency of Nostr events makes this possible without surveillance.
+
+### Layer 4 — Lightning Bond (Skin in the Game)
+
+Professional verifiers stake sats via Lightning when registering as a verifier. The bond is:
+
+- **Locked** when the verifier credential (kind 30473) is published
+- **Slashed** (burned or redistributed to reporters) if the verifier is found fraudulent and revoked
+- **Returned** if the verifier deactivates cleanly (retires, leaves the network)
+
+Bond amount is configurable per community policy. A casual group might require 100,000 sats. A high-security community might require 1,000,000 sats. The bond makes corruption financially costly — a corrupt verifier doesn't just lose their reputation, they lose money.
+
+Implementation: NWC (Nostr Wallet Connect) for bond locking. The bond mechanism is optional — communities that don't require it simply don't set a bond threshold in their policy (kind 30472).
+
+### Layer 5 — Community Reporting and Revocation
+
+Anyone can publish a **challenge event** (kind 30474) against a verifier, presenting evidence of fraudulent behaviour.
+
+Challenge flow:
+
+```
+Reporter ──── publishes kind 30474 ────► challenge event
+                                            │
+                                        includes evidence
+                                        (screenshots, registry status,
+                                         anomaly data, testimony)
+                                            │
+              ◄──── community reviews ──────┘
+                                            │
+              If N trusted accounts (Tier 3+) confirm:
+                │
+                ├─ Verifier's kind 30473 is superseded
+                │  by a revocation event (kind 30475)
+                │
+                ├─ Lightning bond is slashed
+                │
+                └─ All credentials issued by this verifier
+                   are flagged in clients
+```
+
+The threshold for revocation (how many confirmations needed) is set per community policy. Default: 5 confirmations from Tier 3+ accounts.
+
+### Layer 6 — Credential Provenance Trail
+
+Every credential (kind 30470) traces back to its issuer via the `pubkey` field. This is an immutable, public audit trail on Nostr relays.
+
+If a verifier is revoked:
+
+- Clients display a warning on all credentials they issued: "This verification was issued by a now-revoked verifier. Re-verification recommended."
+- The credentials are not automatically invalidated — the community policy decides whether to require re-verification or grandfather existing credentials.
+- The subject can get re-verified by a different professional. The old credential remains as a historical record.
+
+### The Cumulative Cost of Corruption
+
+A corrupt professional in this system must:
+
+1. Be genuinely registered with a professional body (or be caught instantly by registry check)
+2. Convince professionals in *other* fields to vouch for them (cross-profession requirement)
+3. Keep issuance volume low enough to avoid anomaly detection (limits the profit from corruption)
+4. Risk losing their Lightning bond (direct financial cost)
+5. Risk community reporting, public revocation, and permanent reputation damage on Nostr
+6. Accept that every fake credential they ever issued is permanently traceable back to them
+
+Compare this to centralised identity verification: a company scans your ID, stores it in a database that gets breached, and has no accountability when it fails. Signet doesn't prevent all corruption — nothing does — but it makes corruption more expensive and more detectable than any centralised alternative.
+
+---
+
+## 8. Event Kinds
+
+**Note:** Kind numbers are placeholders pending NIP allocation.
+
+### Kind 30470 — Verification Credential
+
+A replaceable event published by a verifier attesting to a subject's verification status.
+
+```jsonc
+{
+  "kind": 30470,
+  "pubkey": "<verifier_pubkey>",
+  "tags": [
+    ["d", "<subject_pubkey>"],           // who is being verified
+    ["p", "<subject_pubkey>"],           // for queryability
+    ["tier", "3"],                        // 1, 2, 3, or 4
+    ["type", "professional"],            // "self", "peer", "professional"
+    ["scope", "adult"],                  // "adult" or "adult+child"
+    ["age-range", "8-12"],              // only for tier 4 (child age range)
+    ["method", "in-person-id"],          // verification method
+    ["profession", "solicitor"],         // verifier's profession
+    ["jurisdiction", "UK"],              // legal jurisdiction
+    ["expires", "<unix_timestamp>"],     // credential expiry
+    ["algo", "secp256k1"],               // cryptographic algorithm (§9.5)
+    ["L", "signet"],                     // protocol namespace label
+    ["l", "verification", "signet"]      // protocol label
+  ],
+  "content": "<zkp_proof_blob>"          // the actual zero-knowledge proof
+}
+```
+
+### Kind 30471 — Vouch Attestation
+
+A replaceable event published by a peer vouching for another user.
+
+```jsonc
+{
+  "kind": 30471,
+  "pubkey": "<voucher_pubkey>",
+  "tags": [
+    ["d", "<subject_pubkey>"],           // who is being vouched for
+    ["p", "<subject_pubkey>"],
+    ["method", "in-person"],             // "in-person" or "online"
+    ["context", "bitcoin-meetup"],       // optional: where/how they met
+    ["voucher-tier", "3"],               // voucher's own tier at time of vouch
+    ["voucher-score", "87"],             // voucher's own score at time of vouch
+    ["algo", "secp256k1"],               // cryptographic algorithm (§9.5)
+    ["L", "signet"],
+    ["l", "vouch", "signet"]
+  ],
+  "content": ""                          // no personal data
+}
+```
+
+### Kind 30472 — Community Verification Policy
+
+A replaceable event published by a community operator defining minimum verification requirements.
+
+```jsonc
+{
+  "kind": 30472,
+  "pubkey": "<community_operator_pubkey>",
+  "tags": [
+    ["d", "<community_identifier>"],
+    ["adult-min-tier", "2"],
+    ["child-min-tier", "3"],
+    ["min-score", "50"],                 // optional minimum score
+    ["mod-min-tier", "3"],               // optional moderator requirement
+    ["enforcement", "client"],           // "client", "relay", or "both"
+    ["verifier-bond", "100000"],         // optional: min sats bond for verifiers
+    ["revocation-threshold", "5"],       // optional: confirmations needed to revoke
+    ["algo", "secp256k1"],               // cryptographic algorithm (§9.5)
+    ["L", "signet"],
+    ["l", "policy", "signet"]
+  ],
+  "content": "<human-readable policy description>"
+}
+```
+
+### Kind 30473 — Verifier Credential
+
+A replaceable event published by a professional declaring their verifier status.
+
+```jsonc
+{
+  "kind": 30473,
+  "pubkey": "<verifier_pubkey>",
+  "tags": [
+    ["d", "verifier-credential"],
+    ["profession", "solicitor"],
+    ["jurisdiction", "UK"],
+    ["licence", "<encrypted_or_hashed_licence_number>"],
+    ["body", "Law Society of England and Wales"],
+    ["algo", "secp256k1"],               // cryptographic algorithm (§9.5)
+    ["L", "signet"],
+    ["l", "verifier", "signet"]
+    // Cross-verification vouches from other professionals
+    // are separate kind 30471 events pointing at this pubkey
+  ],
+  "content": "<optional: public statement about verification services>"
+}
+```
+
+### Kind 30474 — Verifier Challenge
+
+A regular event published by anyone challenging a verifier's legitimacy. Triggers community review.
+
+```jsonc
+{
+  "kind": 30474,
+  "pubkey": "<reporter_pubkey>",
+  "tags": [
+    ["d", "<verifier_pubkey>"],            // who is being challenged
+    ["p", "<verifier_pubkey>"],
+    ["reason", "anomalous-volume"],        // "anomalous-volume", "registry-mismatch",
+                                           // "fraudulent-attestation", "licence-revoked",
+                                           // "other"
+    ["evidence-type", "registry-screenshot"], // type of evidence provided
+    ["reporter-tier", "3"],                // reporter's own tier
+    ["algo", "secp256k1"],               // cryptographic algorithm (§9.5)
+    ["L", "signet"],
+    ["l", "challenge", "signet"]
+  ],
+  "content": "<detailed evidence and explanation>"
+}
+```
+
+### Kind 30475 — Verifier Revocation
+
+A replaceable event published when a community confirms a challenge. Supersedes the verifier's kind 30473 credential.
+
+```jsonc
+{
+  "kind": 30475,
+  "pubkey": "<revoking_authority_pubkey>",  // community operator or threshold of Tier 3+ accounts
+  "tags": [
+    ["d", "<verifier_pubkey>"],             // whose credential is revoked
+    ["p", "<verifier_pubkey>"],
+    ["challenge", "<kind_30474_event_id>"], // the challenge that triggered this
+    ["confirmations", "7"],                 // number of Tier 3+ accounts that confirmed
+    ["bond-action", "slashed"],             // "slashed", "returned", "held"
+    ["scope", "full"],                      // "full" = all credentials flagged,
+                                            // "partial" = specific credentials flagged
+    ["effective", "<unix_timestamp>"],      // when revocation takes effect
+    ["algo", "secp256k1"],               // cryptographic algorithm (§9.5)
+    ["L", "signet"],
+    ["l", "revocation", "signet"]
+  ],
+  "content": "<summary of findings>"
+}
+```
+
+**Client behaviour on kind 30475:**
+
+1. Display a warning on all kind 30470 credentials issued by the revoked verifier
+2. Reduce the Signet IQ contribution of those credentials to zero
+3. Notify affected users that re-verification is recommended
+4. Do not automatically invalidate credentials — the community policy decides whether to require re-verification or grandfather existing ones
+
+### Kind 30476 — Identity Bridge
+
+A replaceable event published by an anonymous account to prove it is controlled by a verified identity, without revealing which one. Uses SAG ring signatures over secp256k1.
+
+**Use case:** A user has a real-name account (verified at Tier 3 by a professional) and an anonymous account. The identity bridge lets the anonymous account prove "I am a real verified person" without revealing which verified person. This enables anonymous participation with trust.
+
+```jsonc
+{
+  "kind": 30476,
+  "pubkey": "<anon_pubkey>",              // the anonymous account publishing this
+  "tags": [
+    ["d", "identity-bridge"],
+    ["ring-min-tier", "3"],                // minimum verification tier of ring members
+    ["ring-size", "10"],                   // number of pubkeys in the ring
+    ["algo", "secp256k1"],               // cryptographic algorithm (§9.5)
+    ["L", "signet"],
+    ["l", "identity-bridge", "signet"]
+  ],
+  "content": "{\"ringSig\":{\"ring\":[...],\"c0\":\"...\",\"responses\":[...],\"message\":\"signet:identity-bridge:<anon_pubkey>:<timestamp>\"},\"timestamp\":...}"
+}
+```
+
+**Ring signature construction:**
+
+1. The real verified account's pubkey is placed at a random position in a ring of N verified pubkeys (minimum N=5).
+2. The binding message is `signet:identity-bridge:<anon_pubkey>:<timestamp>`.
+3. The real account's private key signs this message using a SAG ring signature, proving one of the N ring members also controls the anon account.
+4. The Nostr event itself is signed by the anonymous account's private key.
+
+**Verification:**
+
+1. Verify the Nostr event signature (anon account signed the event).
+2. Parse the ring signature from content.
+3. Verify the binding message format matches `signet:identity-bridge:<event.pubkey>:<timestamp>`.
+4. Verify the ring signature (one of the ring members signed the binding message).
+5. Verify ring size >= 5 (anonymity threshold).
+
+**Signet IQ contribution:**
+
+- Base weight: 50 points (between professional verification and in-person vouch).
+- Scaled by ring minimum tier: `weight = 50 × (ringMinTier / 4)`.
+- Tier 3 ring → 37.5 points. Tier 4 ring → 50 points.
+- Only one bridge per account is counted.
+
+**Trust compounding:** When bridged anonymous accounts vouch for each other, each vouch is weighted by the voucher's score (which includes bridge points). This creates natural trust compounding without a special mechanism.
+
+**Privacy guarantees:**
+
+- The ring signature reveals only that *one of N* verified accounts controls the anon account, not which one.
+- Minimum ring size of 5 provides meaningful anonymity (1-in-5 or better).
+- Larger rings provide stronger anonymity at no additional cost to the verifier.
+- The binding message prevents ring signature reuse across different anon accounts.
+
+---
+
+## 9. Cryptographic Stack
+
+The protocol design (tiers, scores, event kinds, policies) is specified independently of the ZKP implementation. The credential format works regardless of which cryptographic library backs the proofs. This section specifies the recommended architecture.
+
+### Recommended Architecture: Hybrid Layers
+
+```
+Layer 1: Schnorr — the base (zero new dependencies)
+│
+├─ Credential issuance & verification
+│   Verifier signs kind 30470 event with their Nostr key.
+│   Any client verifies with schnorr.verify().
+│
+├─ Selective disclosure via Merkle trees
+│   Credential attributes as Merkle leaves, sign root.
+│   Holder reveals chosen attributes + sibling paths.
+│   @noble/secp256k1 + @noble/hashes (already in every Nostr client).
+│
+├─ Ring signatures for issuer privacy (Tier 3/4)
+│   SAG: "one of these N professionals verified this"
+│   without revealing which one.
+│   Stays on secp256k1.
+│
+├─ MuSig2 for multi-verifier co-signing
+│   Multiple professionals co-sign → single aggregated Schnorr sig.
+│
+└─ Signet IQ computation
+    Pure client-side math. Count vouches, weight by voucher score.
+    No crypto needed.
+
+Layer 2: Bulletproofs — targeted addition (for Tier 4 age proofs)
+│
+└─ Age range proofs
+    "This child is in age range [8, 12]" without revealing exact age.
+    Pedersen commitment + Bulletproof range proof on secp256k1.
+    ~700 byte proofs. No trusted setup. No new curve.
+
+Layer 3: General-purpose ZK (future, if needed)
+│
+├─ Complex threshold proofs
+│   "I have N vouches from tier 2+ accounts" via recursive composition.
+│
+├─ Credential binding proofs
+│   Prove credential ownership + attribute predicate in one proof.
+│
+└─ Unlinkable presentations (if required)
+    Re-randomisable proofs. For when threat model evolves.
+```
+
+### What Each Tier Needs
+
+| Tier | Crypto Required | New Dependencies |
+|------|----------------|------------------|
+| **Tier 1** (self-declared) | Standard Nostr event signing | None (already present) |
+| **Tier 2** (web-of-trust) | Vouch events + score calculation | None |
+| **Tier 3** (professional, adult) | Ring signature on credential | Ring signature library (secp256k1-based) |
+| **Tier 4** (professional, adult+child) | Ring sig + age range proof | Ring sig + Bulletproofs library |
+| **Blue checkmark / score** | Read existing events, compute score | None |
+
+### The Credential Signing Decision
+
+Verifiers sign credentials with their **Nostr key** (secp256k1 Schnorr). No second keypair required.
+
+| Approach | Pro | Con | Decision |
+|----------|-----|-----|----------|
+| **Nostr key only** | One identity, Nostr-native, no extra keys | Expensive to prove inside ZK circuits if needed later | **Use this.** |
+| ZK-friendly curve (Baby Jubjub) | Cheap to prove in ZK circuits | Verifiers need a second keypair | Defer unless ZK circuit proofs become essential. |
+
+Ring signatures handle issuer privacy without ZK circuits. Bulletproofs handle age range proofs without leaving secp256k1. The ZK-friendly signature question only arises if the protocol needs to prove "this Nostr key signed this credential" inside a zero-knowledge circuit — and the current design avoids that need.
+
+### Reference Libraries
+
+| Library | Purpose | Notes |
+|---------|---------|-------|
+| `@noble/secp256k1` | Core Schnorr sign/verify | Stable, audited, 4.94KB gzipped |
+| `@noble/hashes` | SHA-256 for Merkle trees | Stable, audited |
+| Ring signature lib (e.g. Nostringer) | SAG on Nostr pubkeys | Experimental — needs audit before production |
+| MuSig2 lib | Multi-party signing | Functional, BIP-327 |
+| Bulletproofs lib | Range proofs on secp256k1 | Needs audit before production |
+
+### Quantum Readiness
+
+Every Signet event carries an `["algo", "secp256k1"]` tag identifying the asymmetric cryptographic algorithm used for event signing and key agreement. This tag serves two purposes:
+
+1. **Forward compatibility.** When post-quantum algorithms (e.g. ML-DSA, SLH-DSA, ML-KEM) are standardised for Nostr, new events will carry a different `algo` value. Parsers can distinguish pre- and post-quantum events without heuristics.
+2. **Graceful migration.** During a transition period, clients can accept both `secp256k1` and post-quantum algorithm values, enabling a rolling upgrade across the network.
+
+**Rules for the `algo` tag:**
+
+| Rule | Detail |
+|------|--------|
+| **MUST be present** on all Signet events (kinds 30470-30477) | Builders set it to `DEFAULT_CRYPTO_ALGORITHM` (`secp256k1`) |
+| **Parsers MUST default** to `secp256k1` if absent | Ensures backward compatibility with legacy events created before this tag was introduced |
+| **Value is a free-form string** | Allows future algorithms without a protocol revision — just publish events with the new value |
+| **One algorithm per event** | An event is signed under a single algorithm; hybrid constructions would use two separate events |
+
+**Current status:** All Signet events use secp256k1 (Schnorr signatures via BIP-340). No post-quantum migration is currently planned, but the tagging ensures the protocol is ready when one becomes necessary.
+
+### Open Implementation Questions
+
+1. **Ring signature audit.** Ring signatures are critical for Tier 3/4 issuer privacy. The SAG math is sound (used by Monero for years) but JS implementations need audit.
+2. **Bulletproofs library choice.** Pure JS (slower, easier to audit) vs WASM (faster, harder to audit the C layer).
+3. **Ring size.** How many professional verifiers form the anonymity set? Target: 20-50 verifiers per profession per jurisdiction.
+4. **Credential expiry.** Verification credentials should expire (recommended: 1-2 years) and be renewable.
+5. **Revocation propagation.** NIP-09 deletion requests are advisory only. The kind 30474/30475 challenge-revocation mechanism handles this at the protocol level.
+
+---
+
+## 10. Social Proof — The Blue Checkmark
+
+The verification system is not limited to child safety. It is a general-purpose Nostr identity layer.
+
+### For Users Who Won't Show Documents
+
+They can still build trust through:
+
+- Peer vouches from verified users
+- In-person key signings at meetups and conferences
+- Account age and consistent behaviour
+- Online vouches from high-IQ accounts
+
+This gives them a visible Signet IQ score and a checkmark — weaker than professional verification, but more than nothing. And nothing is what everyone on Nostr has today.
+
+### For Public Figures
+
+Already-doxed individuals (podcasters, conference speakers, known community members) can leverage their public identity. Their checkmark is backed by the fact that hundreds of people have met them and can vouch. They become trust anchors for their communities.
+
+### For Creators
+
+A verified creator can prove they're real without revealing their legal name. Content gated by verification tiers becomes more valuable when the creator has a verified identity backing it.
+
+### Checkmark Display
+
+| Display | Meaning |
+|---------|---------|
+| No mark | Unverified (Tier 1) |
+| ✓ | Web-of-trust vouched (Tier 2) |
+| ✓✓ | Professional verified, adult (Tier 3) |
+| ✓✓✓ | Professional verified, adult + child (Tier 4) |
+| Signet IQ | Continuous reputation (0–200) visible on drill-down |
+
+---
+
+## 11. Alignment with Existing Standards
+
+| Standard | Relevance |
+|----------|-----------|
+| **NIP-58** (Badges, kind 30009/8) | Existing attestation system on Nostr. Signet credentials extend this pattern with cryptographic proofs. |
+| **NIP-101** (proposed) | Decentralised trust system integrating W3C VC format with Nostr. Signet is complementary — simpler, Nostr-native, focused on progressive tiers. |
+| **Nostr DID method** (`did:nostr:<hex_pubkey>`) | Enables Nostr keys to participate in W3C DID/VC ecosystem. Signet credentials could be wrapped as W3C VCs for interop. |
+| **SchnorrSecp256k1Signature2019** (DIF) | Proposed proof type for W3C VCs using Schnorr over secp256k1. Would let Signet events be treated as standards-compliant W3C VCs. |
+| **ISO/IEC 27566-1:2025** | Age assurance standard. Signet's architecture is compatible with the outcomes-based framework (effectiveness, privacy, security, acceptability). |
+| **UK DIATF** | Digital Identity and Attributes Trust Framework. Signet's Tier 3/4 architecture aligns. Not yet certified. Certification path exists. |
+| **EU eIDAS 2.0** | European digital identity framework. Signet's selective disclosure via Merkle trees and ZKP proofs aligns with eIDAS requirements for minimal disclosure. |
+
+---
+
+## 12. Regulatory Compatibility
+
+Signet is designed to satisfy identity verification requirements across multiple jurisdictions without centralised data collection.
+
+| Regulation | How Signet Addresses It |
+|------------|------------------------|
+| **UK Online Safety Act** (ss.9, 11, 12) | Tier 4 provides "highly effective age assurance" via professional in-person verification. Exceeds Ofcom's accepted methods. No centralised ID scanning. |
+| **COPPA / COPPA 2.0** (US) | Cryptographic proof of parental consent via Tier 3/4 credential. Exceeds current parental consent mechanisms. The FTC's March 2026 policy statement permits data collection solely for age verification with robust deletion — Signet goes further by collecting no personal data at all. The ZKP proof contains zero PII. |
+| **EU eIDAS 2.0** | Credential format compatible with eIDAS selective disclosure direction. Could accept EU digital identity wallet credentials as Tier 3 input. |
+| **France SREN law** | ZKP-based age verification is explicitly what the law requires. |
+| **Australia under-16 ban** | Tier 4 proves child's age range without central verification. |
+| **ISO/IEC 27566-1:2025** | Protocol design is compatible with the outcomes-based framework. |
+
+### The FTC's New Position and Signet
+
+In March 2026, the FTC issued a policy statement signalling flexibility on COPPA age checks: it will not take enforcement action where personal data is collected solely for age verification purposes, provided the data is robustly deleted and clear notice is given to parents and children.
+
+This is significant because it removes a major blocker — platforms were previously reluctant to implement age verification for fear of COPPA liability for collecting the verification data itself. The FTC is now saying: verify ages, just delete the data.
+
+Signet leapfrogs this entirely:
+
+| FTC Requirement | Signet's Position |
+|----------------|-------------------|
+| Data collected solely for age verification | No data collected — ZKP proves age range without transmitting personal data |
+| Robust data deletion | Nothing to delete — no PII ever enters any system |
+| Clear notice to parents/children | Parent initiates the entire verification process and holds all keys |
+| Don't use data for other purposes | Cryptographically impossible — the proof contains no personal data to repurpose |
+
+The FTC lowered the bar. Signet doesn't need the bar — it flies over it.
+
+### The Privacy Argument
+
+Every other approach to age verification involves a trade-off: privacy vs safety, user experience vs verification rigour, centralised control vs accountability. Signet is designed to avoid that trade-off:
+
+- Professional verifies in person → ZKP credential
+- Credential proves age range without revealing personal data
+- No personal data stored centrally — no database to breach
+- Anti-corruption layers on verifier network
+- Audit trail on Nostr relays
+
+---
+
+## 13. Limitations
+
+| Limitation | Why It's Acceptable |
+|------------|---------------------|
+| **A verified parent can still be a bad parent** | True of all systems. The protocol proves identity, not character. But it creates accountability — the parent's verified identity is cryptographically linked. |
+| **Professional verifiers could collude** | Possible but career-ending. Cross-verification and professional body oversight mitigate this. Same risk exists in the existing notary/legal system. |
+| **Doesn't prevent all predators** | A determined predator with a real child could still misuse the system. But they can no longer be anonymous — their Tier 4 credential links back to a professional who verified them in person. |
+| **ZKP crypto is complex** | Implementation risk. Mitigated by using proven libraries and by designing the protocol independently of the crypto stack. |
+| **Adoption requires verifiers** | Chicken-and-egg: users need verifiers, verifiers need users. Mitigated by the web-of-trust tier (no professionals needed) and by starting with existing professional networks. |
+
+---
+
+## 14. Reference Implementation
+
+The first reference implementation of Signet is being built within [Fathom](https://github.com/decented/decented), a sovereign learning and family management app built on Nostr. Fathom's implementation integrates Signet credentials with:
+
+- Parent-controlled vault tiers (cryptographic access control)
+- Child account protection (NIP-26 delegation)
+- Community verification policies for home-education groups
+- Age-based permission defaults
+
+Signet is designed as a standalone NIP. Any Nostr client can implement it independently. The protocol does not depend on Fathom or any specific client.
+
+### Contributing
+
+Signet is open source. Contributions, feedback, and NIP discussion are welcome.
+
+- Protocol specification: this document
+- Reference implementation: [Fathom](https://github.com/decented/decented)
+- NIP proposal: pending (kind numbers are placeholders)
+
+---
+
+## 15. Identity Management & Peer Verification
+
+### 15.1 Profile Creation (BIP-39 / NIP-06)
+
+Signet identities are derived from a 12-word BIP-39 mnemonic phrase. This is the industry standard used across Bitcoin and Nostr — the same 12 words can recover the identity on any compatible app.
+
+**Creation flow:**
+
+```
+1. Generate 128 bits of cryptographic entropy
+2. SHA-256 hash → take first 4 bits as checksum
+3. 132 bits → 12 groups of 11 bits → 12 BIP-39 English words
+4. PBKDF2-SHA512(mnemonic, "mnemonic" + passphrase, 2048 iterations) → 64-byte seed
+5. BIP-32 HD derivation at path m/44'/1237'/0'/0/0 (NIP-06) → Nostr private key
+6. Schnorr x-only public key derived from private key → Nostr identity
+```
+
+The 12 words **are** the identity. The user writes them down and stores them securely. An optional passphrase adds a second factor (the "25th word").
+
+**Child accounts** can be derived at different account indices on the same HD path: `m/44'/1237'/{index}'/0/0`. A parent's mnemonic can deterministically generate keys for all their children's accounts, keeping the family's key management under one recovery phrase.
+
+### 15.2 Shared Backup (Shamir's Secret Sharing)
+
+Writing down 12 words creates a single point of failure. Shamir's Secret Sharing solves this by splitting the entropy into N shares where any M can reconstruct it.
+
+**Scheme:** GF(256) polynomial interpolation (same field used by AES).
+
+**Default:** 2-of-3 — keep one share, give two to trusted people. Any two of the three shares reconstruct the original entropy. No individual share reveals anything about the secret.
+
+**Share encoding:** Each share is encoded as BIP-39 words (same wordlist, same format) so they look and feel familiar. A share holder sees 12 words that look like a normal mnemonic — but they are mathematically useless without a second share.
+
+```
+Original:  [12-word mnemonic] ← derives the Nostr private key
+                │
+        Shamir's 2-of-3 split
+                │
+    ┌───────────┼───────────┐
+    │           │           │
+Share 1     Share 2     Share 3
+(12 words)  (12 words)  (12 words)
+Keep this   Give to     Give to
+yourself    friend A    friend B
+
+Any 2 shares → reconstruct → original mnemonic → private key
+```
+
+**Parameters:**
+- Threshold (M): minimum 2, configurable
+- Shares (N): minimum M, maximum 255, configurable
+- Practical recommendation: 2-of-3 for personal use, 3-of-5 for high-value keys
+
+### 15.3 Peer Connections
+
+When two Signet users meet in person, they establish a cryptographic connection by exchanging QR codes.
+
+**Connection flow:**
+
+```
+Alice's phone                          Bob's phone
+─────────────                          ──────────
+1. Shows QR code containing:           1. Shows QR code containing:
+   - Alice's public key                   - Bob's public key
+   - Random nonce                         - Random nonce
+   - Selected contact info                - Selected contact info
+     (name, mobile, etc.)                   (name, mobile, etc.)
+
+2. Scans Bob's QR                      2. Scans Alice's QR
+
+3. Computes:                           3. Computes:
+   ECDH(alice_priv, bob_pub)              ECDH(bob_priv, alice_pub)
+        │                                      │
+        └──── Same shared secret S ────────────┘
+
+4. Stores:                             4. Stores:
+   - Bob's pubkey                         - Alice's pubkey
+   - Shared secret S                      - Shared secret S
+   - Bob's shared info                    - Alice's shared info
+   - What Alice shared                    - What Bob shared
+```
+
+**ECDH shared secret derivation:**
+- Nostr public keys are x-only (32 bytes). Prepend `02` to assume even y-coordinate.
+- Multiply the full point by the other party's private key scalar.
+- SHA-256 hash the x-coordinate of the resulting point → 32-byte shared secret.
+- The result is symmetric: `ECDH(A_priv, B_pub) === ECDH(B_priv, A_pub)`.
+
+**Contact info selection:** During the QR exchange, each user selects what to share:
+- Name
+- Mobile number
+- Email
+- Home address
+- Children's public keys (for families whose kids play together)
+
+This data is stored **locally only** — never published to relays. The QR exchange happens entirely in person.
+
+**Automatic vouch:** The connection optionally triggers a mutual in-person vouch (kind 30471), contributing to both users' Tier 2 web-of-trust and Signet IQ.
+
+### 15.4 Signet Verification Words ("Signet Me")
+
+The core peer-to-peer identity verification feature. Given a connection with a shared secret, both parties can independently compute the same words at any time — proving they hold the keys that established the connection.
+
+**The problem:** Your friend calls, panicked, asking you to send money to a new bank account. It sounds like him — social cues are right, he drops the kids' names. But is it really him?
+
+**The solution:** "Signet me." Both users open each other's profiles. Both see the same words. The caller reads them out. Match → it's really them.
+
+**Algorithm (powered by canary-kit):**
+
+Signet delegates word derivation to the [CANARY protocol](https://github.com/TheCryptoDonkey/canary-kit) for protocol alignment. Canary handles real-time spoken verification; Signet handles identity and trust.
+
+```
+Inputs:
+  S  = shared secret (32 bytes, from ECDH at connection time)
+  t  = current Unix timestamp in milliseconds
+  N  = word count (1-16, default: 3)
+  I  = epoch interval in seconds (default: 30)
+  T  = tolerance in epochs (default: 1)
+
+Epoch:
+  E = floor(t / (I × 1000))
+
+Derivation (CANARY-DERIVE):
+  H = HMAC-SHA256(S, utf8("signet:verify") || E_be32)   // 32-byte MAC
+
+Word extraction (N × 16-bit indices from H):
+  For i = 0 to N-1:
+    index   = readUint16BE(H, i × 2) mod 2048
+    word[i] = CANARY_WORDLIST[index]
+```
+
+**Wordlist:** The Canary spoken-clarity wordlist (2048 words, curated from BIP-39 with homophones and phonetic near-collisions removed). Optimised for verbal exchange.
+
+**Defaults:** 3 words, 30-second epoch, ±1 tolerance. These are the recommended settings for in-person and phone verification. Implementations MAY allow configuration of all three parameters for different use cases.
+
+**Configuration guidelines:**
+
+| Use Case | Words | Epoch | Tolerance | Effective Window |
+|----------|-------|-------|-----------|-----------------|
+| In-person verification | 3 | 30s | ±1 | 90 seconds |
+| Phone call | 3 | 30s | ±1 | 90 seconds |
+| Quick in-room check | 1 | 30s | ±1 | 90 seconds |
+| Async/text channel | 3 | 300s | ±1 | 15 minutes |
+| High-security | 4 | 30s | 0 | 30 seconds |
+
+**Entropy by word count:**
+
+| Words | Entropy | Combinations |
+|-------|---------|-------------|
+| 1 | 11 bits | 2,048 |
+| 2 | 22 bits | ~4 million |
+| 3 | 33 bits | ~8.6 billion |
+| 4 | 44 bits | ~17.6 trillion |
+
+**Maximum word count:** 16 (32 bytes of HMAC output / 2 bytes per word index).
+
+**Properties:**
+- **Symmetric:** Both parties compute the same words from the same shared secret.
+- **Rotating:** Words change every epoch. Stale words cannot be replayed.
+- **Tolerant:** Verification accepts current epoch ±T (default: ±1, giving a 3× epoch window) to accommodate lag.
+- **Offline:** No server, no relay, no network needed. Pure local computation.
+- **Configurable:** Word count, epoch interval, and tolerance are adjustable for different security/usability trade-offs.
+- **Consistent prefix:** The first N words are always the same regardless of the total word count requested. Asking for 4 words gives the same first 3 as asking for 3.
+- **Protocol aligned:** Uses canary-kit's CANARY-DERIVE primitive and spoken-clarity wordlist, ensuring consistent vocabulary across Signet (identity establishment) and Canary (ongoing verification, duress signalling).
+
+**Use cases:**
+
+| Scenario | Flow |
+|----------|------|
+| **Friend asks for money** | "Signet me." Both open the app. Words match → send it. |
+| **Bank calls about suspicious activity** | "Read me my signet." Agent checks your profile → reads the 3 words. |
+| **You call the bank** | "What's my signet?" You verify they have access to the bank's private key. |
+| **Family emergency contact** | Relative calls claiming to be with your child. "Signet me first." |
+| **Business verification** | Supplier calls to change payment details. "Signet me before I update anything." |
+
+**Display:**
+
+```
+┌──────────────────────────────────────┐
+│  Bob's Profile                       │
+│                                      │
+│  My Signet:                          │
+│                                      │
+│     ocean · tiger · marble           │
+│                                      │
+│  ████████████░░░░  18s               │
+│                                      │
+│  Tap to verify words read to you     │
+└──────────────────────────────────────┘
+```
+
+The progress bar shows time until the next word rotation. The user sees the words update in real time.
+
+### 15.5 Security Considerations
+
+**Key management:**
+- The 12-word mnemonic must be stored offline (paper, metal backup). It is the master secret.
+- The optional passphrase adds plausible deniability (different passphrase → different identity).
+- Shamir shares should be distributed to people in different locations.
+
+**Shared secrets:**
+- ECDH shared secrets are derived from the connection and stored locally. They never leave the device.
+- If a device is compromised, all shared secrets on that device are compromised. Users should re-establish connections from a new device.
+
+**Signet words:**
+- The epoch interval prevents replay beyond the tolerance window.
+- An attacker who compromises one party's device gains their shared secrets and can generate words. This is equivalent to compromising their private key — the defence is device security, not protocol design.
+- For high-value transactions, use 4+ words with tight tolerance (0), and combine with other verification (video call, previously agreed code phrase).
+- Using 1 word (1-in-2,048) is acceptable only for low-stakes, physical-proximity scenarios where the threat model is impersonation, not brute force.
+- Both parties MUST agree on the same configuration (word count, epoch, tolerance) for verification to succeed. Mismatched config will always fail.
+
+---
+
+---
+
+## 16. Identity Bridge
+
+### 16.1 Overview
+
+The identity bridge allows users to maintain separate anonymous and real-name accounts while cryptographically proving their anonymous account is backed by a verified identity. This is essential for privacy-respecting participation in communities that require trust.
+
+**Example flow:**
+
+1. Alice has a real-name account verified at Tier 3 by her solicitor.
+2. Alice creates an anonymous account for participating in communities where she wants privacy.
+3. Alice creates an identity bridge: her real account signs a ring signature (among 10 other verified accounts) proving "one of these 11 people also controls this anon account."
+4. The bridge event (kind 30476) is published from Alice's anon account.
+5. Community members see Alice's anon account has a Signet IQ of ~38 (from the bridge alone), indicating a verified person is behind it.
+6. When other bridged anonymous accounts vouch for Alice's anon account, trust compounds naturally.
+
+### 16.2 Ring Construction
+
+The ring must contain at least 5 verified pubkeys (the `MIN_BRIDGE_RING_SIZE` constant). The user's real pubkey is placed at a random position among decoys selected from the pool of verified accounts on the relay.
+
+Decoy selection:
+- Query the relay for pubkeys with kind 30470 credentials at or above the desired minimum tier.
+- Exclude the user's real pubkey from the candidate pool.
+- Randomly select `ringSize - 1` decoys.
+- Insert the real pubkey at a random index.
+
+### 16.3 nsec Import
+
+Users may import existing Nostr accounts via nsec (NIP-19 bech32-encoded private keys). nsec-imported accounts:
+- Have no mnemonic (cannot use Shamir backup).
+- Can fully participate in the protocol (vouch, receive credentials, create bridges).
+- Are clearly indicated in the UI as nsec-imported.
+
+### 16.4 Multi-Account Management
+
+A device may hold multiple accounts (real-name + anonymous, or multiple identities). Each account:
+- Is identified by its pubkey (not a singleton key).
+- Has its own connections, credentials, and Signet IQ.
+- Can be switched between in the app UI.
+
+Connections are scoped to the owning account. Credentials and vouches are naturally scoped by pubkey in the Nostr protocol.
+
+---
+
+## 17. Entity Type Classification
+
+### 17.1 Overview
+
+The protocol classifies accounts along two orthogonal axes:
+
+- **Verification tier** (1–4): How deeply an account is verified.
+- **Entity type** (9 types): What kind of entity the account represents.
+
+These axes are independent. A Natural Person could be Tier 3 or Tier 4. A Free Agent is always Tier 1. Entity type is determined by the cryptographic mechanism that links the account to the chain of trust.
+
+### 17.2 Entity Types
+
+The protocol defines nine entity types in three root categories.
+
+**Root categories:**
+
+| Protocol Term | Code | Description |
+|---|---|---|
+| Natural Person | `natural_person` | A living human, professionally verified (Tier 3+) |
+| Juridical Person | `juridical_person` | A legal entity, verified by professional + multi-sig from Natural Persons |
+| Free Agent | `free_agent` | An unverified account with no chain of trust (the default) |
+
+**Alias subtypes (anonymous identities):**
+
+| Protocol Term | Code | Description |
+|---|---|---|
+| Persona | `persona` | Anonymous alias of a Natural Person, linked via identity bridge (ring signature) |
+| Juridical Persona | `juridical_persona` | Anonymous alias of a Juridical Person, linked via identity bridge |
+
+**Agent subtypes (delegated bots):**
+
+| Protocol Term | Code | Description |
+|---|---|---|
+| Personal Agent | `personal_agent` | Bot delegated by a Natural Person |
+| Free Personal Agent | `free_personal_agent` | Bot delegated by a Persona |
+| Organised Agent | `organised_agent` | Bot delegated by a Juridical Person |
+| Free Organised Agent | `free_organised_agent` | Bot delegated by a Juridical Persona |
+
+**Naming convention:** The protocol uses legal terminology (Natural Person, Juridical Person, Persona) for precision. Client applications SHOULD use friendly labels (Person, Organisation, Alias) in user interfaces. See §17.8 for the recommended label mapping.
+
+### 17.3 Ownership and Delegation Tree
+
+```
+Natural Person ──► Personal Agent
+  │
+  └──► Persona ──► Free Personal Agent
+
+Juridical Person ──► Organised Agent
+  │
+  └──► Juridical Persona ──► Free Organised Agent
+
+Free Agent (standalone, no chain of trust)
+```
+
+Every account starts as a Free Agent. Entity type is earned through the appropriate verification mechanism.
+
+### 17.4 Mechanism-Based Type Determination
+
+Entity type is defined by the cryptographic linkage that connects an account to the chain of trust:
+
+| Entity Type | Linkage Mechanism | Event Kind |
+|---|---|---|
+| Natural Person | Professional credential | 30470 (Tier 3/4) |
+| Persona | Identity bridge (ring signature) from a Natural Person | 30476 |
+| Personal Agent | Delegation event from a Natural Person | 30477 |
+| Free Personal Agent | Delegation event from a Persona | 30477 |
+| Juridical Person | Professional credential + multi-sig attestation | 30470 |
+| Juridical Persona | Identity bridge (ring signature) from a Juridical Person | 30476 |
+| Organised Agent | Delegation event from a Juridical Person | 30477 |
+| Free Organised Agent | Delegation event from a Juridical Persona | 30477 |
+| Free Agent | None | — |
+
+### 17.5 Credential Tag
+
+The existing credential event (kind 30470) gains a new tag:
+
+```jsonc
+["entity-type", "<type_code>"]
+```
+
+Where `<type_code>` is one of: `natural_person`, `persona`, `personal_agent`, `free_personal_agent`, `juridical_person`, `juridical_persona`, `organised_agent`, `free_organised_agent`, `free_agent`.
+
+This tag is derived from the verification mechanism used but is included explicitly for relay and client queryability.
+
+### 17.6 Agent Delegation Event (Kind 30477)
+
+A replaceable event published by an account owner to delegate authority to an agent (bot).
+
+```jsonc
+{
+  "kind": 30477,
+  "pubkey": "<owner_pubkey>",
+  "tags": [
+    ["d", "<unique_delegation_id>"],
+    ["p", "<agent_pubkey>"],              // the bot/agent being delegated
+    ["entity-type", "<agent_type>"],      // personal_agent, free_personal_agent,
+                                          // organised_agent, free_organised_agent
+    ["expires", "<unix_timestamp>"],      // optional: delegation expiry
+    ["algo", "secp256k1"],               // cryptographic algorithm (§9.5)
+    ["L", "signet"],
+    ["l", "delegation", "signet"]
+  ],
+  "content": ""
+}
+```
+
+**Delegation constraints:**
+
+- A Natural Person may delegate → `personal_agent`
+- A Persona may delegate → `free_personal_agent`
+- A Juridical Person may delegate → `organised_agent`
+- A Juridical Persona may delegate → `free_organised_agent`
+
+Any other owner→agent type combination is invalid and MUST be rejected by clients and relays.
+
+**Revocation:** Delegations are revoked using the existing kind 30475 revocation event, with the `["d", "<agent_pubkey>"]` tag pointing to the agent being revoked.
+
+### 17.7 Juridical Person Verification
+
+A Juridical Person (organisation) requires dual verification:
+
+1. **Professional verification:** A Tier 3+ professional verifies the organisation's legal registration documents (articles of incorporation, registration certificate, etc.) and issues a kind 30470 credential.
+2. **Multi-sig attestation:** N-of-M verified Natural Persons co-sign a credential attesting they represent the organisation (e.g., 3 of 5 board members). Each co-signer must themselves be a verified Natural Person.
+
+Both proofs must be present for an account to achieve Juridical Person status.
+
+### 17.8 Application Label Mapping
+
+Client applications SHOULD map protocol entity types to user-friendly labels:
+
+| Protocol Term | Recommended App Label |
+|---|---|
+| Natural Person | Person |
+| Persona | Alias |
+| Personal Agent | Personal Agent |
+| Free Personal Agent | Free Personal Agent |
+| Juridical Person | Organisation |
+| Juridical Persona | Org Alias |
+| Organised Agent | Organised Agent |
+| Free Organised Agent | Free Org Agent |
+| Free Agent | Free Agent |
+
+### 17.9 Dynamic Mode Signaling
+
+A single account (particularly a physical device such as a humanoid robot or telepresence system) may switch between entity types depending on who or what is in control at a given moment. Events published by such accounts SHOULD include a mode tag:
+
+```jsonc
+["mode", "<mode>"]
+```
+
+Where `<mode>` is one of:
+
+| Mode | Meaning |
+|---|---|
+| `teleoperated` | A verified person is in direct real-time control (entity acts as Persona) |
+| `autonomous` | AI/software is acting on behalf of the owner (entity acts as Agent) |
+| `assisted` | A verified person is in control with AI assistance (entity acts as Persona) |
+
+**Example:** A paraplegic Natural Person controls a humanoid robot via a brain-computer interface. When the person is directly controlling the robot, it publishes events with `["mode", "teleoperated"]` and operates as a Persona. When the person steps away and onboard AI takes over, it publishes with `["mode", "autonomous"]` and operates as a Personal Agent. This allows others interacting with the robot to know whether they are communicating with the person or their AI.
+
+This pattern applies to any remote-operated system: telepresence robots, drone operators, remote surgery rigs, VR avatars — any case where a verified person may or may not be in direct control at a given moment.
+
+### 17.10 Relay Policy Extensions
+
+Community verification policies (kind 30472) may include entity type requirements:
+
+```jsonc
+["allowed-entity-types", "natural_person,persona,juridical_person"]
+```
+
+Relays MAY filter events by entity type. For example, a child-safety relay might only accept events from Natural Persons and Personas (verified humans and their aliases), rejecting Free Agents and unverified bots.
+
+### 17.11 Future Extension: Synthetic Person
+
+The current taxonomy covers entities that are human, human-controlled, human-organised, or unverified. It does not cover fully autonomous beings (e.g., a sentient AI or truly independent robot) that act on their own behalf rather than on behalf of a human or organisation.
+
+If such entities require their own legal or social standing, a new root category — **Synthetic Person** — may be added alongside Natural Person and Juridical Person, with its own alias and agent subtypes. The taxonomy is designed to accommodate this without breaking changes.
+
+---
+
+## 18. Adversarial Resilience
+
+### 18.1 Overview
+
+Any identity protocol that achieves meaningful adoption will be evaluated — and potentially co-opted — by adversarial actors, including nation-states. A protocol that works only under cooperative assumptions is not a protocol; it is an invitation to abuse. Signet MUST be designed, evaluated, and maintained under adversarial assumptions, including the scenario where a government mandates Signet ID and then attempts to weaponise it.
+
+This section defines the threat model, compares Signet's position to the current state and its trajectory, and establishes formal requirements that the protocol must satisfy.
+
+### 18.2 Threat Scenarios
+
+The following table compares ten adversarial scenarios across three contexts: the current state (2026), the trajectory if centralised digital identity continues unchecked, and the position with Signet.
+
+| Scenario | Current State (2026) | Trajectory Without Decentralised Alternative | With Signet |
+|---|---|---|---|
+| **Identity revocation** | Multiple ID forms exist. Losing one doesn't kill identity. | Centralised digital ID (EU eIDAS, UK DIATF) creates single points of failure. One revocation = locked out. India's Aadhaar locks people out of food rations. | Multiple independent credential issuers. No single revocation kills identity. Government revokes their attestation, not identity itself. |
+| **Anonymous participation** | Possible via cash, physical post, in-person. Diminishing with CCTV, card-only payments, phone tracking. | Cash elimination. Real-name platform verification (EU DSA, UK OSA). Anonymous speech criminalised or de-platformed. Trajectory: zero anonymity. | Ring signatures provide mathematical anonymity. Persona accounts unlinkable to Natural Person. Anonymous but verified participation is a protocol feature, not a loophole. |
+| **Backdoored identity** | Government holds biometrics. Centralised databases. Citizen doesn't control infrastructure. | Mandatory government wallet apps. Closed-source, government-audited. Apple/Google as gatekeepers. Must use their app to have identity. | Open-source clients. Keys generated offline. Open spec anyone can implement. No mandated app. |
+| **Retrospective de-anonymisation** | ISP logging (UK IPA). CCTV retained. Much activity still unrecorded. | AI retroactive analysis of CCTV, social media, location, payments. "Reconstruct your 2025" becomes routine. Facial recognition on stored footage. | Risk exists (quantum). Post-quantum crypto migration is plannable. Analogue world has NO defence against retrospective AI analysis. |
+| **Mass surveillance** | GCHQ/NSA bulk collection. Smart city sensors. Mobile tracking. Mostly passive. | Real-time AI monitoring. IoT everywhere. China-model normalised as "public safety." Active, not passive. | Relay diversity across jurisdictions. Encrypted connections. Signet words work offline. Can't surveil what doesn't touch your infrastructure. |
+| **Statistical de-anonymisation** | Browser fingerprinting, ad IDs, metadata analysis already de-anonymise routinely. | AI correlation attacks improve exponentially. Pseudonymity provides zero real protection. | Ring signatures stronger than pseudonymity — provable unlinkability. Larger rings = stronger guarantees. |
+| **Social graph mapping** | Social media, phone contacts, email, payments reveal relationships. Government can request with warrants. | AI real-time social graph analysis. Cross-platform graph merging. No relationship private. | Persona-based connections unlinkable to Natural Person. Government key and social key cryptographically separated. |
+| **Family structure exploitation** | Birth certs, school records, tax returns link families. Government knows family structure. | Centralised child identity systems. Family graphs cross-linked across all services. | ZKP proves "parent has child aged 8-12" without revealing which child, which school, any detail. |
+| **Verifier coercion** | Government can pressure professionals via licensing. Professionals have some legal protections. | Professional independence eroded. Licensing bodies politicised. "Comply or lose licence" routine. | Multiple verifiers across jurisdictions and professions. No single jurisdiction's coercion captures entire verification chain. |
+| **Election manipulation** | Paper ballots work reasonably for secrecy. Postal voting vulnerable. No crypto guarantees. | Digital voting without proper crypto. Centralised "trust us" counting. Convenience over security. | Linkable ring signatures for ballot secrecy. Re-voting for coercion resistance. Verifiable tallying anyone can audit. |
+
+### 18.3 Defence Principles
+
+Every defence follows the same meta-principle: **decentralisation prevents single-entity control.**
+
+1. **Multiple credential issuers** — no single entity's revocation kills your identity
+2. **Open-source clients** — no mandated app can be secretly backdoored
+3. **Relay diversity** — no single jurisdiction controls the communication layer
+4. **Large ring signatures** — statistical de-anonymisation requires infeasible computation
+5. **Post-quantum migration path** — build crypto agility into the spec now
+6. **Multiple election authorities** — no single signer controls ballot issuance
+7. **Cross-jurisdiction verifiers** — professionals in different countries provide independent trust paths
+8. **Voluntary credential presentation** — the protocol MUST NOT enable compulsory ID through the back door
+
+### 18.4 Formal Adversarial Requirement
+
+The protocol MUST ensure that no single entity — including a nation-state — can unilaterally:
+
+- **Revoke a person's identity** — only their own attestation, not the keypair or credentials from other issuers
+- **De-anonymise a Persona** — without possession of the private key
+- **Coerce a vote** — without detection by the voter or audit trail
+- **Surveil all activity** — relay diversity defeats centralised monitoring
+- **Weaponise credentials as social credit** — multiple independent issuers prevent any single issuer from gatekeeping participation
+
+These properties are non-negotiable. Any proposed protocol change that weakens any of these guarantees MUST be rejected unless it provides an equivalent or stronger guarantee through a different mechanism.
+
+---
+
+## 19. Civic Identity
+
+### 19.1 Government as Verifier
+
+Governments are simply another class of verifier in the Signet model. A government issues kind 30470 credentials to citizens, just as a professional verifier issues credentials to individuals. The critical difference from traditional national ID:
+
+| Aspect | Traditional National ID | Signet ID |
+|---|---|---|
+| Who generates the identity | Government issues it | Citizen generates keypair |
+| Who holds the master record | Government database | Citizen holds private key |
+| What government stores | Name, DOB, address, photo, biometrics | Public key + attestation |
+| Single point of failure | Government database breach = mass identity theft | No central database to breach |
+| Revocation power | Government can cancel your identity | Government can revoke their attestation; your key still works with other verifiers |
+| Surveillance capability | Full — they hold all your data | Limited — they hold a public key |
+
+No new event kinds are required. Governments use existing kinds: 30470 (credential issuance), 30475 (revocation), and 30476 (identity bridge) where applicable.
+
+### 19.2 Verification Flow
+
+Citizen verification follows a six-step process using existing protocol mechanisms:
+
+1. **Key generation** — Citizen generates a Nostr keypair from a 12-word BIP-39 mnemonic
+2. **In-person appearance** — Citizen visits a government office (analogous to passport issuance)
+3. **Document verification** — Government official verifies identity documents in person
+4. **Credential issuance** — Government issues a kind 30470 Signet credential to the citizen's pubkey: "This pubkey belongs to a verified citizen"
+5. **Connection establishment** — Citizen and government official establish a verified connection (QR exchange, shared secret, or Signet words)
+6. **Ongoing verification** — For future interactions, either party can verify the other using "Signet me" time-based word verification
+
+### 19.3 Good Standing Credentials
+
+A government may issue a "good standing" credential — a kind 30470 attestation that indicates the citizen has no outstanding warrants or court orders requiring action.
+
+**Revocation as warrant mechanism:**
+- When a court issues a warrant, the good standing credential is revoked via kind 30475
+- The citizen's ZKP can prove non-membership in the revocation set (i.e., "I am not on any warrant list")
+- Ring signatures anonymise which specific credential is being proven
+- The credential can be re-issued when the warrant is resolved
+
+**Privacy guarantee:** The revocation set is public (as all kind 30475 events are), but ring signatures prevent observers from linking a specific proof of good standing to a specific citizen.
+
+### 19.4 Privacy-Preserving Police Interaction
+
+**Current process:**
+1. Police stop a person
+2. Ask for name
+3. Run name through Police National Computer / NCIC
+4. Check for warrants
+5. If clear, person goes — but name, location, and time are all logged
+
+**Signet process:**
+1. Police stop a person
+2. Ask to verify status
+3. Person's device presents a ZKP: "I hold a valid, non-revoked citizen credential"
+4. Officer's device verifies the proof and checks revocation status
+5. If clear, person goes — **no identity revealed**
+
+The officer learns exactly one fact: this person holds a valid, non-revoked citizen credential.
+
+**Critical constraint:** Presentation of a Signet credential MUST be voluntary. Refusal to present a credential MUST NOT be grounds for detention, search, or further action. Without this constraint, Signet becomes compulsory ID through the back door. This requirement MUST be enshrined in enabling legislation (see §19.6).
+
+### 19.5 Separation of Official and Private Identity
+
+Citizens maintain strict separation between their government-registered identity and their private life:
+
+```
+Citizen's registered pubkey (Natural Person)
+  │  Used ONLY for government interactions:
+  │  taxes, official correspondence, warrant checks
+  │
+  └──► Persona accounts (anonymous aliases)
+       │  Used for private life:
+       │  social media, communities, personal expression
+       │  Ring signature proves "I am a real citizen"
+       │  without revealing which one
+       │
+       └──► Free Personal Agents
+            Bots/services under anonymous identity
+```
+
+The government knows the citizen's registered pubkey. They cannot link it to any Persona account without breaking the ring signature — which is computationally infeasible. This separation is enforced by cryptography, not by policy.
+
+### 19.6 Legal Framework Requirements
+
+For civic identity to function as described, enabling legislation MUST ensure:
+
+1. **Voluntary presentation** — no person may be compelled to present a Signet credential outside of contexts where identification is already legally required (e.g., border control, court proceedings)
+2. **Refusal without consequence** — refusal to present a credential in a voluntary context must not be treated as grounds for suspicion, detention, or any adverse action
+3. **Keypair sovereignty** — the citizen's private key is their property; government may not demand access to it
+4. **Credential plurality** — citizens may hold credentials from multiple issuers; no single government credential may be made a prerequisite for participation in civil society
+5. **Algorithmic audit** — any government systems that process Signet credentials must be subject to independent audit
+6. **Sunset and review** — civic identity legislation must include mandatory review periods to assess whether the system is being used as intended
+
+---
+
+## 20. Two-Credential Verification
+
+### 20.1 Design Principle
+
+Anonymity is a first-class design goal, not an afterthought. Every person verified through Signet receives **two** credentials on **two** separate keypairs:
+
+- **Keypair A (Natural Person):** Real identity — name, nationality, document hash, nullifier
+- **Keypair B (Persona):** Anonymous identity — inherits only the age-range proof and guardian tags (if child)
+
+The professional verifier sees both keypairs and issues both credentials in a single ceremony. The link between keypairs is known only to the subject and the verifier (protected by professional confidentiality — solicitor-client privilege, notary secrecy, medical confidentiality).
+
+### 20.2 The Ceremony
+
+The two-credential ceremony follows these steps:
+
+1. Subject presents two Nostr pubkeys (keypair A and keypair B) to the verifier
+2. Subject presents identity documents (passport, national ID, birth certificate)
+3. Verifier examines documents and confirms identity of the person present
+4. Verifier builds a Merkle tree from verified attributes (name, nationality, document type, DOB, nullifier)
+5. Verifier computes nullifier using length-prefixed encoding (see §20.7)
+6. Verifier generates Bulletproof age-range proof from date of birth
+7. Verifier issues Natural Person credential (keypair A) with: entity-type, merkle-root, nullifier, age-range, guardian tags (if child)
+8. Verifier issues Persona credential (keypair B) with: entity-type=persona, age-range (same proof), guardian tags (if child), NO nullifier, NO merkle-root
+
+### 20.3 On-Chain vs Private Data
+
+| Data | On-chain (public) | Private (Merkle leaf only) |
+|------|-------------------|---------------------------|
+| Entity type | Yes | — |
+| Age range (e.g., "18+") | Yes (ZKP) | — |
+| Merkle root | Yes (NP only) | — |
+| Nullifier hash | Yes (NP only) | — |
+| Guardian pubkey(s) | Yes (if child) | — |
+| Full name | — | Yes |
+| Nationality | — | Yes |
+| Date of birth | — | Yes |
+| Document type | — | Yes |
+| Document number | — | — (used in nullifier, then discarded) |
+
+### 20.4 Date of Birth and Age-Range Proofs
+
+All tiers carry age-range proofs when issued by a professional:
+
+- **Tier 1 (self-declared):** No age-range proof (self-declaration is not verification)
+- **Tier 2 (peer-vouched):** No age-range proof (peers cannot verify DOB)
+- **Tier 3 (professional, adult):** Age-range proof "18+" from verified DOB
+- **Tier 4 (professional, adult+child):** Age-range proof with specific range (e.g., "8-12", "13-17")
+
+Age ranges for children:
+
+| Age | Range tag | Tier | Scope |
+|-----|-----------|------|-------|
+| 0-3 | `0-3` | 4 | adult+child |
+| 4-7 | `4-7` | 4 | adult+child |
+| 8-12 | `8-12` | 4 | adult+child |
+| 13-17 | `13-17` | 4 | adult+child |
+| 18+ | `18+` | 3 | adult |
+
+The DOB is NEVER published on-chain. Only the zero-knowledge age-range proof appears. The Bulletproof proves "this person's age falls within [min, max]" without revealing the exact age or DOB.
+
+### 20.5 Merkle-Bound Name Verification
+
+The Natural Person credential includes a `merkle-root` tag. The Merkle tree contains verified attributes as leaves:
+
+```
+Merkle Root
+├── H("dateOfBirth:1990-05-15")
+├── H("documentType:passport")
+├── H("name:Alice Smith")
+├── H("nationality:GB")
+└── H("nullifier:<hash>")
+```
+
+Selective disclosure: The subject can reveal any attribute by providing the leaf value and its Merkle proof (sibling hashes). The verifier (or any party) can verify the proof against the published Merkle root without seeing the other attributes.
+
+Use cases for selective disclosure:
+- Prove name to a bank without revealing nationality
+- Prove nationality for a community policy without revealing name
+- Prove document type for a regulatory check without revealing anything else
+
+### 20.6 Entity Type as Immutable Differentiator
+
+The `entity-type` tag is set at credential issuance and cannot be changed without a new credential:
+
+| Entity type | Display | Can hold nullifier? | Can hold merkle-root? |
+|-------------|---------|--------------------|-----------------------|
+| natural_person | Person | Yes | Yes |
+| persona | Alias | No | No |
+
+Clients MUST display the entity type. A Persona MUST NOT be displayed as a verified person. The entity type is the primary signal for "is this a real identity or an alias?"
+
+### 20.7 Document-Based Nullifiers
+
+Nullifiers prevent duplicate identity creation. The nullifier is computed using length-prefixed encoding to prevent field-boundary collisions:
+
+```
+nullifier = SHA-256(
+  uint16be(len(document_type)) || document_type ||
+  uint16be(len(country_code))  || country_code  ||
+  uint16be(len(document_number)) || document_number ||
+  uint16be(len(domain_tag))    || domain_tag
+)
+
+where domain_tag = "signet-nullifier-v2"
+```
+
+Each field is prefixed with its UTF-8 byte length as a 2-byte big-endian unsigned integer. This prevents ambiguity where field values containing delimiters could produce colliding nullifiers (e.g., docType="A||B" + country="C" must not collide with docType="A" + country="B||C").
+
+Properties:
+- **Deterministic:** Same document always produces the same nullifier
+- **One-way:** Cannot recover document details from the nullifier
+- **Collision-resistant:** Different documents produce different nullifiers; length-prefixed encoding prevents field-boundary ambiguity
+- **Cross-verifier consistent:** Any verifier with the same document computes the same nullifier
+
+When a verifier encounters a nullifier that already exists on a relay, this indicates either:
+1. The same person is getting re-verified (legitimate — supersede the old credential)
+2. Two different people presented the same document (fraud — flag for investigation)
+
+### 20.8 Multi-Document Nullifier Families
+
+When a subject presents multiple identity documents during a verification ceremony (e.g., passport AND driving licence AND national ID), the verifier SHOULD compute nullifiers for ALL documents, not just the primary. These form a **nullifier family** — a set of nullifiers that all belong to the same person.
+
+```
+nullifier_passport    = SHA-256(LP("passport") || LP("GB") || LP("123456789") || LP("signet-nullifier-v2"))
+nullifier_licence     = SHA-256(LP("driving_licence") || LP("GB") || LP("SMITH901150J99XX") || LP("signet-nullifier-v2"))
+nullifier_national_id = SHA-256(LP("national_id") || LP("GB") || LP("AB123456C") || LP("signet-nullifier-v2"))
+
+where LP(s) = uint16be(len(s)) || s
+```
+
+The credential event includes:
+- `["nullifier", "<primary_nullifier>"]` — the primary nullifier (backwards compatible)
+- `["nullifier-family", "<nullifier>", "<document_type>"]` — one tag per document in the family
+
+**Collision detection:** When checking for duplicates, clients and relays MUST check ALL nullifiers in the incoming family against ALL nullifiers (both `nullifier` and `nullifier-family` tags) in existing credentials. A collision with ANY nullifier in ANY family indicates the same person has been verified before.
+
+This significantly strengthens duplicate prevention: a person cannot circumvent the system by presenting a different document to a different verifier, because both documents' nullifiers are recorded and cross-checked.
+
+### 20.9 Nullifier Weaknesses and Mitigations
+
+| Weakness | Mitigation |
+|----------|------------|
+| Document shared between family members | Nullifier collision detected; professional investigates |
+| Document number guessable (sequential) | Hash includes document type + country; brute-force requires knowing all three components |
+| Multiple documents (passport + national ID) | Multi-document nullifier families (§20.8) — each document produces a nullifier, all are cross-checked |
+| Country changes document format | Domain tag version ("signet-nullifier-v2") allows migration to new formula |
+| Verifier collusion (issue without real document) | Anti-corruption framework (§7) applies; nullifier without document is detectable via anomaly patterns |
+| eIDAS wallet credentials | When available, the eIDAS unique person identifier can serve as an additional nullifier source for EU citizens (§20.10) |
+
+### 20.10 eIDAS 2.0 Bridge (Future)
+
+EU eIDAS 2.0 mandates unique person identifiers for ~450M EU citizens by December 2026. When a subject presents an eIDAS wallet credential during a Signet verification ceremony, the verifier MAY use the eIDAS unique person identifier as an additional nullifier source:
+
+```
+nullifier_eidas = SHA-256(LP("eidas") || LP(eidas_unique_id) || LP("signet-nullifier-v2"))
+
+where LP(s) = uint16be(len(s)) || s
+```
+
+Note: The eIDAS nullifier uses only two data fields (type + identifier) since there is no country code or document number; the length-prefixed encoding ensures this cannot collide with document-based nullifiers which always have three data fields.
+
+This provides a de facto perfect nullifier for EU citizens, as the eIDAS identifier is government-issued, unique, and machine-verifiable. The eIDAS nullifier is included in the nullifier family alongside document-based nullifiers.
+
+---
+
+## 21. Credential Lifecycle
+
+### 21.1 Credential Chains
+
+When a credential needs updating (name change, document renewal, tier upgrade), a new credential is issued with a `["supersedes", "<old_event_id>"]` tag. The old credential receives a `["superseded-by", "<new_event_id>"]` tag.
+
+```
+Credential v1 (original)
+  ├── superseded-by: <v2_id>
+  └── [still on relay, but clients show as superseded]
+
+Credential v2 (current)
+  ├── supersedes: <v1_id>
+  └── [active, displayed by clients]
+```
+
+Rules:
+- Only a professional verifier can issue a superseding credential
+- The superseding credential MUST reference the old credential's event ID
+- Clients MUST follow the chain and display only the current (non-superseded) credential
+- The chain is append-only — superseded credentials cannot be un-superseded
+
+### 21.2 Name Changes
+
+When a subject's legal name changes (marriage, divorce, deed poll, court order):
+
+1. Subject presents new legal documents to a professional verifier
+2. Verifier builds new Merkle tree with updated name
+3. Verifier issues new Natural Person credential with `["supersedes", "<old_id>"]`
+4. Persona credential is UNAFFECTED (it carries no name)
+
+### 21.3 Titles and Qualifications
+
+Professional titles (PhD, Dr., KC/QC, Prof.) are NOT name changes. They are separate credentials issued by awarding bodies or verified by professionals, linked to the same pubkey. The Natural Person credential reflects the legal name only.
+
+### 21.4 Children
+
+#### 21.4.1 Child Credential Requirements
+
+Foundational rule: child credentials MUST be sub-accounts of a verified parent or guardian.
+
+The ceremony requires:
+- Parent/guardian with Tier 3+ Signet credential (mandatory)
+- Child's birth certificate or passport (DOB mandatory)
+- Professional verifies parental authority (birth certificate name match, court order if applicable)
+- Professional generates Bulletproof age-range proof from DOB
+- Issues Natural Person + Persona credentials, both with age-range proof and `["guardian", "<parent_pubkey>"]` tag
+- Child's real name NEVER published — only in private Merkle leaves
+
+#### 21.4.2 Guardian Link
+
+The `["guardian", "<parent_pubkey>"]` tag is:
+- Set by the professional verifier at issuance
+- Immutable — cannot be changed without a new credential issued by a professional
+- Multiple guardians supported (joint custody): multiple `["guardian", ...]` tags
+- Present on BOTH Natural Person and Persona credentials
+
+#### 21.4.3 Child to Adult Transition
+
+When a child turns 18:
+1. Subject visits a professional verifier with current identity documents
+2. Verifier issues new Tier 3 credential with `["age-range", "18+"]` and `["supersedes", "<child_credential_id>"]`
+3. New credential has NO guardian tag
+4. Same keypair preserved — all history and connections maintained
+5. Persona credential also superseded with updated age-range and no guardian tag
+
+#### 21.4.4 Age-Appropriate Tiers
+
+| Age range | Tier | Guardian required? | Typical capabilities |
+|-----------|------|--------------------|---------------------|
+| 0-7 | 4 | Yes (mandatory) | Guardian-managed account, no direct messaging |
+| 8-12 | 4 | Yes (mandatory) | Limited messaging with guardian approval |
+| 13-17 | 4 | Yes (mandatory) | More autonomy, guardian notification |
+| 18+ | 3 | No | Full adult account |
+
+#### 21.4.5 Family Structures
+
+Three distinct layers handle the complexity of real families:
+
+**Layer 1 — Credential level (immutable, set by professional):**
+Guardian tags reflect legal parental responsibility. Only changeable via court order + new credential from a professional.
+
+**Layer 2 — Delegation level (flexible, set by guardian):**
+Guardians delegate specific permissions to step-parents, grandparents, teachers, or other trusted adults via kind 30477 guardian delegation events. Delegations are:
+- Time-limited (expiry tag)
+- Scope-limited: `full`, `activity-approval`, `content-management`, `contact-approval`
+- Revocable by the guardian at any time
+
+**Layer 3 — Client level (app-specific, enforced locally):**
+Applications enforce permissions based on Layer 1 and Layer 2 data: screen time limits, content filtering, activity approval workflows, contact restrictions.
+
+### 21.5 Document Renewal
+
+When a document expires and is renewed (new passport number):
+1. New nullifier computed from new document details
+2. `["nullifier-chain", "<old_nullifier>"]` tag links old and new
+3. New credential supersedes old
+4. Continuity of identity maintained despite new document
+
+### 21.6 Death, Key Compromise, Incapacitation
+
+**Death:** A professional issues a kind 30475 revocation with reason "death." All credentials for the pubkey are considered revoked.
+
+**Key compromise:** Subject visits a professional with identity documents. Professional revokes all old credentials and issues new ones on a new keypair. Existing vouches are lost (deliberate security measure — prevents an attacker who compromised the key from retaining social trust).
+
+**Incapacitation:** Court-appointed guardian added via guardian tag on a superseding credential, issued by a professional with the court order.
+
+### 21.7 Nostr Early Adopter Migration
+
+Existing Nostr users can integrate with Signet without losing their established identity:
+
+**Path 1 — Sign existing keypair:**
+The user's existing npub becomes their Natural Person identity. They visit a professional for verification. All followers, NIP-05, zaps, and reputation are preserved.
+
+**Path 2 — Existing npub becomes Persona:**
+The user creates a new keypair for their Natural Person identity and uses their existing npub as their Persona. An identity bridge (kind 30476) links them with ring-signature privacy.
+
+Both paths use existing mechanisms (NIP-05, identity bridges, credential chains). No automatic trust transfer between keypairs (prevents impersonation).
+
+---
+
+## 22. Child Online Safety
+
+### 22.1 Grooming Prevention
+
+The primary defence against grooming is the combination of age-range proofs and in-person professional verification:
+
+1. **Unverified accounts cannot enter child spaces.** Communities require Tier 4 + age-range proof. An unverified account is rejected.
+2. **Peer vouching cannot produce age-range proofs.** Only professionals who see the person and their documents can issue age-range proofs. A Tier 2 vouch carries no age verification.
+3. **Professionals see the actual person.** AI can generate convincing documents, but a 40-year-old cannot present as a 14-year-old in person. Professionals verify documents daily as part of their existing practice.
+4. **Guardian notifications.** When a child's account receives contact from an unknown adult, the guardian is notified. Contact requires guardian approval in strict mode.
+5. **"Signet me" challenges.** Time-based word verification proves the current device holder matches the credential. Detects proxy use and reveals age gaps.
+
+### 22.2 Age Bypass Prevention
+
+Preventing children from accessing adult-only spaces:
+
+1. **Adult spaces require Tier 3+ with "18+" age-range proof.** Self-declaration ("I am 18") is not sufficient.
+2. **Nullifiers prevent second keypairs.** A child cannot create an additional keypair without age-range proof — the deterministic nullifier from their document will match their existing child credential.
+3. **Persona credentials carry age-range.** The Persona issued during the two-credential ceremony MUST carry the same age-range proof as the Natural Person credential. A child's Persona is still identifiable as a child's Persona.
+4. **Identity bridges inherit age-range.** Any identity bridge created from a child credential carries the source credential's age-range constraint.
+
+### 22.3 Client Display Requirements
+
+Clients implementing Signet MUST display:
+
+| Element | Display |
+|---------|---------|
+| Unverified account | "Unverified" label, no trust indicators |
+| Tier 4 child (0-12) | "Verified Child" + age range badge |
+| Tier 4 teen (13-17) | "Verified Teen" + age range badge |
+| Tier 3 adult (18+) | "Verified Adult" badge |
+| Guardian link | "Guardian: [name/pubkey]" on child profiles |
+| Age-gap contact | Warning to child + guardian notification |
+| Missing age proof | "Age not verified" warning |
+
+### 22.4 Guardian Controls
+
+Guardian accounts (pubkeys listed in a child's guardian tags) have access to:
+
+- **DM policy:** Block all / approve-only / notify / allow
+- **Content filtering:** Strict / moderate / off
+- **Contact restrictions:** Whitelist / blacklist / open with notifications
+- **Meeting detection:** "Signet me" required for first real-world contact
+- **Delegation:** Grant specific permissions to trusted adults (step-parent, grandparent, teacher)
+
+These controls are enforced at the client level (Layer 3 of the family structure model, §21.4.5).
+
+### 22.5 Community Policy Templates
+
+Communities can adopt pre-defined safety policies:
+
+| Template | Min tier | Age range | Guardian required? | DM policy |
+|----------|----------|-----------|-------------------|-----------|
+| Child-safe (under-13) | 4 | 0-12 | Yes | Guardian-approved only |
+| Teen (13-17) | 4 | 13-17 | Yes (notify) | Open with logging |
+| Adult-only (18+) | 3 | 18+ | No | Open |
+| Mixed-age | 3 (adults) / 4 (children) | All | Per age group | Age-appropriate |
+
+---
+
+## 23. Inclusivity
+
+### 23.1 Tier System as Safety Net
+
+The four-tier system ensures that lack of documents does not mean exclusion:
+
+- **Tier 1 (self-declared):** Anyone can create an account. No documents required. Zero barrier to entry.
+- **Tier 2 (peer-vouched):** Real-world connections can vouch. No professional or document needed.
+- **Tier 3 (professional, adult):** Requires documents and professional verification.
+- **Tier 4 (professional, adult+child):** Requires documents, professional, and guardian.
+
+Every person starts at Tier 1. The system provides *degrees of confidence*, not binary access.
+
+### 23.2 Expanded Document Types
+
+Professional verifiers can accept a range of identity documents beyond passports and national IDs:
+
+- UNHCR refugee travel documents
+- Stateless person travel documents (1954 Convention)
+- Temporary residence permits
+- Birth certificates (for children)
+- Court-issued identity documents
+- Religious community attestations (with professional co-signing)
+- Employer attestations (for jurisdiction-specific contexts)
+
+The verifier's professional judgement determines which documents are sufficient. The credential records the document type used, allowing communities to set their own acceptance thresholds.
+
+### 23.3 The "Down and Out" Path
+
+For people with no documents at all (homeless, displaced, stateless):
+
+1. **Tier 1** — immediate access. Create a keypair, start participating.
+2. **Tier 2** — community vouching. Local people who know the person can vouch.
+3. **Support pathway** — NGOs, shelters, legal aid organisations can help obtain documents over time
+4. **Tier 3** — when documents are eventually obtained, professional verification upgrades the credential
+
+The system never requires documents as a prerequisite for basic participation. Documents unlock higher tiers, which unlock access to communities with stricter policies — but Tier 1 and Tier 2 are always available.
+
+### 23.4 Degrees of Confidence, Not Binary Access
+
+Communities choose their own verification thresholds. A community for casual conversation might accept Tier 1. A community for financial advice might require Tier 3. A community for children requires Tier 4.
+
+This is not gatekeeping — it is informed choice. Each community publishes its policy (kind 30472). Users can see what is required before joining. No central authority decides who can participate where.
+
+The goal is that every person, regardless of documentation status, has a path to meaningful participation — while communities retain the right to set appropriate safety standards for their members.
+
+---
+
+## 24. Jurisdiction Confidence
+
+### 24.1 Overview
+
+Not all jurisdictions provide equal assurance for professional verification. A credential issued by a verifier in a jurisdiction with strong professional regulation, public registries, and digital credential infrastructure carries more weight than one from a jurisdiction with weaker oversight.
+
+### 24.2 Confidence Scoring
+
+The jurisdiction confidence score (0-100) is computed from:
+
+| Factor | Max Points | Description |
+|--------|-----------|-------------|
+| Professional body coverage | 20 | Number of regulated professions (1pt per body, capped at 20) |
+| Public register availability | 20 | Proportion of bodies with queryable public registers |
+| Digital credential issuance | 15 | Proportion of bodies issuing machine-verifiable credentials |
+| Data protection maturity | 15 | Explicit consent, erasure rights, portability, breach notification, cross-border restrictions |
+| Mutual recognition | 10 | Number of mutual recognition partners (1pt per partner, capped at 10) |
+| E-signature recognition | 10 | Whether electronic signatures are legally recognised |
+| Legal system compatibility | 10 | Common-law and civil-law score highest (well-established professional regulation) |
+
+### 24.3 Client Behaviour
+
+Clients MAY use jurisdiction confidence scores to:
+- Weight Signet IQ contributions from different jurisdictions (a Tier 3 credential from a high-confidence jurisdiction contributes more to the Signet IQ)
+- Display jurisdiction confidence alongside credentials
+- Set minimum jurisdiction confidence in community policies
+
+Clients MUST NOT use jurisdiction confidence to deny Tier 1 or Tier 2 credentials, which are jurisdiction-independent.
+
+### 24.4 Three Failure Modes
+
+| Mode | Example | Solution |
+|------|---------|----------|
+| **Captured/corrupt bodies** | State-controlled professional bodies | Cross-jurisdiction verification: subject verified by professional in a free-body jurisdiction |
+| **Nonexistent bodies** | No formal professional regulation | Embassy model: international NGOs and law firms with globally-licensed professionals serve as remote trust anchors |
+| **Non-digital bodies** | Paper-based registries, no APIs | Manual registry cross-checks (weighted lower); eIDAS 2.0 mandates machine-readable interfaces by December 2026 |
+
+For jurisdictions where Tier 3/4 is not achievable, Tier 1 + Tier 2 (self-declared + peer vouches) are always available. "Some trust" is infinitely better than "no trust."
+
+---
+
+## 25. Implementation Levels
+
+### 25.1 Overview
+
+Protocol complexity should not prevent partial adoption. Signet defines three progressive implementation levels so that client developers can integrate incrementally.
+
+### 25.2 Level 1 — Read Trust Badges
+
+**Effort:** A weekend. **Event kinds:** 30470 (credential), 30471 (vouch).
+
+Read credentials and vouches for a pubkey, compute a basic trust tier and score, display a badge. No new cryptography beyond Schnorr signature verification (which Nostr clients already implement). This is the NIP-05 equivalent — minimal effort, immediate value.
+
+The reference implementation provides `src/badge.ts` with `computeBadge()`, `buildBadgeFilters()`, and related helpers.
+
+### 25.3 Level 2 — Issue Vouches
+
+**Effort:** A few days. **Event kinds:** 30470, 30471, 30472 (policy).
+
+Level 1 + users can vouch for each other (create kind 30471 events) and communities can set policies (kind 30472). This is the viral layer — peer vouching creates Tier 2 network effects without requiring professional verifiers.
+
+### 25.4 Level 3 — Full Protocol
+
+**Effort:** Weeks to months. **Event kinds:** All 11 (30470-30480).
+
+All event kinds, full cryptographic stack: Merkle trees for selective disclosure, Bulletproofs for age range proofs, ring signatures for issuer privacy, two-credential ceremony, nullifier computation, guardian delegation, anomaly detection, and the voting extension.
+
+### 25.5 Strategic Guidance
+
+The recommended adoption path is:
+1. Get Level 1 into 10+ Nostr clients (badges create visibility and demand)
+2. Enable Level 2 for viral peer vouching
+3. Level 3 for clients that want full verification capability
+
+## 26. Security Considerations — Privacy Design Trade-offs
+
+This section documents known privacy trade-offs in the Signet protocol design, the mitigations available to users and implementers, and the accepted trade-offs where transparency or continuity was deliberately chosen over maximum privacy.
+
+### 26.1 Credential Chain Privacy
+
+Credential chains (`supersedes`/`superseded-by` tags) create a publicly observable timeline of credential lifecycle events. An observer can follow the full history of a Natural Person's credential renewals, name changes, and tier upgrades through these links.
+
+**Mitigation options for privacy-sensitive users:**
+- Issue new credentials without `supersedes` tags, sacrificing continuity proof for privacy
+- Use a fresh keypair when replacing credentials (requires re-establishing trust)
+- Clients SHOULD warn users that supersedes chains are publicly visible
+
+**Accepted trade-off:** Credential chains provide important auditability and credential lifecycle management. For most users, the transparency is a feature (proving continuous identity). Users who need stronger privacy should avoid credential chains.
+
+### 26.2 Guardian Tag Privacy
+
+Guardian delegation tags (`["guardian", "<parent_pubkey>"]`) on child Persona credentials publicly link the child's anonymous account to their parent's verified Natural Person identity. This reveals:
+- That the account belongs to a child
+- Which specific adult is their guardian
+- The child's age range
+
+**Mitigation (future):** Guardian tags on Persona credentials SHOULD reference the parent's Persona pubkey rather than their Natural Person pubkey. This preserves the guardian relationship while maintaining the parent's anonymity. Implementations MUST validate that the referenced guardian holds a valid credential regardless of which pubkey is used.
+
+**Current status:** Implementations currently use the Natural Person pubkey for simplicity. A migration path will be defined in a future spec revision.
+
+### 26.3 Ring Intersection Attacks on Identity Bridges
+
+Identity bridge events (kind 30476) embed the full ring of public keys used for the ring signature. If a Persona issues multiple identity bridges over time with different randomly selected decoy members, an observer can intersect the ring sets to identify the common member — the actual signer.
+
+With a ring of size `n` and `k` independent bridge events, the expected intersection size is approximately `1 + (n-1) * (1/pool_size)^(k-1)`, which rapidly approaches 1 (the signer) as `k` increases.
+
+**Mitigations:**
+- Identity bridges SHOULD be issued at most once per Persona. Re-issuance MUST reuse the same ring members
+- Larger rings (50+ members) require more samples for intersection attacks to succeed
+- Clients MUST NOT automatically refresh identity bridges — manual re-issuance only, with a warning about ring intersection risks
+- Future: consider using zero-knowledge proofs of set membership instead of explicit rings
+
+---
+
+*This specification is a living document. It will evolve through community feedback and implementation experience.*
+
+
+---
+
+# Signet Voting Extension
+
+**Cryptographically Secure Elections for Nostr**
+
+**Version:** 0.1.0 (Draft)
+**Date:** 2026-03-04
+**Status:** Draft specification — seeking community feedback
+**Licence:** MIT
+**Depends on:** [Signet Protocol Specification](protocol.md) v0.1.0+
+
+---
+
+## Abstract
+
+This specification defines a voting extension for the Signet protocol. It enables cryptographically secure elections at organisational, community, and national scale, using linkable ring signatures for ballot secrecy and one-person-one-vote enforcement.
+
+The extension depends on the Signet protocol for identity verification (credential tiers, entity types, Signet IQ) and adds three new Nostr event kinds: Election Definition (30482), Ballot (30483), and Election Result (30484).
+
+Ballot secrecy is achieved through linkable ring signatures — voters prove membership in an eligible set without revealing which member they are, while key images prevent double voting. Encrypted ballots ensure vote content remains secret until tallying.
+
+---
+
+## Table of Contents
+
+1. [Motivation](#1-motivation)
+2. [Three Scales](#2-three-scales)
+3. [Architecture](#3-architecture)
+4. [Event Kinds](#4-event-kinds)
+5. [Linkable Ring Signature Scheme](#5-linkable-ring-signature-scheme)
+6. [Encrypted Ballots](#6-encrypted-ballots)
+7. [Re-Voting Protocol](#7-re-voting-protocol)
+8. [Use Cases](#8-use-cases)
+9. [Global Legal Context](#9-global-legal-context)
+10. [Security Considerations](#10-security-considerations)
+11. [Future: National-Scale Elections](#11-future-national-scale-elections)
+
+---
+
+## 1. Motivation
+
+Every voting fraud vector traces back to identity:
+
+| Problem | Root Cause | Category |
+|---|---|---|
+| Impersonation fraud | Can't prove who you are | Identity |
+| Multiple voting | Can't prove uniqueness | Identity |
+| Ballot harvesting | Third parties submit ballots on behalf of voters | Chain of custody |
+| Vote buying / bribery | Voter can prove how they voted to a buyer | Ballot secrecy |
+| Coercion / undue influence | Voter can be forced to reveal or prove their vote | Ballot secrecy |
+| Treating | Votes linkable to identity, enabling reward/punishment | Ballot secrecy |
+
+The Signet protocol solves the identity problems (top rows) through its credential tier system and entity type classification. The ballot secrecy problems (bottom rows) require additional cryptography — specifically, a mechanism that proves "I am eligible to vote" without revealing "I am this specific person."
+
+This extension provides that mechanism using linkable ring signatures and encrypted ballots.
+
+---
+
+## 2. Three Scales
+
+Elections operate at different scales with different requirements:
+
+| Scale | Stakeholders | Secrecy Needs | Coercion Risk | Complexity |
+|---|---|---|---|---|
+| **Organisational** | Board members, committees, DAO governance | Often non-secret or low stakes | Low | Simple |
+| **Community** | Relay governance, meetups, party policy votes | Ballot secrecy needed | Moderate | Moderate |
+| **National** | Citizens of a country | Full secrecy + coercion resistance | High | Very high |
+
+**Pragmatic scope:** This specification covers organisational and community-scale elections. These are sufficient for most Nostr use cases and can be made robust with linkable ring signatures and re-voting. National-scale elections require additional mechanisms (see §11) and are a future goal, not a launch requirement.
+
+### 2.1 Scale Requirements
+
+**Organisational elections** require:
+- Proof of membership (existing Signet credentials)
+- One-member-one-vote enforcement
+- Optional ballot secrecy (some organisational votes are open)
+- Verifiable tally
+
+**Community elections** require all of the above plus:
+- Mandatory ballot secrecy
+- Re-voting capability for coercion resistance
+- Multiple tally authorities to prevent single-authority manipulation
+
+**National elections** require all of the above plus:
+- Full coercion resistance (fake credentials, deniable encryption)
+- Threshold tally authorities with no single point of failure
+- Legal framework integration (see §9)
+- Accessibility for non-technical citizens
+
+---
+
+## 3. Architecture
+
+### 3.1 Design Choice: Linkable Ring Signatures
+
+This extension uses **linkable ring signatures** rather than blind signatures for ballot secrecy. The rationale:
+
+| Property | Blind Signatures | Linkable Ring Signatures |
+|---|---|---|
+| Authority interaction | Voter must interact with signing authority | No authority interaction needed |
+| Single point of failure | Signing authority can deny ballot tokens | No authority can deny participation |
+| Anonymity model | Authority knows who requested a token (but not the vote) | No one learns who voted |
+| Double-vote prevention | Authority tracks token issuance | Key images are deterministic per election |
+| Alignment with Signet principles | Requires trusted authority | Fully decentralised |
+
+Linkable ring signatures align with Signet's core principle of decentralisation (see protocol spec §18.3). No single entity can deny a voter's participation or learn who voted.
+
+### 3.2 How It Works
+
+1. **Eligibility** — An election definition specifies which entity types, credential tiers, and (optionally) community memberships are required. Eligibility is determined by existing Signet credentials — no new credential type is needed.
+
+2. **Eligible set** — The set of public keys that hold qualifying credentials forms the ring. All eligible voters are members of this ring.
+
+3. **Key images** — Each voter computes a deterministic key image for the election:
+
+   ```
+   I = x * H_p(P || election_id)
+   ```
+
+   Where `x` is the voter's private key, `P` is their public key, `H_p` is a hash-to-point function, and `election_id` uniquely identifies the election. The key image is the same every time this voter signs for this election, but different across elections. This prevents double voting without revealing the voter's identity.
+
+4. **Encrypted ballots** — The voter encrypts their vote content to the tally authority's public key(s). The encrypted vote is included in the ballot event. No one can read the vote until the tally phase.
+
+5. **Ring signature** — The voter produces a linkable ring signature over a commitment to the encrypted ballot (`electionId:SHA-256(encryptedVote)`), proving they are a member of the eligible set without revealing which member or how they voted. The signed message MUST NOT contain the plaintext vote.
+
+6. **Submission** — The voter publishes the ballot as a kind 30483 event on Nostr relays.
+
+7. **Re-voting** — If the election allows re-voting, a voter may submit a new ballot with the same key image. The latest ballot (by event timestamp) replaces all previous ballots with that key image.
+
+8. **Tally** — After the election closes, tally authorities decrypt the ballots, deduplicate by key image (keeping the latest), count the votes, and publish the result as a kind 30484 event.
+
+9. **Verification** — Anyone can verify: each ballot has a valid ring signature from the eligible set, each key image appears at most once in the final tally, and the published totals match the decrypted ballots.
+
+---
+
+## 4. Event Kinds
+
+> **Note:** Kinds 30480-30481 are reserved for the Dominion Protocol (vault share, vault config).
+
+### Kind 30482 — Election Definition
+
+A replaceable event published by an election authority defining an election.
+
+```jsonc
+{
+  "kind": 30482,
+  "pubkey": "<election_authority_pubkey>",
+  "tags": [
+    ["d", "<election_id>"],
+    ["title", "<election title>"],
+    ["description", "<human-readable description>"],
+    ["options", "<option_1>", "<option_2>", "..."],     // candidates or choices
+    ["scale", "<organisational|community|national>"],
+    ["eligible-entity-types", "<type1>,<type2>,..."],    // e.g. "natural_person,persona"
+    ["eligible-min-tier", "<1-4>"],                      // minimum verification tier
+    ["eligible-community", "<community_id>"],            // optional: restrict to community
+    ["opens", "<unix_timestamp>"],
+    ["closes", "<unix_timestamp>"],
+    ["re-vote", "<allowed|denied>"],                     // re-voting policy
+    ["tally-pubkeys", "<pubkey1>", "<pubkey2>", "..."],  // keys that can decrypt ballots
+    ["tally-threshold", "<m>", "<n>"],                   // m-of-n threshold for decryption
+    ["ring-size", "<minimum_ring_size>"],                 // minimum eligible set size
+    ["algo", "secp256k1"],                                  // cryptographic algorithm
+    ["L", "signet"],
+    ["l", "election", "signet"]
+  ],
+  "content": "<optional: extended description, rules, or context>"
+}
+```
+
+**Field requirements:**
+- `election_id` MUST be unique across all elections by this authority
+- `options` MUST contain at least 2 values
+- `opens` MUST be a future Unix timestamp at time of publication
+- `closes` MUST be after `opens`
+- `tally-pubkeys` MUST contain at least one public key
+- `tally-threshold` is OPTIONAL; defaults to all tally pubkeys required (n-of-n)
+- `ring-size` is OPTIONAL; defaults to the full eligible set. Elections with fewer eligible voters than `ring-size` MUST NOT proceed
+- `scale` MUST be one of: `organisational`, `community`, `national`
+
+### Kind 30483 — Ballot
+
+A replaceable event published by a voter. The voter's actual pubkey is NOT used — ballots are published from an ephemeral key to prevent linking.
+
+```jsonc
+{
+  "kind": 30483,
+  "pubkey": "<ephemeral_ballot_pubkey>",
+  "tags": [
+    ["d", "<election_id>:<random_16_bytes_hex>"],
+    ["election", "<kind_30482_event_id>"],
+    ["key-image", "<hex_encoded_key_image>"],
+    ["ring-sig", "<hex_encoded_linkable_ring_signature>"],
+    ["encrypted-vote", "<encrypted_vote_content>"],
+    ["algo", "secp256k1"],                                  // cryptographic algorithm
+    ["L", "signet"],
+    ["l", "ballot", "signet"]
+  ],
+  "content": ""
+}
+```
+
+**Field requirements:**
+- `d` tag MUST be `<election_id>:<random_16_bytes_hex>` where the 16 bytes are generated fresh for each ballot submission. The random suffix prevents relays and observers from correlating ballot submissions via the `d` tag (which would expose re-voting patterns). Key image deduplication is performed at tally time using the `key-image` tag, not via relay-level replaceable event semantics.
+- `election_id` MUST match a published kind 30482 election
+- `key-image` MUST be deterministically derived as `I = x * H_p(P || election_id)` where `x` is the voter's private key and `P` is their public key in the eligible set
+- `ring-sig` MUST be a valid linkable ring signature over the message `<election_id>:SHA-256(<encrypted-vote>)`, verifiable against the eligible set. The signed message MUST be a commitment to the ciphertext, never the plaintext vote — this ensures ballot secrecy even if the ring signature is inspected
+- `encrypted-vote` MUST be the vote content encrypted to the tally authority pubkey(s) specified in the election definition
+- `content` MUST be empty (vote content is in the encrypted tag)
+- The ephemeral pubkey MUST NOT be reused across elections
+
+**Validation rules:**
+- Relays and clients MUST verify the ring signature before accepting
+- If the key image matches a previously seen ballot for this election and re-voting is allowed, the new ballot replaces the old one
+- If re-voting is denied and a matching key image exists, the ballot MUST be rejected
+
+### Kind 30484 — Election Result
+
+A replaceable event published after an election closes with the verified tally.
+
+```jsonc
+{
+  "kind": 30484,
+  "pubkey": "<tallier_pubkey>",
+  "tags": [
+    ["d", "<election_id>"],
+    ["election", "<kind_30482_event_id>"],
+    ["result", "<option_1>", "<count>"],
+    ["result", "<option_2>", "<count>"],
+    ["total-ballots", "<count>"],
+    ["total-eligible", "<count>"],
+    ["total-invalid", "<count>"],
+    ["tally-proof", "<proof_data>"],
+    ["algo", "secp256k1"],                                  // cryptographic algorithm
+    ["L", "signet"],
+    ["l", "election-result", "signet"]
+  ],
+  "content": "<optional: detailed breakdown, notes, or methodology>"
+}
+```
+
+**Field requirements:**
+- `tallier_pubkey` SHOULD be one of the `tally-pubkeys` from the election definition
+- The sum of all `result` counts plus `total-invalid` MUST equal `total-ballots`
+- `tally-proof` SHOULD contain sufficient data for independent verification (e.g., the decrypted ballots and their ring signatures)
+- Anyone MAY publish a kind 30484 for any election — independent tallies increase confidence
+
+---
+
+## 5. Linkable Ring Signature Scheme
+
+### 5.1 Overview
+
+The linkable ring signature scheme extends the Spontaneous Anonymous Group (SAG) signature scheme already used in `src/ring-signature.ts` in the Signet reference implementation. Linkability is achieved through key images — deterministic values that are the same for a given signer in a given election, but reveal nothing about which ring member produced them.
+
+### 5.2 Definitions
+
+- **Ring** `R = {P_0, P_1, ..., P_{n-1}}`: the set of public keys of all eligible voters
+- **Signer index** `s`: the position of the actual signer in the ring
+- **Private key** `x_s`: the signer's private key, where `P_s = x_s * G`
+- **Election ID** `e`: a unique identifier for the election
+- **Hash-to-point** `H_p`: a function that maps arbitrary data to a point on secp256k1
+- **Key image** `I = x_s * H_p(P_s || e)`: deterministic per signer per election
+
+### 5.3 Signing
+
+Given a message `m` (the commitment `<election_id>:SHA-256(<encrypted_vote>)` — never the plaintext vote), ring `R`, signer index `s`, private key `x_s`, and election ID `e`:
+
+1. Compute key image: `I = x_s * H_p(P_s || e)`
+2. Generate random scalar `α`
+3. For each non-signer index i (wrapping from s+1 back to s), generate a random response r_i. Compute the challenge c_{i+1} sequentially from the hash chain: c_{i+1} = H(m || L_i || R_i).
+4. Compute initial commitment: `L_s = α * G`, `R_s = α * H_p(P_s || e)`
+5. For each `i` from `s+1` to `s-1` (wrapping):
+   - `L_i = r_i * G + c_i * P_i`
+   - `R_i = r_i * H_p(P_i || e) + c_i * I`
+   - `c_{i+1} = H(m || L_i || R_i)`
+6. Close the ring: `c_s = H(m || L_{s-1} || R_{s-1})`
+7. Compute `r_s = α - c_s * x_s`
+8. Output signature: `σ = (I, c_0, r_0, r_1, ..., r_{n-1})`
+
+### 5.4 Verification
+
+Given message `m`, ring `R`, election ID `e`, and signature `σ = (I, c_0, r_0, ..., r_{n-1})`:
+
+1. For each `i` from `0` to `n-1`:
+   - `L_i = r_i * G + c_i * P_i`
+   - `R_i = r_i * H_p(P_i || e) + c_i * I`
+   - `c_{i+1} = H(m || L_i || R_i)`
+2. Verify: `c_n == c_0` (the ring closes)
+3. Verify: `I` is a valid point on secp256k1
+
+### 5.5 Linkability
+
+Two signatures with the same key image `I` were produced by the same signer for the same election. This is because `I = x_s * H_p(P_s || e)` is deterministic — the signer cannot produce a different key image without using a different private key (which wouldn't be in the ring).
+
+**Cross-election unlinkability:** Different election IDs produce different key images for the same signer, because `H_p(P_s || e_1) ≠ H_p(P_s || e_2)`. A voter's participation in one election cannot be linked to their participation in another.
+
+---
+
+## 6. Encrypted Ballots
+
+### 6.1 Encryption
+
+The voter encrypts their vote content to the tally authority's public key(s) before including it in the ballot event:
+
+1. Voter selects their choice from the election's `options`
+2. Vote content is serialised as a JSON string: `{"option": "<selected_option>"}`
+3. Content is encrypted using ECDH with the tally authority's public key:
+   - Generate ephemeral keypair `(k, K = k * G)`
+   - Compute shared secret `S = k * T` where `T` is the tally authority's public key
+   - Derive encryption key from `S` using HKDF
+   - Encrypt vote content using AEAD cipher (AES-256-GCM recommended; available in Web Crypto API across all target runtimes)
+   - Output: `K || nonce || ciphertext || tag`
+
+### 6.2 Multi-Authority Threshold Decryption
+
+When multiple tally authorities are specified with an m-of-n threshold:
+
+1. Each authority holds a share of the decryption key (generated via Shamir's Secret Sharing or a DKG protocol)
+2. After the election closes, at least `m` authorities must cooperate to decrypt each ballot
+3. No single authority (or fewer than `m`) can decrypt any ballot
+4. The decryption process produces the plaintext votes, which are then tallied
+
+This prevents a single compromised or coerced authority from reading votes before the close, or from selectively revealing individual votes.
+
+### 6.3 Post-Close Transparency
+
+After decryption and tallying:
+- All decrypted votes are published (without linking to specific voters)
+- The ring signatures remain verifiable
+- Anyone can independently verify that the tally matches the decrypted ballots
+- The election result event (kind 30484) references the verification data
+
+---
+
+## 7. Re-Voting Protocol
+
+### 7.1 Motivation
+
+Re-voting is the primary coercion resistance mechanism for organisational and community-scale elections. If a voter is coerced ("vote X while I watch"), they comply, then later re-vote from a safe context. The coercer cannot determine whether the voter re-voted.
+
+### 7.2 Mechanics
+
+1. Election definition specifies `["re-vote", "allowed"]`
+2. Voter submits initial ballot with key image `I` and timestamp `t_1`
+3. Later, voter submits a new ballot with the same key image `I` and timestamp `t_2 > t_1`
+4. At tally time, only the ballot with the latest timestamp for each key image is counted
+5. The coercer sees the first ballot was published but cannot determine whether a replacement exists (all ballots are encrypted and signed with ephemeral keys)
+
+### 7.3 Why Re-Voting Is Sufficient at Community Scale
+
+At community scale, the coercer typically cannot:
+- Monitor the voter's network traffic continuously
+- Distinguish a re-vote from any other Nostr event
+- Determine which ephemeral pubkey belongs to the voter
+
+The coercer can see that a ballot was cast (they watched), but cannot see that it was replaced. This provides practical coercion resistance without the complexity of full JCJ coercion resistance.
+
+### 7.4 Limitations
+
+Re-voting does NOT protect against:
+- A coercer who controls the voter's device or key material
+- A coercer who can monitor all relay traffic and correlate timing
+- State-level adversaries with mass surveillance capability
+
+These threats require national-scale mechanisms (see §11).
+
+---
+
+## 8. Use Cases
+
+### 8.1 Party Policy Votes
+
+A political party (e.g., Restore Britain) wants members to vote on policy positions:
+
+1. Party establishes itself as a Juridical Person (verified organisation) with Signet credentials
+2. Members are verified Natural Persons who hold party membership credentials (kind 30470)
+3. Party leadership publishes a kind 30482 election: "Should the party support policy X?"
+   - `eligible-entity-types`: `natural_person`
+   - `eligible-min-tier`: `2` (web-of-trust verified)
+   - `eligible-community`: `<party_community_id>`
+   - `re-vote`: `allowed`
+4. Each eligible member computes their key image and submits an encrypted ballot (kind 30483)
+5. After close, tally authorities decrypt and count
+6. Result published as kind 30484 — anyone can verify
+7. If a member was coerced by party leadership, they re-vote privately — last ballot counts
+
+### 8.2 Relay / Community Governance
+
+A Nostr relay community votes on moderation policy:
+
+1. Relay operator publishes community verification policy (kind 30472) requiring Tier 2+
+2. Operator publishes a kind 30482 election for policy change
+   - `scale`: `community`
+   - `eligible-entity-types`: `natural_person,persona`
+   - `eligible-min-tier`: `2`
+   - `ring-size`: `20` (minimum anonymity set)
+3. Community members vote via kind 30483
+4. If fewer than 20 eligible members exist, election cannot proceed (ring too small for meaningful anonymity)
+
+### 8.3 Organisational Board Votes
+
+A company board votes on a resolution:
+
+1. Board members hold Juridical Person delegation credentials
+2. Chair publishes kind 30482 election
+   - `scale`: `organisational`
+   - `eligible-entity-types`: `natural_person`
+   - `eligible-min-tier`: `3` (professionally verified)
+   - `re-vote`: `denied` (board votes are typically final)
+3. Board members vote; ring size equals the full board
+4. Small ring size means limited anonymity — acceptable for organisational votes where participants are known but vote content should be private
+
+### 8.4 Citizenship Verification for Voting Eligibility
+
+Using civic identity from the Signet protocol spec (§19):
+
+1. Government issues citizen credentials (kind 30470) as described in protocol spec §19.2
+2. Election authority publishes kind 30482 referencing citizenship credentials
+   - `eligible-entity-types`: `natural_person`
+   - `eligible-min-tier`: `3` (government-verified)
+3. Citizens vote using their government-attested public keys as ring members
+4. Ring signature proves "I am a verified citizen" without revealing which one
+5. Key image prevents any citizen from voting twice
+
+This use case requires the civic identity framework described in the core protocol spec §19 and appropriate legal frameworks (see §9).
+
+---
+
+## 9. Global Legal Context
+
+### 9.1 Election Law Survey
+
+Cryptographic voting must operate within existing legal frameworks. The following survey identifies key legal considerations by jurisdiction.
+
+**Estonia — i-Voting:**
+Estonia has operated internet voting since 2005. Key precedent: voters can re-vote during the advance voting period, with only the last vote counted. This establishes legal precedent for re-voting as a coercion resistance mechanism. The Estonian system uses a different cryptographic approach (server-side identity verification) but the re-voting principle maps directly to this specification's re-voting protocol.
+
+**European Union — eIDAS:**
+The EU's eIDAS regulation establishes a framework for electronic identification and trust services. eIDAS-compliant electronic identities could serve as the basis for voting eligibility credentials. Signet's credential tier system could map to eIDAS assurance levels: Tier 2 ≈ Substantial, Tier 3 ≈ High. The EU does not mandate a specific voting protocol, so member states could adopt Signet-based voting independently.
+
+**United States — State-Level Variation:**
+US election law varies by state. No federal standard exists for electronic voting. Some states permit electronic ballot delivery (for overseas/military voters under UOCAVA). Blockchain-based voting has been piloted in limited contexts (e.g., West Virginia, Utah County). Legal challenges focus on auditability, accessibility, and the Help America Vote Act (HAVA) requirements. Signet voting's verifiable tally and public auditability address several HAVA concerns.
+
+**Switzerland — E-Voting Trials:**
+Switzerland has conducted multiple e-voting trials, with mixed results. The Swiss Federal Chancellery requires individual verifiability (voters can verify their vote was recorded) and universal verifiability (anyone can verify the tally). Post Office's e-voting system was withdrawn in 2019 after security researchers found critical flaws. Swiss requirements align well with Signet's verifiable tally approach, but the Swiss experience underscores the importance of independent security audits.
+
+**United Kingdom — Representation of the People Act 1983:**
+UK election law defines specific offences relevant to coercion resistance:
+- **Treating** (s.114): providing food, drink, or entertainment to influence votes
+- **Undue influence** (s.115): using force, threats, or fraud to influence votes
+- **Bribery** (s.113): giving money or procuring office to influence votes
+- **Personation** (s.60): voting as another person
+
+Signet voting addresses personation (ring signature proves eligibility), and re-voting provides practical defence against treating, undue influence, and bribery (the coerced vote can be replaced). The Ballot Secrecy Act 1872 and subsequent legislation require that votes cannot be traced to individual voters — ring signatures provide this mathematically.
+
+**Ballot Secrecy Requirements:**
+Most democratic jurisdictions require ballot secrecy as a fundamental principle. Requirements vary:
+- Some require secrecy of the act of voting (who voted)
+- All require secrecy of the vote content (how they voted)
+- Some explicitly permit the voter to voluntarily disclose their own vote
+
+Signet voting provides both forms of secrecy through ring signatures (who) and encrypted ballots (how), while allowing voluntary self-disclosure (a voter can reveal their own key image and vote content if they choose).
+
+### 9.2 Mapping to Legal Frameworks
+
+| Legal Requirement | Signet Voting Mechanism |
+|---|---|
+| Voter eligibility verification | Signet credential tiers + entity types |
+| One-person-one-vote | Key images (deterministic, unique per voter per election) |
+| Ballot secrecy | Ring signatures + encrypted ballots |
+| Coercion resistance | Re-voting protocol (last vote counts) |
+| Auditability / verifiable tally | Public ring signatures + published decrypted ballots |
+| Accessibility | Client implementation concern (not protocol-level) |
+| Independent oversight | Anyone can verify; multiple tally authorities |
+
+---
+
+## 10. Security Considerations
+
+### 10.1 Sybil Attacks
+
+**Threat:** An attacker creates multiple fake identities to cast multiple votes.
+
+**Mitigation:** Signet's credential tier system. Elections that require Tier 2+ credentials require web-of-trust verification or professional attestation. Creating fake Tier 3 identities requires corrupting a licensed professional verifier — a real-world attack with legal consequences. The anti-corruption framework (protocol spec §7) provides detection and accountability mechanisms.
+
+### 10.2 Key Image Collision Resistance
+
+**Threat:** Two different voters produce the same key image, causing one ballot to overwrite the other.
+
+**Mitigation:** Key images are points on secp256k1, derived via `I = x * H_p(P || e)`. Collision requires finding two distinct private keys that produce the same key image for a given election — equivalent to finding a collision in the hash-to-point function composed with scalar multiplication. This is computationally infeasible under standard cryptographic assumptions.
+
+### 10.3 Encrypted Ballot Timing
+
+**Threat:** An observer correlates the timing of ballot submission with voter activity to de-anonymise votes.
+
+**Mitigation:** Voters SHOULD submit ballots at random times during the voting period, not immediately after the election opens. Clients SHOULD implement random delay. Additionally, the use of ephemeral pubkeys for ballot submission prevents linking a ballot to a voter's known Nostr identity.
+
+### 10.4 Tally Authority Collusion
+
+**Threat:** All tally authorities collude to decrypt ballots before the election closes, or selectively reveal individual votes.
+
+**Mitigation:** Threshold decryption (m-of-n) ensures that fewer than `m` authorities cannot decrypt. The threshold should be set high enough that collusion is impractical. For community elections, a 3-of-5 threshold is recommended. Tally authorities SHOULD be from different organisations or jurisdictions.
+
+### 10.5 Ring Size and Anonymity
+
+**Threat:** Small ring sizes provide weak anonymity. In a ring of 5, each voter has a 20% chance of being the signer.
+
+**Mitigation:** Elections SHOULD enforce a minimum ring size. The recommended minimums:
+- Organisational: 5 (acceptable given participants are known)
+- Community: 20
+- National: 1000+
+
+Elections with fewer eligible voters than the minimum ring size MUST NOT proceed, or MUST clearly disclose the reduced anonymity.
+
+### 10.6 Quantum Threats
+
+**Threat:** A quantum computer could break the discrete logarithm problem underlying secp256k1, allowing recovery of private keys from public keys and breaking ring signature anonymity.
+
+**Mitigation:** This is a long-term threat shared with all secp256k1-based systems (including Nostr itself and Bitcoin). The Signet protocol spec §18.3 mandates a post-quantum migration path. When post-quantum ring signature schemes mature (e.g., lattice-based), the voting extension will migrate. In the interim, the practical risk is low — quantum computers capable of breaking secp256k1 do not yet exist.
+
+### 10.7 Relay Censorship
+
+**Threat:** A relay refuses to accept or relay ballot events, effectively disenfranchising voters.
+
+**Mitigation:** Voters can submit ballots to multiple relays. Election definitions SHOULD specify multiple recommended relays across different jurisdictions. The Nostr protocol's relay diversity is a natural defence.
+
+---
+
+## 11. Future: National-Scale Elections
+
+This section describes mechanisms that are NOT part of v0.1.0 but are planned for future versions to support national-scale elections with full coercion resistance.
+
+### 11.1 JCJ Coercion Resistance
+
+The Juels-Catalano-Jakobsson (JCJ) protocol provides full coercion resistance through:
+
+- **Fake credentials:** Voters can generate fake voting credentials that are indistinguishable from real ones. Under coercion, the voter provides a fake credential. The coercer cannot tell whether the credential is real.
+- **Credential validation at tally time:** Only real credentials produce valid votes. Fake credentials produce ballots that pass verification but are silently excluded during tallying.
+
+This requires a more complex credential infrastructure than the current ring signature approach.
+
+### 11.2 Deniable Encryption
+
+A voter can encrypt their ballot such that, under coercion, they can produce a plausible decryption to a different vote. The real vote is only recoverable by the tally authority.
+
+### 11.3 Scale Challenges
+
+National-scale elections introduce challenges not present at community scale:
+
+- **Ring size:** Millions of eligible voters. Ring signature computation scales with ring size. Efficient constructions (sub-linear proofs) are required.
+- **Tally time:** Decrypting and verifying millions of ballots. Parallelisable tally protocols are needed.
+- **Accessibility:** Non-technical citizens must be able to participate. Hardware security modules, polling station terminals, and mobile apps must all be supported.
+- **Legal integration:** National elections are governed by detailed legislation. Protocol compliance must be formally verified.
+
+### 11.4 Roadmap
+
+1. **v0.1.0** (this specification): Organisational and community elections with linkable ring signatures and re-voting
+2. **v0.2.0**: Improved ring signature efficiency for larger rings, multi-authority key generation protocols
+3. **v1.0.0**: National-scale with JCJ coercion resistance, deniable encryption, formal security proofs
+
+---
+
+*This specification is an extension to the Signet protocol. It will evolve through community feedback and implementation experience.*
+
+---
+
+# Signet in 5 Minutes
+
+Signet is an open-source, decentralised identity verification protocol for Nostr. It lets users prove claims
+about who they are — human, professional, adult, organisation — without exposing personal data. Verification
+is anchored to professional bodies (law societies, medical boards, notary commissions) rather than any central
+authority. Trust accumulates as a continuous Signet IQ score (0–200, where 100 represents the current government standard) assembled from weighted signals, and is expressed as a tier badge any Nostr client can display.
+
+
+## How Trust Flows
+
+```
+  Person
+    |
+    | signs a kind 30470 self-declaration
+    v
+  Tier 1 — Self-declared
+    |
+    | three or more peers sign kind 30471 vouches
+    v
+  Tier 2 — Web-of-trust
+    |
+    | licensed professional issues kind 30470 credential
+    | with zero-knowledge age proof and document nullifier
+    v
+  Tier 3 — Professionally verified (adult)
+    |
+    | same ceremony, scope extended to child supervision
+    v
+  Tier 4 — Professionally verified (adult + child)
+    |
+    v
+  Trust signals accumulated (professional verif, vouches, account age, identity bridges)
+    |
+    v
+  Signet IQ computed (0-200, where 100 = government standard)
+    |
+    v
+  Badge displayed by client  e.g. "Verified (Tier 3) — Signet IQ 106"
+```
+
+
+## The Four Tiers
+
+| Tier | Name                        | Who issues                              | What it proves                                      | Score contribution |
+|------|-----------------------------|-----------------------------------------|-----------------------------------------------------|--------------------|
+| 1    | Self-declared               | Subject themselves                      | "I exist and I own this key"                        | —                  |
+| 2    | Web-of-trust                | Peers (kind 30471 vouches)              | Enough known people can vouch for this identity     | +2–8 per vouch     |
+| 3    | Professionally verified     | Licensed professional (kind 30470)      | Government document seen; adult age confirmed       | +40               |
+| 4    | Professional + child safety | Licensed professional (kind 30470)      | Tier 3 plus authorisation to interact with minors   | +40               |
+
+Tier 2 requires at least 3 vouches from Tier 2+ peers (configurable per community via kind 30472 policy).
+Tiers 3 and 4 are issued in a two-credential ceremony: one Natural Person credential (carries document
+nullifier and Merkle root) and one anonymous Persona credential (carries age range only, no identifying data).
+
+
+## Three Implementation Levels
+
+### Level 1 — Display badges (a weekend)
+
+Read kinds 30470 and 30471 from relays, call `computeBadge`, show a label.
+No cryptography required beyond Schnorr signature verification (optional).
+
+### Level 2 — Issue vouches (a few days)
+
+Add kind 30471 vouch issuance. Requires Schnorr signing, relay write access, and basic
+kind 30472 policy parsing so your client respects community verification thresholds.
+
+### Level 3 — Full protocol (weeks)
+
+Issue professional credentials, manage verifier lifecycle (kinds 30473–30475), build
+guardian delegation (kind 30477), support credential chains (supersedes / superseded-by),
+and integrate the voting extension (kinds 30478–30480).
+
+
+## How Verification Works (Tier 3 / 4)
+
+```
+  Subject                 Verifier
+    |                        |
+    |--- presents document -->|
+    |                        |
+    |        Verifier computes nullifier:
+    |        SHA-256(docType || country || docNumber || salt)
+    |        (prevents duplicate identity; document never stored)
+    |                        |
+    |        Verifier builds Merkle tree:
+    |        leaves = verified attributes (name, DOB, address, ...)
+    |        only root is published on-chain
+    |                        |
+    |        Verifier creates zero-knowledge age range proof
+    |        (proves "subject is 18+" without revealing birth date)
+    |                        |
+    |        Two credentials signed and published:
+    |          kind 30470 Natural Person  (nullifier + Merkle root)
+    |          kind 30470 Persona         (age range only, anonymous)
+    |                        |
+    v                        v
+               Both events published to Nostr relays
+```
+
+Professional verifiers are themselves credentialed (kind 30473) and require cross-verification
+by two other licensed professionals before becoming active. A challenge / revocation mechanism
+(kinds 30474–30475) allows the community to remove a fraudulent verifier.
+
+
+## Event Kinds Reference
+
+| Kind  | Name              | Purpose                                            |
+|-------|-------------------|----------------------------------------------------|
+| 30470 | Credential        | Verification credential for any tier               |
+| 30471 | Vouch             | Peer attestation (Tier 2 building block)           |
+| 30472 | Policy            | Community verification requirements                |
+| 30473 | Verifier          | Professional verifier credential                   |
+| 30474 | Challenge         | Report a suspected fraudulent verifier             |
+| 30475 | Revocation        | Remove a verifier after threshold confirmations    |
+| 30476 | Identity bridge   | Link two keypairs via ring signature               |
+| 30477 | Delegation        | Guardian / agent delegation with scoped permission |
+| 30478 | Election          | Voting extension: define an election               |
+| 30479 | Ballot            | Voting extension: cast an anonymous ballot         |
+| 30480 | Election result   | Voting extension: publish tallied result           |
+
+
+## Integrating at Level 1
+
+Install the library:
+
+```
+npm install signet-protocol
+```
+
+Fetch events from a relay, then call `computeBadge`:
+
+```typescript
+import { computeBadge, buildBadgeFilters, meetsMinimumTier } from 'signet-protocol';
+import type { NostrEvent } from 'signet-protocol';
+
+// 1. Build relay filters for one or more pubkeys
+const pubkeys = ['<hex-pubkey>'];
+const filters = buildBadgeFilters(pubkeys);
+// filters = [{ kinds: [30470, 30471], '#d': ['<hex-pubkey>'] }]
+
+// 2. Fetch events from your relay (using whatever WebSocket client you prefer)
+const events: NostrEvent[] = await fetchFromRelay(filters);
+
+// 3. Compute the badge
+const badge = computeBadge(pubkeys[0], events, { verifySignatures: true });
+
+// badge.displayLabel  => "Verified (Tier 3)"
+// badge.score         => 106
+// badge.tier          => 3
+// badge.vouchCount    => 5
+
+// 4. Gate a feature on minimum tier
+if (meetsMinimumTier(badge, 2)) {
+  // allow posting in a verified-only community
+}
+```
+
+`computeBadge` accepts any mix of kind 30470 and 30471 events. It handles expiry, deduplication
+(one vouch counted per voucher pubkey), and optional Schnorr signature verification. The result is
+a plain object — no rendering assumptions are made.
+
+The `buildBadgeFilters` helper returns a standard Nostr REQ filter array ready for use with any
+relay client library.
+
+
+## Further Reading
+
+- Full protocol specification: `spec/protocol.md`
+- Voting extension: `spec/voting.md`
+- Level 1 badge library: `src/badge.ts`
+- Signet IQ details: `src/trust-score.ts`
+- Full working example: `examples/full-flow.ts`
+- Jurisdiction-specific examples: `examples/jurisdictions/`
+- "Signet me" peer verification: `examples/signet-me.ts`
+
+
+---
+
+# Signet Implementation Levels
+
+A guide for Nostr client developers integrating the Signet identity protocol. There are three progressive integration levels. Start at Level 1 and add depth as your use case demands.
+
+## Summary
+
+| Level | Effort | Event Kinds | New Crypto | What Users Get |
+|-------|--------|-------------|------------|----------------|
+| 1 — Read Trust Badges | ~1 weekend | 30470, 30471 | None | Tier badges and Signet IQ on profiles |
+| 2 — Issue Vouches | A few days | 30470–30472 | None | Peer vouching, Tier 2 networks, policy checks |
+| 3 — Full Protocol | Weeks to months | 30470–30480 | Merkle, Bulletproofs, ring signatures | Professional verification, ZK proofs, elections |
+
+---
+
+## Level 1 — Read Trust Badges
+
+**Effort:** A weekend
+**Event kinds:** 30470 (credential), 30471 (vouch)
+**New crypto required:** None — Nostr already verifies Schnorr signatures
+
+This is the NIP-05 equivalent of Signet integration. You read two event kinds, call one function, and display a badge. No cryptographic work on your part beyond what your Nostr client already does.
+
+### What to build
+
+1. Subscribe to kind `30470` (credentials) and kind `30471` (vouches) for the pubkeys you want to display.
+2. Pass the events to `computeBadge()`.
+3. Show the result on the user's profile.
+
+### Installation
+
+```bash
+npm install signet-protocol
+```
+
+### Code example
+
+```typescript
+import { computeBadge, buildBadgeFilters } from 'signet-protocol';
+
+// 1. Fetch events from relay
+const filters = buildBadgeFilters([pubkey]);
+// Send a REQ message to your relay with these filters.
+// The filters include both 30470 and 30471 kinds automatically.
+
+// 2. Compute badge from the events you receive
+const badge = computeBadge(pubkey, events);
+
+// 3. Display
+if (badge.isVerified) {
+  showBadge(badge.tierLabel, badge.score);
+}
+```
+
+The `badge` object includes:
+
+- `badge.isVerified` — boolean, true if the pubkey has any Signet verification
+- `badge.tier` — number 1–4, the highest verified tier
+- `badge.tierLabel` — human-readable string (e.g. `"Vouched"`, `"Verified"`, `"Verified (Child Safety)"`)
+- `badge.score` — integer 0–200 Signet IQ derived from weighted trust signals (100 = government standard)
+
+### Trust tiers at a glance
+
+| Tier | Meaning |
+|------|---------|
+| 1 | Self-declared — the user has made identity claims |
+| 2 | Web-of-trust — other users have vouched for this identity |
+| 3 | Professional adult — verified by a recognised professional body |
+| 4 | Professional adult + child safeguarding — extended professional verification |
+
+### What you do NOT need to handle at this level
+
+- Generating or validating zero-knowledge proofs
+- Nullifier computation
+- Merkle trees
+- Any cryptographic primitives beyond standard Nostr signature verification
+
+---
+
+## Level 2 — Issue Vouches
+
+**Effort:** A few days
+**Event kinds:** 30470 (credential), 30471 (vouch), 30472 (policy)
+**New crypto required:** None
+
+Level 2 adds the ability for your users to vouch for each other and for your client to respect community policies. This is the viral layer of the protocol — peer vouching is what builds Tier 2 trust networks and creates network effects across clients.
+
+### What to build
+
+Everything from Level 1, plus:
+
+1. UI for a user to select a contact and publish a kind `30471` vouch event.
+2. Read kind `30472` (policies) from community relays and check whether a pubkey meets the policy threshold before allowing sensitive actions.
+
+### Creating a vouch
+
+```typescript
+import { createVouch } from 'signet-protocol';
+
+// createVouch takes the voucher's private key and a VouchParams object.
+// It returns a signed Nostr event ready to publish.
+const vouchEvent = await createVouch(myPrivkey, {
+  subjectPubkey: theirPubkey,
+  method: 'in-person',
+  context: 'I have met this person in person and verified their identity.',
+  voucherTier: 2,
+  voucherScore: 106,
+});
+
+// Publish to your relay as a standard Nostr event.
+await publishEvent(vouchEvent);
+```
+
+### Parsing incoming vouches
+
+```typescript
+import { parseVouch, countQualifyingVouches, hasEnoughVouches } from 'signet-protocol';
+
+// Parse a raw Nostr event into a structured vouch object
+const vouch = parseVouch(rawEvent);
+
+// Count how many qualifying vouches a pubkey has received
+const count = countQualifyingVouches(allVouchEvents, pubkey);
+
+// Check whether a pubkey clears the threshold required for Tier 2
+const qualifies = hasEnoughVouches(allVouchEvents, pubkey, 3);
+```
+
+Reference: `src/vouches.ts`
+
+### Checking policy compliance
+
+Policies (kind `30472`) let community operators define trust thresholds for specific actions — for example, requiring a minimum score of 40 before a user can post to a paid relay, or requiring Tier 2 before joining a group.
+
+```typescript
+import { parsePolicy, checkPolicyCompliance, PolicyChecker } from 'signet-protocol';
+
+// Parse a policy event
+const policy = parsePolicy(policyEvent);
+
+// One-shot check: does this user meet the policy?
+const result = checkPolicyCompliance(policy, userTier, userScore);
+if (!result.allowed) {
+  showError(`This action requires Tier ${result.requiredTier} or higher.`);
+}
+
+// For repeated checks across many pubkeys, use PolicyChecker (more efficient)
+const checker = new PolicyChecker(policyEvent);
+const adultResult = checker.checkAdult(userTier, userScore);
+```
+
+Reference: `src/policies.ts`
+
+### What you do NOT need to handle at this level
+
+- Zero-knowledge proofs of any kind
+- Professional body verification flows
+- Two-credential ceremonies
+- Nullifiers or document hashing
+
+---
+
+## Level 3 — Full Protocol
+
+**Effort:** Weeks to months
+**Event kinds:** 30470–30480 (all 11 kinds)
+**New crypto required:** Merkle trees, Bulletproofs (age range proofs), linkable ring signatures
+
+Level 3 is full reference implementation. This is appropriate for clients that want to act as professional verifiers, run elections, or issue and receive Tier 3/4 credentials with zero-knowledge proofs.
+
+### What to build (beyond Level 2)
+
+- **Two-credential ceremony:** Professional verifiers issue a Natural Person credential (kind `30470`, with nullifier and Merkle root) and an anonymous Persona credential simultaneously. The Natural Person credential binds to a document-based nullifier (`SHA-256(docType || country || docNumber || salt)`) to prevent duplicate identity claims. The Persona credential reveals only an age range, not the full identity.
+- **Merkle selective disclosure:** Verified attributes are stored as private leaves of a Merkle tree. Only the root is published on-chain. Users disclose individual leaves with inclusion proofs when required.
+- **Age range proofs:** Bulletproofs prove that a user is within an age range without revealing their exact date of birth.
+- **Professional verifier onboarding:** Verifier accounts (kind `30473`) are backed by recognised professional bodies (law societies, medical boards, notary commissions). The protocol has no central authority — trust anchors are these external bodies.
+- **Ring signatures and elections:** The voting extension (kinds `30478`–`30480`) uses linkable ring signatures for anonymous voting with double-spend prevention.
+- **Guardian delegation:** Kind `30477` delegation events with scopes (`full`, `activity-approval`, `content-management`, `contact-approval`) support family structures and guardian-linked sub-accounts.
+- **Revocation and lifecycle:** Kind `30475` revocation events and credential chains using `supersedes`/`superseded-by` tags handle name changes, document renewal, and tier upgrades.
+- **Identity bridging:** Kind `30476` identity bridge events link verified identities across protocols or jurisdictions.
+- **Anomaly detection:** The library includes heuristics for detecting suspicious vouching patterns (e.g. vouch rings, rapid bulk vouching).
+
+### Key modules in signet-protocol
+
+All modules are re-exported from the package root. You can also import them directly for tree-shaking.
+
+| Module | Source | Responsibility |
+|--------|--------|----------------|
+| Credentials | `src/credentials.ts` | Issue, parse, verify kind 30470 credentials including Merkle roots and nullifiers |
+| Ring signatures | `src/ring-signature.ts` | Linkable ring signature generation and verification for voting |
+| Range proofs | `src/range-proof.ts` | Bulletproof-based age range proofs |
+| Merkle trees | `src/merkle.ts` | Build attribute trees, generate and verify inclusion proofs |
+| Signet IQ | `src/trust-score.ts` | Weighted signal aggregation, 0–200 Signet IQ computation |
+| Anomaly detection | `src/anomaly.ts` | Detect vouch ring attacks and other manipulation patterns |
+| Jurisdictions | `src/jurisdictions.ts` | Jurisdiction-specific rules for document types and professional bodies |
+
+All modules are re-exported from the package root (`signet-protocol`). Import from the root entry point:
+
+### Full event kind reference
+
+| Kind | Name | Description |
+|------|------|-------------|
+| 30470 | Credential | Identity claim with optional Merkle root and nullifier |
+| 30471 | Vouch | Peer attestation of another pubkey's identity |
+| 30472 | Policy | Community trust threshold definitions |
+| 30473 | Verifier | Professional verifier registration |
+| 30474 | Challenge | Verifier-issued identity challenge |
+| 30475 | Revocation | Credential or vouch revocation |
+| 30476 | Identity bridge | Cross-protocol or cross-jurisdiction identity link |
+| 30477 | Delegation | Guardian or organisational delegation with scopes |
+| 30478 | Election | Voting election definition (ring signature voting) |
+| 30479 | Ballot | Anonymous signed ballot |
+| 30480 | Election result | Tallied election result |
+
+### Where to start
+
+The `signet-protocol` npm package contains everything. The reference web app in the `app/` directory of this repository is a working Level 3 implementation and is the recommended starting point for understanding the full flow. The protocol specification at `spec/protocol.md` is the authoritative source of truth for all behaviour.
+
+---
+
+## Choosing your level
+
+Start at Level 1 unless you have a specific reason to go further. Most social clients only need Level 1 — displaying trust context on profiles. Level 2 is appropriate if your community has a peer moderation culture. Level 3 is for infrastructure builders: relay operators, professional verification portals, and election platforms.
+
+You can ship Level 1 in a weekend and upgrade later. The three levels are strictly additive — nothing you build at Level 1 needs to be undone to reach Level 2 or 3.

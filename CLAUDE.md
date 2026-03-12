@@ -121,6 +121,7 @@ These conventions were established during the security hardening review (2026-03
 - **LSAG ballot privacy**: The LSAG message MUST be `electionId:SHA-256(encryptedVote)` — never sign the plaintext vote
 - **Field-size bounds**: All event validators must check `MAX_CONTENT_LENGTH` (64KB), `MAX_TAGS_COUNT` (100), `MAX_TAG_VALUE_LENGTH` (1024)
 - **JSON.parse on untrusted input**: Always add runtime type guards after parsing — never cast directly to a type
+- **`parseInt` on untrusted tag values**: Always check `isNaN()` after parsing — `NaN < x` is `false` in JavaScript, silently bypassing security comparisons. Pattern: `const v = parseInt(str, 10); if (isNaN(v) || v < threshold) reject;`
 - **Credential chain depth**: Cap at `MAX_CHAIN_DEPTH = 100` with cycle detection via `visited` set
 - **Error classes**: Use `SignetError` hierarchy (`SignetValidationError`, `SignetCryptoError`, `SignetVotingError`) for new throw statements
 - **IndexedDB**: Never store `privateKey` or `mnemonic` in plaintext — use `crypto-store.ts` (PBKDF2 + AES-256-GCM)

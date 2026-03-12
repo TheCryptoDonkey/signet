@@ -19,6 +19,29 @@ Nostr has no identity layer. Anyone can claim to be anyone. This matters for chi
 
 Signet solves this without centralised data collection. A professional verifies your identity in person. A ZKP credential attests to the result. No personal data is stored. No database to breach.
 
+## Quick Start
+
+```bash
+npm install signet-protocol
+```
+
+Display a verification badge for any Nostr user (Level 1 — a weekend to integrate):
+
+```typescript
+import { computeBadge, buildBadgeFilters, meetsMinimumTier } from 'signet-protocol';
+
+const filters = buildBadgeFilters(['<hex-pubkey>']);
+const events = await fetchFromRelay(filters);
+const badge = computeBadge('<hex-pubkey>', events, { verifySignatures: true });
+
+// badge.tier => 3, badge.score => 106, badge.displayLabel => "Verified (Tier 3)"
+if (meetsMinimumTier(badge, 2)) {
+  // allow posting in verified-only community
+}
+```
+
+See [Signet in 5 Minutes](docs/signet-in-5-minutes.md) for a full developer overview, or the [full flow example](examples/full-flow.ts) for all 4 tiers, trust scoring, policies, and verifier lifecycle.
+
 ## Protocol
 
 The full specification is at [`spec/protocol.md`](spec/protocol.md).

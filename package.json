@@ -28,7 +28,15 @@
     "verification",
     "zkp",
     "signet",
-    "web-of-trust"
+    "web-of-trust",
+    "age-verification",
+    "zero-knowledge-proofs",
+    "child-safety",
+    "privacy",
+    "decentralised-identity",
+    "ring-signatures",
+    "bulletproofs",
+    "secp256k1"
   ],
   "sideEffects": false,
   "license": "MIT",

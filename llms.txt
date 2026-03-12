@@ -1,0 +1,86 @@
+# Signet Protocol
+
+> Nostr has no identity layer — anyone can impersonate anyone, and there's no way to verify age for child safety. Signet is a decentralised identity verification protocol for Nostr that lets users prove claims about their identity (age, profession, parenthood) using zero-knowledge proofs, without revealing personal data or relying on a central authority.
+
+Signet is for Nostr client developers, relay operators, and anyone building identity-aware applications on Nostr. It provides a TypeScript library (`signet-protocol`) that handles credentials, vouches, trust scoring, and ZKP age proofs. Unlike centralised identity services, Signet anchors trust to professional bodies (law societies, medical boards, notary commissions) and uses cryptographic proofs instead of data collection.
+
+## Getting Started
+
+```bash
+npm install signet-protocol
+```
+
+Display a verification badge for any Nostr pubkey (Level 1 integration — a weekend):
+
+```typescript
+import { computeBadge, buildBadgeFilters, meetsMinimumTier } from 'signet-protocol';
+
+// Build relay filters and fetch events
+const filters = buildBadgeFilters(['<hex-pubkey>']);
+const events = await fetchFromRelay(filters);
+
+// Compute badge
+const badge = computeBadge('<hex-pubkey>', events, { verifySignatures: true });
+// badge.tier => 3, badge.score => 106, badge.displayLabel => "Verified (Tier 3)"
+
+// Gate features on verification level
+if (meetsMinimumTier(badge, 2)) {
+  // allow posting in verified-only community
+}
+```
+
+## Key Concepts
+
+- **4 verification tiers**: Self-declared (Tier 1) → Web-of-trust via peer vouches (Tier 2) → Professional verification with ZKP age proof (Tier 3) → Professional + child safety (Tier 4)
+- **Signet IQ** (0–200): A continuous trust score weighted by professional verification, in-person vouches, online vouches, account age, and identity bridges. 100 represents the current government standard.
+- **Zero-knowledge age proofs**: Bulletproofs on secp256k1 prove age ranges (e.g. "adult" or "child aged 8–12") without revealing date of birth.
+- **Document nullifiers**: SHA-256 of document fields prevents duplicate identity registration without storing any personal data.
+- **11 event kinds** (30470–30477, 30482–30484): Credentials, vouches, policies, verifier management, challenges, revocations, identity bridges, delegation, elections, ballots, and results.
+
+## API Surface
+
+### Credentials (kind 30470)
+- `createSelfDeclaredCredential(privateKey)` — Tier 1
+- `createPeerVouchedCredential(issuerKey, subjectPubkey)` — Tier 2
+- `createProfessionalCredential(verifierKey, subjectPubkey, opts)` — Tier 3
+- `createChildSafetyCredential(verifierKey, parentPubkey, opts)` — Tier 4
+- `verifyCredential(event)` — verify signature and structure
+- `parseCredential(event)` — extract structured fields
+
+### Vouches (kind 30471)
+- `createVouch(privateKey, params)` — vouch for another user
+- `hasEnoughVouches(vouches, pubkey)` — check Tier 2 threshold
+
+### Trust & Badges
+- `computeBadge(pubkey, events, opts)` — Level 1 badge display
+- `computeTrustScore(pubkey, credentials, vouches, accountCreatedAt)` — full Signet IQ
+
+### Policies (kind 30472)
+- `createPolicy(privateKey, params)` — community verification requirements
+- `PolicyChecker` — check users against a policy
+
+### Verifiers (kind 30473)
+- `createVerifierCredential(privateKey, params)` — register as professional verifier
+- `checkCrossVerification(pubkey, vouches, verifiers)` — activation check
+
+### Identity Bridge (kind 30476)
+- `createIdentityBridge(anonKey, realKey, ring, signerIndex, minTier)` — link anonymous account to verified identity via ring signature
+
+### ZKP Age Proofs
+- `createAgeRangeProof(age, minAge, maxAge)` — Bulletproof range proof
+- `verifyAgeRangeProof(proof)` — verify without learning the age
+
+### Voting Extension (kinds 30482–30484)
+- `createElection(privateKey, params)` — define an election
+- `castBallot(privateKey, params)` — anonymous ballot via LSAG
+- `tallyElection(election, ballots, decryptionKey)` — tally results
+
+## Optional
+
+- [Full protocol specification](spec/protocol.md)
+- [Voting extension specification](spec/voting.md)
+- [Signet in 5 Minutes — developer overview](docs/signet-in-5-minutes.md)
+- [Implementation levels guide](docs/implementation-levels.md)
+- [Full flow example](examples/full-flow.ts)
+- [Jurisdiction-specific examples](examples/jurisdictions/)
+- [Regulatory compatibility](README.md#regulatory-compatibility)
