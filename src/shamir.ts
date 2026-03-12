@@ -239,24 +239,27 @@ export function shareToWords(share: ShamirShare): string[] {
   bytes[0] = share.id;
   bytes.set(share.data, 1);
 
-  // Stream bytes into 11-bit word indices
+  // Stream bytes into 11-bit word indices using Number (safe up to 53 bits)
+  // We extract words as soon as we have 11 bits, keeping accumulator small
   const words: string[] = [];
   let bits = 0;
   let accumulator = 0;
 
   for (const byte of bytes) {
-    accumulator = (accumulator << 8) | byte;
+    // accumulator has at most 10 bits here (< 11), so (10 + 8 = 18) fits safely in 32-bit
+    accumulator = ((accumulator << 8) | byte) >>> 0; // >>> 0 ensures unsigned 32-bit
     bits += 8;
     while (bits >= 11) {
       bits -= 11;
-      const index = (accumulator >> bits) & 0x7ff;
+      const index = (accumulator >>> bits) & 0x7ff;
       words.push(BIP39_WORDLIST[index]);
+      accumulator &= (1 << bits) - 1; // clear extracted bits to keep accumulator small
     }
   }
 
   // Pad remaining bits on the right to form a final 11-bit group
   if (bits > 0) {
-    const index = (accumulator << (11 - bits)) & 0x7ff;
+    const index = ((accumulator << (11 - bits)) >>> 0) & 0x7ff;
     words.push(BIP39_WORDLIST[index]);
   }
 
@@ -282,25 +285,35 @@ export function wordsToShare(words: string[]): ShamirShare {
   const totalBits = indices.length * 11;
   const totalBytes = Math.floor(totalBits / 8);
 
-  // Stream 11-bit groups into bytes
+  // Stream 11-bit groups into bytes using safe unsigned arithmetic
   let bits = 0;
   let accumulator = 0;
   const byteList: number[] = [];
 
   for (const index of indices) {
-    accumulator = (accumulator << 11) | index;
+    // accumulator has at most 7 bits here (< 8), so (7 + 11 = 18) fits safely in 32-bit
+    accumulator = ((accumulator << 11) | index) >>> 0; // >>> 0 ensures unsigned 32-bit
     bits += 11;
     while (bits >= 8) {
       bits -= 8;
-      byteList.push((accumulator >> bits) & 0xff);
+      byteList.push((accumulator >>> bits) & 0xff);
+      accumulator &= (1 << bits) - 1; // clear extracted bits
     }
   }
 
   // Only take the expected number of full bytes (discard padding bits)
   const usable = byteList.slice(0, totalBytes);
 
+  // Need at least 2 bytes: 1 ID + 1 data byte
+  if (usable.length < 2) {
+    throw new SignetValidationError('Word list too short — need at least 1 ID byte + 1 data byte');
+  }
+
   // First byte is the share ID, rest is data
   const id = usable[0];
+  if (id === 0) {
+    throw new SignetValidationError('Invalid share ID: 0 is not a valid x-coordinate for GF(256)');
+  }
   const data = new Uint8Array(usable.slice(1));
 
   return { id, data };

@@ -460,9 +460,10 @@ export function createAgeRangeProof(age: number, ageRange: string, subjectPubkey
     return createRangeProof(age, min, 150, subjectPubkey);
   }
 
-  const [minStr, maxStr] = ageRange.split('-');
-  const min = parseInt(minStr, 10);
-  const max = parseInt(maxStr, 10);
+  const parts = ageRange.split('-');
+  if (parts.length !== 2) throw new SignetValidationError(`Invalid age range format: ${ageRange} (expected "min-max")`);
+  const min = parseInt(parts[0], 10);
+  const max = parseInt(parts[1], 10);
 
   if (isNaN(min) || isNaN(max)) throw new SignetValidationError(`Invalid age range format: ${ageRange}`);
 
@@ -492,14 +493,20 @@ export function deserializeRangeProof(json: string): RangeProof {
   if (typeof parsed.min !== 'number' || typeof parsed.max !== 'number') {
     throw new SignetValidationError('Invalid range proof: missing min/max');
   }
+  if (!Number.isSafeInteger(parsed.min) || !Number.isSafeInteger(parsed.max) || parsed.min < 0 || parsed.max < parsed.min) {
+    throw new SignetValidationError('Invalid range proof: min/max must be non-negative safe integers with max >= min');
+  }
   if (typeof parsed.bits !== 'number' || typeof parsed.commitment !== 'string') {
     throw new SignetValidationError('Invalid range proof: missing bits or commitment');
+  }
+  if (!Number.isSafeInteger(parsed.bits) || parsed.bits < 1 || parsed.bits > 32) {
+    throw new SignetValidationError('Invalid range proof: bits must be between 1 and 32');
   }
   if (!Array.isArray(parsed.lowerProof) || !Array.isArray(parsed.upperProof)) {
     throw new SignetValidationError('Invalid range proof: missing lowerProof/upperProof');
   }
-  if (parsed.lowerProof.length > 64 || parsed.upperProof.length > 64) {
-    throw new SignetValidationError('Invalid range proof: proof arrays exceed maximum length (64)');
+  if (parsed.lowerProof.length > 32 || parsed.upperProof.length > 32) {
+    throw new SignetValidationError('Invalid range proof: proof arrays exceed maximum length (32)');
   }
   if (typeof parsed.lowerCommitment !== 'string' || typeof parsed.upperCommitment !== 'string') {
     throw new SignetValidationError('Invalid range proof: missing lowerCommitment/upperCommitment');

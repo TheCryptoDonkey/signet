@@ -303,6 +303,27 @@ describe('jurisdictions', () => {
       const result = canTransferData('XX', 'GB');
       expect(result.allowed).toBe(false);
     });
+
+    it('handles lowercase jurisdiction codes correctly (case normalisation)', () => {
+      // Previously, lowercase codes bypassed EU-internal set membership
+      const result = canTransferData('fr', 'de');
+      expect(result.allowed).toBe(true);
+      expect(result.mechanism).toBe('eu-internal');
+    });
+
+    it('recognises all mapped EU members for eu-internal transfers', () => {
+      // All mapped EU members should get eu-internal mechanism
+      expect(canTransferData('FR', 'DE').mechanism).toBe('eu-internal');
+      expect(canTransferData('ES', 'IT').mechanism).toBe('eu-internal');
+      expect(canTransferData('NL', 'IE').mechanism).toBe('eu-internal');
+    });
+
+    it('recognises mapped adequacy countries', () => {
+      // GB, JP, KR etc. are all in the adequacy list AND the jurisdictions map
+      expect(canTransferData('FR', 'GB').mechanism).toBe('adequacy-decision');
+      expect(canTransferData('DE', 'JP').mechanism).toBe('adequacy-decision');
+      expect(canTransferData('IT', 'IL').mechanism).toBe('adequacy-decision');
+    });
   });
 
   describe('getAllLanguages', () => {

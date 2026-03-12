@@ -195,7 +195,7 @@ export function parseCredential(event: NostrEvent): ParsedCredential | null {
 
   return {
     subjectPubkey: getTagValue(event, 'd') || '',
-    tier: parseInt(tier, 10) as SignetTier,
+    tier: (() => { const t = parseInt(tier, 10); return (t >= 1 && t <= 4 ? t : 1) as SignetTier; })(),
     type: (getTagValue(event, 'type') || 'self') as VerificationType,
     scope: (getTagValue(event, 'scope') || 'adult') as VerificationScope,
     method: (getTagValue(event, 'method') || 'self-declaration') as VerificationMethod,
@@ -428,10 +428,12 @@ export async function renewCredential(
  * Check if a credential needs renewal (within N days of expiry).
  */
 export function needsRenewal(event: NostrEvent, withinDays: number = 30): boolean {
+  if (withinDays < 0) throw new SignetValidationError('withinDays must be non-negative');
   const expiresStr = getTagValue(event, 'expires');
   if (!expiresStr) return false;
 
   const expiresAt = parseInt(expiresStr, 10);
+  if (isNaN(expiresAt)) return false;
   const now = Math.floor(Date.now() / 1000);
   const threshold = now + withinDays * 24 * 60 * 60;
 
@@ -547,6 +549,9 @@ function computeAgeRange(dateOfBirth: string): string {
   const monthDiff = now.getMonth() - dob.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < dob.getDate())) {
     age--;
+  }
+  if (age < 0 || age > 150) {
+    throw new SignetValidationError(`Implausible age ${age} computed from date of birth`);
   }
 
   if (age >= 18) return '18+';

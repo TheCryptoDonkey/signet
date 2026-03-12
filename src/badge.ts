@@ -74,9 +74,12 @@ export async function computeBadge(
     const subject = getTagValue(event, 'd');
     if (subject !== pubkey) continue;
 
-    // Check expiry
+    // Check expiry — NaN must be treated as expired (not perpetually valid)
     const expires = getTagValue(event, 'expires');
-    if (expires && parseInt(expires, 10) < now) continue;
+    if (expires) {
+      const exp = parseInt(expires, 10);
+      if (isNaN(exp) || exp < now) continue;
+    }
 
     // Optional signature verification
     if (verify && !await verifyEvent(event)) continue;
@@ -84,7 +87,8 @@ export async function computeBadge(
     hasAnyCredential = true;
     credentialCount++;
 
-    const tier = parseInt(getTagValue(event, 'tier') || '1', 10) as SignetTier;
+    const rawTier = parseInt(getTagValue(event, 'tier') || '1', 10);
+    const tier = (rawTier >= 1 && rawTier <= 4 ? rawTier : 1) as SignetTier;
     if (tier > highestTier) highestTier = tier;
 
     const type = getTagValue(event, 'type');
@@ -111,7 +115,8 @@ export async function computeBadge(
     vouchCount++;
 
     const method = getTagValue(event, 'method');
-    const voucherScore = parseInt(getTagValue(event, 'voucher-score') || '50', 10);
+    const rawVoucherScore = parseInt(getTagValue(event, 'voucher-score') || '50', 10);
+    const voucherScore = isNaN(rawVoucherScore) ? 50 : Math.max(0, Math.min(rawVoucherScore, MAX_TRUST_SCORE));
     const multiplier = voucherScore / MAX_TRUST_SCORE;
 
     if (method === 'in-person') {

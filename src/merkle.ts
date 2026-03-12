@@ -36,11 +36,11 @@ function hashInternal(left: string, right: string): string {
   return bytesToHex(sha256(combined));
 }
 
-/** Combine two hashes into a parent node */
-function hashPair(left: string, right: string): string {
-  // Canonical ordering: smaller hash first to ensure deterministic trees
-  const [a, b] = left < right ? [left, right] : [right, left];
-  return hashInternal(a, b);
+/** Combine two child hashes into a parent node.
+ *  Order is determined by tree position (left/right), NOT by hash value.
+ *  Sorting would allow proof transplanting between sibling positions. */
+function hashPairOrdered(left: string, right: string): string {
+  return hashInternal(left, right);
 }
 
 /** Build a Merkle tree from leaf values. Returns all levels (bottom-up). */
@@ -59,7 +59,7 @@ function buildTree(leaves: string[]): string[][] {
   while (current.length > 1) {
     const next: string[] = [];
     for (let i = 0; i < current.length; i += 2) {
-      next.push(hashPair(current[i], current[i + 1]));
+      next.push(hashPairOrdered(current[i], current[i + 1]));
     }
     levels.push(next);
     current = next;
@@ -146,7 +146,10 @@ export function verifyMerkleProof(
 
   let idx = proof.index;
   for (const sibling of proof.siblings) {
-    currentHash = hashPair(currentHash, sibling);
+    // Use index bit to determine left/right position — NOT sorted ordering
+    currentHash = (idx & 1) === 0
+      ? hashPairOrdered(currentHash, sibling)
+      : hashPairOrdered(sibling, currentHash);
     idx = idx >> 1;
   }
 

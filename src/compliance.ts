@@ -10,6 +10,7 @@ import {
   type ProfessionType,
 } from './jurisdictions.js';
 import { getTagValue } from './validation.js';
+import { SignetValidationError } from './errors.js';
 import type { NostrEvent } from './types.js';
 
 // --- Types ---
@@ -264,6 +265,9 @@ export function checkChildCompliance(
   childAge: number,
   jurisdictionCode: string
 ): ChildComplianceResult {
+  if (!Number.isFinite(childAge) || childAge < 0 || childAge > 150) {
+    throw new SignetValidationError(`Invalid childAge: ${childAge} (must be 0-150)`);
+  }
   const issues: ComplianceIssue[] = [];
   const j = getJurisdiction(jurisdictionCode);
 

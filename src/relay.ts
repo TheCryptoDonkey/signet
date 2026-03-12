@@ -158,7 +158,8 @@ export class RelayClient {
       };
 
       this.ws.onmessage = (msg) => {
-        this.handleMessage(msg.data as string);
+        if (typeof msg.data !== 'string') return; // ignore binary frames
+        this.handleMessage(msg.data);
       };
     });
   }

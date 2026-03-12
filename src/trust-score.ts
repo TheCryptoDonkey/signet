@@ -31,7 +31,8 @@ export function computeTrustScore(
     const subject = getTagValue(cred, 'd');
     if (subject !== subjectPubkey) continue;
 
-    const tier = parseInt(getTagValue(cred, 'tier') || '1', 10) as SignetTier;
+    const rawTier = parseInt(getTagValue(cred, 'tier') || '1', 10);
+    const tier = (rawTier >= 1 && rawTier <= 4 ? rawTier : 1) as SignetTier;
     if (tier > highestTier) highestTier = tier;
 
     const type = getTagValue(cred, 'type');
@@ -59,7 +60,8 @@ export function computeTrustScore(
     vouchersSeen.add(vouch.pubkey);
 
     const method = getTagValue(vouch, 'method');
-    const voucherScore = parseInt(getTagValue(vouch, 'voucher-score') || '50', 10);
+    const rawVoucherScore = parseInt(getTagValue(vouch, 'voucher-score') || '50', 10);
+    const voucherScore = isNaN(rawVoucherScore) ? 50 : Math.max(0, Math.min(rawVoucherScore, MAX_TRUST_SCORE));
     const scoreMultiplier = voucherScore / MAX_TRUST_SCORE;
 
     if (method === 'in-person') {
@@ -91,7 +93,8 @@ export function computeTrustScore(
       if (bridge.kind !== SIGNET_KINDS.IDENTITY_BRIDGE) continue;
       if (bridge.pubkey !== subjectPubkey) continue;
 
-      const ringMinTier = parseInt(getTagValue(bridge, 'ring-min-tier') || '1', 10) as SignetTier;
+      const rawRingMinTier = parseInt(getTagValue(bridge, 'ring-min-tier') || '1', 10);
+      const ringMinTier = (rawRingMinTier >= 1 && rawRingMinTier <= 4 ? rawRingMinTier : 1) as SignetTier;
       const weight = TRUST_WEIGHTS.IDENTITY_BRIDGE * (ringMinTier / 4);
       rawScore += weight;
       signals.push({

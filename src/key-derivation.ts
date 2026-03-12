@@ -204,10 +204,14 @@ function deriveChild(parent: ExtendedKey, index: number): ExtendedKey {
   zeroBytes(data);
 
   // Child key = (IL + kpar) mod n
+  // BIP-32: if parse256(IL) >= n, the key is invalid — try the next index
   const parentKeyBigInt = BigInt('0x' + bytesToHex(parent.key));
   const ILBigInt = BigInt('0x' + bytesToHex(IL));
-  const childKey = (ILBigInt + parentKeyBigInt) % secp256k1.CURVE.n;
   zeroBytes(IL);
+  if (ILBigInt >= secp256k1.CURVE.n) {
+    throw new SignetCryptoError('Derived IL >= curve order — try next index');
+  }
+  const childKey = (ILBigInt + parentKeyBigInt) % secp256k1.CURVE.n;
 
   if (childKey === 0n) {
     throw new SignetCryptoError('Derived key is zero — astronomically unlikely, try next index');

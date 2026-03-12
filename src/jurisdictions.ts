@@ -3254,8 +3254,12 @@ export function canTransferData(fromCode: string, toCode: string): {
   const to = getJurisdiction(toCode);
   if (!from || !to) return { allowed: false, notes: 'Unknown jurisdiction' };
 
+  // Normalise to uppercase for set lookups (getJurisdiction already uppercases internally)
+  const fromUpper = fromCode.toUpperCase();
+  const toUpper = toCode.toUpperCase();
+
   // Same jurisdiction — always allowed
-  if (fromCode === toCode) return { allowed: true, mechanism: 'domestic' };
+  if (fromUpper === toUpper) return { allowed: true, mechanism: 'domestic' };
 
   // No cross-border restrictions — allowed
   if (!from.dataProtection.crossBorderRestrictions) {
@@ -3263,19 +3267,29 @@ export function canTransferData(fromCode: string, toCode: string): {
   }
 
   // EU/EEA internal — allowed (GDPR free flow) — check before mutual recognition
-  const euEea = ['FR', 'DE', 'ES', 'IT', 'NL', 'IE'];
-  if (euEea.includes(fromCode) && euEea.includes(toCode)) {
+  // Full EU (27) + EEA (NO, IS, LI) membership list
+  const euEea = new Set([
+    'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR',
+    'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL',
+    'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
+    // EEA non-EU
+    'NO', 'IS', 'LI',
+  ]);
+  if (euEea.has(fromUpper) && euEea.has(toUpper)) {
     return { allowed: true, mechanism: 'eu-internal' };
   }
 
-  // Adequacy decisions
-  const euAdequacy = ['GB', 'JP', 'KR', 'AR', 'NZ', 'IL', 'CA'];
-  if (euEea.includes(fromCode) && euAdequacy.includes(toCode)) {
+  // EU adequacy decisions (as of 2024 — subject to periodic review)
+  const euAdequacy = new Set([
+    'GB', 'JP', 'KR', 'AR', 'NZ', 'IL', 'CA', 'CH', 'UY', 'AD',
+    'FO', 'GG', 'IM', 'JE',
+  ]);
+  if (euEea.has(fromUpper) && euAdequacy.has(toUpper)) {
     return { allowed: true, mechanism: 'adequacy-decision' };
   }
 
   // Mutual recognition — allowed with standard protections
-  if (from.mutualRecognition.includes(toCode)) {
+  if (from.mutualRecognition.includes(toUpper)) {
     return { allowed: true, mechanism: 'mutual-recognition' };
   }
 

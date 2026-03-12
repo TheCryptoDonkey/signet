@@ -226,6 +226,10 @@ export class SignetStore {
     if (!Array.isArray(parsed)) {
       throw new SignetValidationError('Import data must be a JSON array');
     }
+    const MAX_IMPORT_SIZE = 10_000;
+    if (parsed.length > MAX_IMPORT_SIZE) {
+      throw new SignetValidationError(`Import array too large: ${parsed.length} items (max ${MAX_IMPORT_SIZE})`);
+    }
     const events: NostrEvent[] = [];
     for (const item of parsed) {
       if (

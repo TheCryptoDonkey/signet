@@ -99,8 +99,8 @@ export function parseQRPayload(data: string): QRPayload {
   if (typeof obj.pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(obj.pubkey)) {
     throw new SignetValidationError('Invalid QR payload: pubkey must be a 64-character hex string');
   }
-  if (typeof obj.nonce !== 'string' || obj.nonce.length < 16) {
-    throw new SignetValidationError('Invalid QR payload: nonce must be at least 16 hex characters (64 bits of entropy)');
+  if (typeof obj.nonce !== 'string' || obj.nonce.length < 32) {
+    throw new SignetValidationError('Invalid QR payload: nonce must be at least 32 hex characters (128 bits of entropy)');
   }
 
   return parsed as QRPayload;

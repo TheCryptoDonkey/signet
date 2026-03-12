@@ -236,4 +236,52 @@ describe('badge display (Level 1)', () => {
       expect(filters[0]['#d']).toContain(kp2.publicKey);
     });
   });
+
+  describe('security — input sanitisation', () => {
+    it('treats NaN expires as expired (not perpetually valid)', async () => {
+      const kp = generateKeyPair();
+      const cred = await createSelfDeclaredCredential(kp.privateKey);
+      // Forge an event with a malformed expires tag (filter any existing expires first)
+      const forged: NostrEvent = {
+        ...cred,
+        tags: [...cred.tags.filter(t => t[0] !== 'expires'), ['expires', 'not-a-number']],
+      };
+      const badge = await computeBadge(kp.publicKey, [forged]);
+      // Credential with unparseable expires should be skipped
+      expect(badge.credentialCount).toBe(0);
+    });
+
+    it('clamps out-of-range tier to 1', async () => {
+      const kp = generateKeyPair();
+      const cred = await createSelfDeclaredCredential(kp.privateKey);
+      // Forge an event with tier=99
+      const forged: NostrEvent = {
+        ...cred,
+        tags: cred.tags.map(t => t[0] === 'tier' ? ['tier', '99'] : t),
+      };
+      const badge = await computeBadge(kp.publicKey, [forged]);
+      expect(badge.tier).toBe(1); // clamped to valid range
+    });
+
+    it('clamps voucher-score to [0, MAX_TRUST_SCORE]', async () => {
+      const voucher = generateKeyPair();
+      const subject = generateKeyPair();
+      const cred = await createSelfDeclaredCredential(subject.privateKey);
+      const vouch = await createVouch(voucher.privateKey, {
+        subjectPubkey: subject.publicKey,
+        method: 'online',
+        voucherTier: 2,
+        voucherScore: 50,
+      });
+      // Forge a vouch with inflated voucher-score
+      const forged: NostrEvent = {
+        ...vouch,
+        tags: [...vouch.tags, ['voucher-score', '9999']],
+      };
+      const normalBadge = await computeBadge(subject.publicKey, [cred, vouch]);
+      const inflatedBadge = await computeBadge(subject.publicKey, [cred, forged]);
+      // Score should be capped — inflated score should not exceed normal max
+      expect(inflatedBadge.score).toBeLessThanOrEqual(200);
+    });
+  });
 });

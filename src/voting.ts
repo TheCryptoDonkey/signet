@@ -130,7 +130,8 @@ export function parseElection(event: NostrEvent): ParsedElection | null {
     .map((t) => t[1] as EntityType);
 
   const eligibleMinTierStr = getTagValue(event, 'eligible-min-tier');
-  const eligibleMinTier = eligibleMinTierStr ? (parseInt(eligibleMinTierStr, 10) as SignetTier) : 1;
+  const rawMinTier = eligibleMinTierStr ? parseInt(eligibleMinTierStr, 10) : 1;
+  const eligibleMinTier = (rawMinTier >= 1 && rawMinTier <= 4 ? rawMinTier : 1) as SignetTier;
 
   const description = getTagValue(event, 'description');
   const eligibleCommunity = getTagValue(event, 'eligible-community');
@@ -145,14 +146,18 @@ export function parseElection(event: NostrEvent): ParsedElection | null {
   }
 
   const ringSizeStr = getTagValue(event, 'ring-size');
-  const ringSize = ringSizeStr ? parseInt(ringSizeStr, 10) : undefined;
+  let ringSize = ringSizeStr ? parseInt(ringSizeStr, 10) : undefined;
+  if (ringSize !== undefined && (isNaN(ringSize) || ringSize < 2 || ringSize > 1000)) {
+    return null; // ring size must be valid and within MAX_RING_SIZE
+  }
 
   const opens = parseInt(opensStr, 10);
   const closes = parseInt(closesStr, 10);
   if (isNaN(opens) || isNaN(closes)) return null;
 
   if (tallyThreshold) {
-    if (isNaN(tallyThreshold[0]) || isNaN(tallyThreshold[1])) return null;
+    const [m, n] = tallyThreshold;
+    if (isNaN(m) || isNaN(n) || m < 1 || n < 1 || m > n) return null;
   }
   if (ringSize !== undefined && isNaN(ringSize)) return null;
   if (isNaN(eligibleMinTier)) return null;

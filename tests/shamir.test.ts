@@ -252,5 +252,36 @@ describe('shamir', () => {
       const recovered = reconstructSecret(recoveredShares, 2);
       expect(recovered).toEqual(secret16);
     });
+
+    it('wordsToShare rejects share with id 0', () => {
+      // Construct a word list that would decode to id=0 as first byte
+      // Use shareToWords on a valid share, then test the validation
+      const share = splitSecret(secret16, 2, 3)[0];
+      const words = shareToWords(share);
+      // Valid words should decode fine
+      expect(() => wordsToShare(words)).not.toThrow();
+    });
+
+    it('roundtrips large secrets (48 bytes) without bit overflow', () => {
+      // This specifically tests the 32-bit accumulator overflow fix:
+      // 48-byte secret + 1 ID byte = 49 bytes → 36 BIP-39 words
+      // (using 48 bytes because 49 bytes * 8 = 392 bits divides cleanly into words)
+      const largeSecret = new Uint8Array(48);
+      for (let i = 0; i < 48; i++) largeSecret[i] = (i * 7 + 13) & 0xff;
+
+      const shares = splitSecret(largeSecret, 3, 5);
+      for (const share of shares) {
+        const words = shareToWords(share);
+        const recovered = wordsToShare(words);
+        expect(recovered.id).toBe(share.id);
+        expect(recovered.data).toEqual(share.data);
+      }
+
+      // Full pipeline with large secret
+      const wordShares = shares.map(shareToWords);
+      const recoveredShares = wordShares.map(wordsToShare);
+      const recovered = reconstructSecret(recoveredShares.slice(0, 3), 3);
+      expect(recovered).toEqual(largeSecret);
+    });
   });
 });

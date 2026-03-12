@@ -121,4 +121,41 @@ describe('merkle', () => {
       expect(() => tree.prove('nonexistent')).toThrow('not found');
     });
   });
+
+  describe('security — proof position integrity', () => {
+    it('proof for index 0 does not verify at index 1 (no sibling transplant)', () => {
+      // This test verifies that the Merkle tree uses positional ordering
+      // (left vs right child) rather than sorted ordering, preventing
+      // a proof generated for one leaf from being valid for its sibling.
+      const attrs = { a: '1', b: '2', c: '3', d: '4' };
+      const tree = new MerkleTree(attrs);
+
+      const proofA = tree.prove('a');
+      const proofB = tree.prove('b');
+
+      // Each proof should only verify for its own key-value pair
+      expect(verifyMerkleProof('a', '1', proofA)).toBe(true);
+      expect(verifyMerkleProof('b', '2', proofB)).toBe(true);
+
+      // Swapping index should fail — proof is position-bound
+      const transplanted = { ...proofA, index: proofB.index };
+      expect(verifyMerkleProof('a', '1', transplanted)).toBe(false);
+    });
+
+    it('proof siblings differ based on position in the tree', () => {
+      const attrs = { a: '1', b: '2', c: '3', d: '4' };
+      const tree = new MerkleTree(attrs);
+
+      // Sorted entries: a, b, c, d (indices 0, 1, 2, 3)
+      const proofA = tree.prove('a'); // index 0
+      const proofB = tree.prove('b'); // index 1
+
+      // Index 0 and 1 are siblings, so first sibling should be the other's leaf hash
+      expect(proofA.index).toBe(0);
+      expect(proofB.index).toBe(1);
+      // They share a sibling at level 0 but are different positions
+      expect(proofA.siblings[0]).toBe(proofB.leaf);
+      expect(proofB.siblings[0]).toBe(proofA.leaf);
+    });
+  });
 });

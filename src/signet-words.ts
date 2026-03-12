@@ -46,6 +46,7 @@ export interface SignetWordsConfig {
 
 /** Return the current epoch index for a given interval. */
 export function getEpoch(timestampMs?: number, epochSeconds: number = SIGNET_EPOCH_SECONDS): number {
+  if (epochSeconds < 1) throw new SignetValidationError('epochSeconds must be >= 1');
   return Math.floor((timestampMs ?? Date.now()) / (epochSeconds * 1000));
 }
 
