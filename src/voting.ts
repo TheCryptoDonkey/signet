@@ -199,12 +199,13 @@ export async function encryptBallotContent(
   // AES-256-GCM encryption
   const nonce = crypto.getRandomValues(new Uint8Array(12));
   const cryptoKey = await crypto.subtle.importKey(
-    'raw', aesKey, { name: 'AES-GCM' }, false, ['encrypt'],
+    'raw', new Uint8Array(aesKey), { name: 'AES-GCM' }, false, ['encrypt'],
   );
+  const plaintextBytes = utf8ToBytes(plaintext);
   const ciphertextBuf = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv: nonce },
     cryptoKey,
-    utf8ToBytes(plaintext),
+    new Uint8Array(plaintextBytes),
   );
   const ciphertext = new Uint8Array(ciphertextBuf);
 
@@ -241,12 +242,12 @@ export async function decryptBallotContent(
 
   // AES-256-GCM decryption
   const cryptoKey = await crypto.subtle.importKey(
-    'raw', aesKey, { name: 'AES-GCM' }, false, ['decrypt'],
+    'raw', new Uint8Array(aesKey), { name: 'AES-GCM' }, false, ['decrypt'],
   );
   const plaintextBuf = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: nonce },
+    { name: 'AES-GCM', iv: new Uint8Array(nonce) },
     cryptoKey,
-    ciphertext,
+    new Uint8Array(ciphertext),
   );
 
   return new TextDecoder().decode(plaintextBuf);
