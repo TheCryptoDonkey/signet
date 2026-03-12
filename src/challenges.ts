@@ -63,7 +63,7 @@ export function parseChallenge(event: NostrEvent): ParsedChallenge | null {
     verifierPubkey: getTagValue(event, 'd') || '',
     reason: (getTagValue(event, 'reason') || 'other') as ChallengeReason,
     evidenceType: getTagValue(event, 'evidence-type') || '',
-    reporterTier: (parseInt(getTagValue(event, 'reporter-tier') || '1')) as SignetTier,
+    reporterTier: (() => { const t = parseInt(getTagValue(event, 'reporter-tier') || '1', 10); return (t >= 1 && t <= 4 ? t : 1) as SignetTier; })(),
     algorithm,
   };
 }
@@ -114,10 +114,10 @@ export function parseRevocation(event: NostrEvent): ParsedRevocation | null {
   return {
     verifierPubkey: getTagValue(event, 'd') || '',
     challengeEventId: getTagValue(event, 'challenge') || '',
-    confirmations: parseInt(getTagValue(event, 'confirmations') || '0'),
+    confirmations: (() => { const c = parseInt(getTagValue(event, 'confirmations') || '0', 10); return isNaN(c) || c < 0 ? 0 : c; })(),
     bondAction: (getTagValue(event, 'bond-action') || 'held') as BondAction,
     scope: (getTagValue(event, 'scope') || 'full') as RevocationScope,
-    effectiveAt: parseInt(getTagValue(event, 'effective') || '0'),
+    effectiveAt: (() => { const e = parseInt(getTagValue(event, 'effective') || '0', 10); return isNaN(e) ? 0 : e; })(),
     algorithm,
   };
 }

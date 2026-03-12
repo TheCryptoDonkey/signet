@@ -2,7 +2,7 @@
 // Proves "one of N public keys signed this message" without revealing which one.
 // Used for Tier 3/4 issuer privacy: "a professional verified this" without revealing which professional.
 
-import { utf8ToBytes } from '@noble/hashes/utils';
+import { utf8ToBytes, hexToBytes, concatBytes } from '@noble/hashes/utils';
 import {
   Point,
   N,
@@ -96,7 +96,7 @@ export function ringSign(
   challenges[nextIdx] = hashToScalar(
     SAG_DOMAIN,
     msgBytes,
-    utf8ToBytes(ring.join(',')),
+    concatBytes(...ring.map(k => hexToBytes(k))),
     kG.toRawBytes(true)
   );
 
@@ -116,7 +116,7 @@ export function ringSign(
       challenges[iNext] = hashToScalar(
         SAG_DOMAIN,
         msgBytes,
-        utf8ToBytes(ring.join(',')),
+        concatBytes(...ring.map(k => hexToBytes(k))),
         R.toRawBytes(true)
       );
     }
@@ -164,7 +164,7 @@ export function ringVerify(sig: RingSignature): boolean {
       c = hashToScalar(
         SAG_DOMAIN,
         msgBytes,
-        utf8ToBytes(ring.join(',')),
+        concatBytes(...ring.map(k => hexToBytes(k))),
         R.toRawBytes(true)
       );
     }

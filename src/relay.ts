@@ -188,6 +188,9 @@ export class RelayClient {
     if (this.state !== 'connected' || !this.ws) {
       throw new SignetValidationError('Not connected to relay');
     }
+    if (!/^[0-9a-f]{64}$/.test(event.id)) {
+      throw new SignetValidationError('Invalid event ID: must be a 64-character lowercase hex string');
+    }
 
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
@@ -321,6 +324,8 @@ export class RelayClient {
 
         case 'AUTH': {
           if (typeof msg[1] !== 'string') break;
+          // Cap challenge length to prevent oversized AUTH events from malicious relays
+          if (msg[1].length > 256) break;
           this.handleAuth(msg[1]);
           break;
         }

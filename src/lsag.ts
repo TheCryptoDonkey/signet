@@ -2,7 +2,7 @@
 // Extends SAG with a key image that links signatures by the same signer
 // across multiple uses of the same election, enabling double-vote detection.
 
-import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
+import { bytesToHex, hexToBytes, utf8ToBytes, concatBytes } from '@noble/hashes/utils';
 import { SignetValidationError, SignetCryptoError } from './errors.js';
 import { constantTimeEqual } from './utils.js';
 import {
@@ -111,7 +111,7 @@ export function lsagSign(
   const pi = signerIndex;
   let x = hexToScalar(privateKey);
   const msgBytes = utf8ToBytes(message);
-  const ringBytes = utf8ToBytes(ring.join(','));
+  const ringBytes = concatBytes(...ring.map(k => hexToBytes(k)));
   const ringPoints = ring.map(pubkeyToPoint);
 
   // BIP-340 parity fix
@@ -167,13 +167,16 @@ export function lsagVerify(sig: LsagSignature): boolean {
     if (ring.length > MAX_RING_SIZE) return false;
     if (responses.length !== ring.length) return false;
 
+    // Enforce compressed-point format (02/03 prefix + 32 bytes) to prevent
+    // duplicate key images via uncompressed representation of the same point
+    if (!/^0[23][0-9a-f]{64}$/i.test(keyImage)) return false;
     const I = Point.fromHex(keyImage);
     I.assertValidity();
     if (I.equals(Point.ZERO)) return false;
 
     const n = ring.length;
     const msgBytes = utf8ToBytes(message);
-    const ringBytes = utf8ToBytes(ring.join(','));
+    const ringBytes = concatBytes(...ring.map(k => hexToBytes(k)));
     const ringPoints = ring.map(pubkeyToPoint);
 
     let c = hexToScalar(c0);

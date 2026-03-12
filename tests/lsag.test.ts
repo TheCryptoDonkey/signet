@@ -73,7 +73,7 @@ describe('LSAG', () => {
 
     it('rejects malformed pubkey hex', () => {
       expect(() => lsagSign('msg', ['not-a-key', other1.publicKey], 0, signer.privateKey, electionId))
-        .toThrow('Invalid x-only public key');
+        .toThrow(); // rejects via validatePubkeyHex or hexToBytes
     });
   });
 

@@ -245,6 +245,10 @@ export class SignetStore {
       ) {
         continue; // skip malformed entries
       }
+      // Validate hex format of id, pubkey, sig
+      if (!/^[0-9a-f]{64}$/.test(item.id) || !/^[0-9a-f]{64}$/.test(item.pubkey) || !/^[0-9a-f]{128}$/.test(item.sig)) {
+        continue;
+      }
       // Validate field-size bounds on imported events
       const boundsErrors: string[] = [];
       validateFieldSizeBounds(item as NostrEvent, boundsErrors);

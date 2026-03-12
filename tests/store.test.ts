@@ -165,6 +165,74 @@ describe('SignetStore', () => {
       expect(imported).toBe(2);
       expect(store2.size).toBe(2);
     });
+
+    it('rejects non-JSON import data', () => {
+      const store = new SignetStore();
+      expect(() => store.import('not json')).toThrow('not valid JSON');
+    });
+
+    it('rejects non-array import data', () => {
+      const store = new SignetStore();
+      expect(() => store.import('{"foo":1}')).toThrow('must be a JSON array');
+    });
+
+    it('rejects oversized import array', () => {
+      const store = new SignetStore();
+      const huge = JSON.stringify(Array(10_001).fill(null));
+      expect(() => store.import(huge)).toThrow('too large');
+    });
+
+    it('skips events with invalid hex id', () => {
+      const store = new SignetStore();
+      const data = JSON.stringify([{
+        id: 'ZZZZ' + 'a'.repeat(60),  // uppercase / invalid hex
+        pubkey: 'b'.repeat(64),
+        kind: 30470,
+        created_at: 1000,
+        tags: [],
+        content: '',
+        sig: 'c'.repeat(128),
+      }]);
+      expect(store.import(data)).toBe(0);
+    });
+
+    it('skips events with invalid hex pubkey', () => {
+      const store = new SignetStore();
+      const data = JSON.stringify([{
+        id: 'a'.repeat(64),
+        pubkey: 'NOT-HEX!',
+        kind: 30470,
+        created_at: 1000,
+        tags: [],
+        content: '',
+        sig: 'c'.repeat(128),
+      }]);
+      expect(store.import(data)).toBe(0);
+    });
+
+    it('skips events with invalid hex sig', () => {
+      const store = new SignetStore();
+      const data = JSON.stringify([{
+        id: 'a'.repeat(64),
+        pubkey: 'b'.repeat(64),
+        kind: 30470,
+        created_at: 1000,
+        tags: [],
+        content: '',
+        sig: 'short',
+      }]);
+      expect(store.import(data)).toBe(0);
+    });
+
+    it('skips malformed entries (missing fields)', () => {
+      const store = new SignetStore();
+      const data = JSON.stringify([
+        { id: 'a'.repeat(64) },  // missing most fields
+        null,
+        42,
+      ]);
+      expect(store.import(data)).toBe(0);
+    });
   });
 
   it('clears all events', async () => {

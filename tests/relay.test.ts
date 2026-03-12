@@ -58,13 +58,13 @@ function lastWS(): MockWebSocket {
 }
 
 const dummyEvent: NostrEvent = {
-  id: 'abc123',
+  id: 'a'.repeat(64),
   kind: 30470,
-  pubkey: 'pub1',
+  pubkey: 'b'.repeat(64),
   created_at: 1700000000,
   tags: [['d', 'subject1']],
   content: '',
-  sig: 'sig1',
+  sig: 'c'.repeat(128),
 };
 
 describe('RelayClient', () => {
@@ -201,10 +201,10 @@ describe('RelayClient', () => {
       // Check the sent message
       const sent = JSON.parse(lastWS().sent[0]);
       expect(sent[0]).toBe('EVENT');
-      expect(sent[1].id).toBe('abc123');
+      expect(sent[1].id).toBe('a'.repeat(64));
 
       // Simulate OK response
-      lastWS().simulateMessage(['OK', 'abc123', true, '']);
+      lastWS().simulateMessage(['OK', 'a'.repeat(64), true, '']);
 
       const result = await publishPromise;
       expect(result.ok).toBe(true);
@@ -261,7 +261,7 @@ describe('RelayClient', () => {
       lastWS().simulateMessage(['EVENT', subId, dummyEvent]);
 
       expect(events).toHaveLength(1);
-      expect(events[0].id).toBe('abc123');
+      expect(events[0].id).toBe('a'.repeat(64));
     });
 
     it('calls EOSE callback', async () => {
@@ -323,15 +323,15 @@ describe('RelayClient', () => {
 
       // Send events
       lastWS().simulateMessage(['EVENT', subId, dummyEvent]);
-      lastWS().simulateMessage(['EVENT', subId, { ...dummyEvent, id: 'def456' }]);
+      lastWS().simulateMessage(['EVENT', subId, { ...dummyEvent, id: 'd'.repeat(64) }]);
 
       // Send EOSE to complete
       lastWS().simulateMessage(['EOSE', subId]);
 
       const events = await fetchPromise;
       expect(events).toHaveLength(2);
-      expect(events[0].id).toBe('abc123');
-      expect(events[1].id).toBe('def456');
+      expect(events[0].id).toBe('a'.repeat(64));
+      expect(events[1].id).toBe('d'.repeat(64));
     });
   });
 

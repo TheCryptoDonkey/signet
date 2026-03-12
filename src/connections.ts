@@ -80,6 +80,36 @@ export function serializeQRPayload(payload: QRPayload): string {
   return JSON.stringify(payload);
 }
 
+const MAX_CONTACT_FIELD_LENGTH = 256;
+const MAX_CHILD_PUBKEYS = 20;
+
+/** Validate ContactInfo field sizes to prevent oversized payloads from untrusted sources. */
+function validateContactInfo(info: unknown): void {
+  if (typeof info !== 'object' || info === null) {
+    throw new SignetValidationError('Invalid ContactInfo: must be an object');
+  }
+  const ci = info as Record<string, unknown>;
+  for (const field of ['name', 'mobile', 'email', 'address'] as const) {
+    if (ci[field] !== undefined) {
+      if (typeof ci[field] !== 'string') throw new SignetValidationError(`Invalid ContactInfo: ${field} must be a string`);
+      if ((ci[field] as string).length > MAX_CONTACT_FIELD_LENGTH) {
+        throw new SignetValidationError(`Invalid ContactInfo: ${field} exceeds ${MAX_CONTACT_FIELD_LENGTH} characters`);
+      }
+    }
+  }
+  if (ci.childPubkeys !== undefined) {
+    if (!Array.isArray(ci.childPubkeys)) throw new SignetValidationError('Invalid ContactInfo: childPubkeys must be an array');
+    if (ci.childPubkeys.length > MAX_CHILD_PUBKEYS) {
+      throw new SignetValidationError(`Invalid ContactInfo: childPubkeys exceeds ${MAX_CHILD_PUBKEYS} entries`);
+    }
+    for (const pk of ci.childPubkeys) {
+      if (typeof pk !== 'string' || !/^[0-9a-f]{64}$/i.test(pk)) {
+        throw new SignetValidationError('Invalid ContactInfo: childPubkeys must contain valid 64-char hex pubkeys');
+      }
+    }
+  }
+}
+
 /** Parse and validate a QR payload from a JSON string.
  *  Throws if the data is not valid JSON or is missing required fields. */
 export function parseQRPayload(data: string): QRPayload {
@@ -99,8 +129,13 @@ export function parseQRPayload(data: string): QRPayload {
   if (typeof obj.pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(obj.pubkey)) {
     throw new SignetValidationError('Invalid QR payload: pubkey must be a 64-character hex string');
   }
-  if (typeof obj.nonce !== 'string' || obj.nonce.length < 32) {
-    throw new SignetValidationError('Invalid QR payload: nonce must be at least 32 hex characters (128 bits of entropy)');
+  if (typeof obj.nonce !== 'string' || obj.nonce.length < 32 || obj.nonce.length > 128) {
+    throw new SignetValidationError('Invalid QR payload: nonce must be 32-128 hex characters');
+  }
+
+  // Validate ContactInfo field sizes if present
+  if (obj.info !== undefined) {
+    validateContactInfo(obj.info);
   }
 
   return parsed as QRPayload;

@@ -64,8 +64,8 @@ export function parseVouch(event: NostrEvent): ParsedVouch | null {
     subjectPubkey: getTagValue(event, 'd') || '',
     method: (getTagValue(event, 'method') || 'online') as VouchMethod,
     context: getTagValue(event, 'context'),
-    voucherTier: (tier ? parseInt(tier, 10) : 1) as SignetTier,
-    voucherScore: score ? parseInt(score, 10) : 50,
+    voucherTier: (() => { const t = tier ? parseInt(tier, 10) : 1; return (t >= 1 && t <= 4 ? t : 1) as SignetTier; })(),
+    voucherScore: (() => { const v = score ? parseInt(score, 10) : 50; return isNaN(v) ? 50 : Math.max(0, Math.min(v, 200)); })(),
     algorithm,
   };
 }
