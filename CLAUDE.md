@@ -20,7 +20,7 @@ This repo contains:
 
 - **4 verification tiers**: Tier 1 (self-declared) → Tier 2 (web-of-trust) → Tier 3 (professional adult) → Tier 4 (professional adult+child)
 - **8 core event kinds** (30470-30477): credential, vouch, policy, verifier, challenge, revocation, identity bridge, delegation
-- **3 voting extension event kinds** (30478-30480): election, ballot, election result
+- **3 voting extension event kinds** (30482-30484): election, ballot, election result
 - **9 entity types**: Natural Person, Persona, Personal Agent, Free Personal Agent, Juridical Person, Juridical Persona, Organised Agent, Free Organised Agent, Free Agent
 - **Two-credential ceremony**: Professional verification issues Natural Person credential (with nullifier, Merkle root) + Persona credential (anonymous, age-range only) simultaneously
 - **Document-based nullifiers**: SHA-256 of length-prefixed fields (docType, country, docNumber, "signet-nullifier-v2") prevents duplicate identity without revealing documents
@@ -88,8 +88,10 @@ Signet/
 
 ```bash
 # Protocol
-node node_modules/vitest/vitest.mjs run       # run protocol tests
-node node_modules/typescript/bin/tsc --noEmit  # typecheck protocol
+node node_modules/vitest/vitest.mjs run                        # run all protocol tests
+node node_modules/vitest/vitest.mjs run tests/voting.test.ts   # run a single test file
+node node_modules/typescript/bin/tsc --noEmit                   # typecheck protocol
+npm run build                                                   # compile to dist/
 
 # App (from app/ directory)
 npm run dev                                     # start dev server
@@ -107,6 +109,36 @@ npm run typecheck                               # typecheck family app
 - **5174** — Signet reference app (HTTPS, self-signed cert)
 - **5175** — My Signet family app (HTTPS, self-signed cert)
 - Avoid: 3000, 5173, 7777, 7778, 8787 (in use by other services)
+
+## Security Conventions
+
+These conventions were established during the security hardening review (2026-03-12) and MUST be followed for all new code:
+
+- **Merkle trees**: Use RFC 6962 domain separation — `0x00` prefix for leaf hashes, `0x01` for internal nodes
+- **Ring signatures**: Always include a domain separator (e.g. `signet-sag-v1`, `signet-lsag-v1`) as the first argument to challenge hashes
+- **ECDH**: Always check `sharedPoint.equals(ProjectivePoint.ZERO)` after multiplication — reject identity point
+- **Ring size**: Enforce `MAX_RING_SIZE = 1000` in both sign and verify paths
+- **LSAG ballot privacy**: The LSAG message MUST be `electionId:SHA-256(encryptedVote)` — never sign the plaintext vote
+- **Field-size bounds**: All event validators must check `MAX_CONTENT_LENGTH` (64KB), `MAX_TAGS_COUNT` (100), `MAX_TAG_VALUE_LENGTH` (1024)
+- **JSON.parse on untrusted input**: Always add runtime type guards after parsing — never cast directly to a type
+- **Credential chain depth**: Cap at `MAX_CHAIN_DEPTH = 100` with cycle detection via `visited` set
+- **Error classes**: Use `SignetError` hierarchy (`SignetValidationError`, `SignetCryptoError`, `SignetVotingError`) for new throw statements
+- **IndexedDB**: Never store `privateKey` or `mnemonic` in plaintext — use `crypto-store.ts` (PBKDF2 + AES-256-GCM)
+
+## Gotchas
+
+- **`canary-kit: "file:../canary-kit"`** in `package.json` — local path dependency. `canary-kit` is not published to npm yet. This MUST be resolved before `signet-protocol` can be published. Used only in `src/signet-words.ts`.
+- **App typecheck uses its own tsconfig** — running `tsc --noEmit` from the project root only checks `src/`. The apps have their own tsconfigs and must be checked separately from their directories.
+- **`@noble/hashes` deprecation warnings** — `sha256`, `ProjectivePoint`, etc. show as deprecated in diagnostics. These are re-export deprecations, not functional deprecations. The functions work correctly. Ignore these warnings.
+- **CSP in dev mode** — The `script-src 'self'` CSP in `app/index.html` and `family-app/index.html` may log violations during Vite dev server (HMR uses inline scripts). This is expected in dev; the CSP protects production builds.
+
+## Security Review Process
+
+Use the `ralph-loop` plugin for iterative security reviews:
+
+```bash
+/ralph-loop "Security review of src/. For each issue: fix it, add tests, run the suite. Re-review changed files. Output <promise>CLEAN</promise> when re-review finds zero new issues." --completion-promise "CLEAN" --max-iterations 10
+```
 
 ## Subagent Model Selection
 
