@@ -182,6 +182,30 @@ export {
 
 export type { RingSignature } from './ring-signature.js';
 
+// LSAG (Linkable Ring Signatures)
+export {
+  computeKeyImage,
+  lsagSign,
+  lsagVerify,
+  hasDuplicateKeyImage,
+} from './lsag.js';
+
+export type { LsagSignature } from './lsag.js';
+
+// Voting (kinds 30482-30484)
+export {
+  createElection,
+  parseElection,
+  castBallot,
+  verifyBallot,
+  tallyElection,
+  encryptBallotContent,
+  decryptBallotContent,
+  validateElection,
+  validateBallot,
+  validateElectionResult,
+} from './voting.js';
+
 // Identity Bridge (kind 30476)
 export {
   createIdentityBridge,

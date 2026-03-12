@@ -13,6 +13,7 @@ import type {
 import {
   createElection, parseElection, castBallot, verifyBallot, tallyElection,
   encryptBallotContent, decryptBallotContent,
+  validateElection, validateBallot, validateElectionResult,
 } from '../src/voting.js';
 import { computeKeyImage } from '../src/lsag.js';
 import { generateKeyPair } from '../src/crypto.js';
@@ -462,5 +463,125 @@ describe('voting protocol', () => {
       const optionA = resultTags.find((t) => t[1] === 'Option A');
       expect(optionA![2]).toBe('2'); // voter1 first + voter2
     });
+  });
+});
+
+describe('structural validation', () => {
+  const authority = generateKeyPair();
+  const tally = generateKeyPair();
+  const validParams: ElectionParams = {
+    electionId: 'validate-test',
+    title: 'Validation Test',
+    options: ['Yes', 'No'],
+    scale: 'organisational',
+    eligibleEntityTypes: ['natural_person'],
+    eligibleMinTier: 1,
+    opens: Math.floor(Date.now() / 1000) - 3600,
+    closes: Math.floor(Date.now() / 1000) + 86400,
+    reVote: 'allowed',
+    tallyPubkeys: [tally.publicKey],
+  };
+
+  it('validates a well-formed election event', async () => {
+    const event = await createElection(authority.privateKey, validParams);
+    const result = validateElection(event);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('rejects election with wrong kind', () => {
+    const bad = { kind: 30470, tags: [['L', 'signet']], pubkey: 'a'.repeat(64), content: '', id: 'x', sig: 'y', created_at: 0 } as any;
+    const result = validateElection(bad);
+    expect(result.valid).toBe(false);
+  });
+
+  it('rejects election missing required tags', () => {
+    const bad = { kind: 30482, tags: [['L', 'signet']], pubkey: 'a'.repeat(64), content: '', id: 'x', sig: 'y', created_at: 0 } as any;
+    const result = validateElection(bad);
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  it('validates a well-formed ballot event', async () => {
+    const auth = generateKeyPair();
+    const tallyKp = generateKeyPair();
+    const now = Math.floor(Date.now() / 1000);
+    const electionEvent = await createElection(auth.privateKey, {
+      electionId: 'val-test', title: 'Val Test', options: ['A', 'B'],
+      scale: 'organisational', eligibleEntityTypes: ['natural_person'],
+      eligibleMinTier: 1, opens: now - 3600, closes: now + 86400,
+      reVote: 'allowed', tallyPubkeys: [tallyKp.publicKey],
+    });
+    const voter = generateKeyPair();
+    const ring = [voter.publicKey, generateKeyPair().publicKey, generateKeyPair().publicKey];
+    const { event } = await castBallot(voter.privateKey, electionEvent, 'A', ring);
+    expect(validateBallot(event).valid).toBe(true);
+  });
+
+  it('validates a well-formed election result event', async () => {
+    const auth = generateKeyPair();
+    const tallyKp = generateKeyPair();
+    const now = Math.floor(Date.now() / 1000);
+    const electionEvent = await createElection(auth.privateKey, {
+      electionId: 'val-result-test', title: 'Val Result', options: ['X', 'Y'],
+      scale: 'organisational', eligibleEntityTypes: ['natural_person'],
+      eligibleMinTier: 1, opens: now - 7200, closes: now + 86400,
+      reVote: 'allowed', tallyPubkeys: [tallyKp.publicKey],
+    });
+    const v1 = generateKeyPair();
+    const v2 = generateKeyPair();
+    const ring = [v1.publicKey, v2.publicKey, generateKeyPair().publicKey];
+    const b1 = await castBallot(v1.privateKey, electionEvent, 'X', ring);
+    const b2 = await castBallot(v2.privateKey, electionEvent, 'Y', ring);
+    const result = await tallyElection([b1.event, b2.event], electionEvent, tallyKp.privateKey, ring);
+    expect(validateElectionResult(result).valid).toBe(true);
+  });
+});
+
+describe('full voting flow integration', () => {
+  it('end-to-end: create, cast 3 ballots, tally', async () => {
+    const auth = generateKeyPair();
+    const tally = generateKeyPair();
+    const voters = [generateKeyPair(), generateKeyPair(), generateKeyPair()];
+    const ring = voters.map(v => v.publicKey);
+    const now = Math.floor(Date.now() / 1000);
+
+    const election = await createElection(auth.privateKey, {
+      electionId: 'integration-test',
+      title: 'Integration Test Election',
+      options: ['Yes', 'No'],
+      scale: 'organisational',
+      eligibleEntityTypes: ['natural_person'],
+      eligibleMinTier: 1,
+      opens: now - 3600,
+      closes: now + 86400,
+      reVote: 'allowed',
+      tallyPubkeys: [tally.publicKey],
+    });
+    expect(election.kind).toBe(30482);
+
+    const b0 = await castBallot(voters[0].privateKey, election, 'Yes', ring);
+    const b1 = await castBallot(voters[1].privateKey, election, 'No', ring);
+    const b2 = await castBallot(voters[2].privateKey, election, 'Yes', ring);
+
+    for (const ballot of [b0, b1, b2]) {
+      const v = verifyBallot(ballot.event, election, ring);
+      expect(v.valid).toBe(true);
+    }
+
+    // All key images unique
+    const keyImages = [b0, b1, b2].map(b =>
+      b.event.tags.find(t => t[0] === 'key-image')![1],
+    );
+    expect(new Set(keyImages).size).toBe(3);
+
+    const result = await tallyElection(
+      [b0.event, b1.event, b2.event], election, tally.privateKey, ring,
+    );
+    expect(result.kind).toBe(30484);
+    const yesResult = result.tags.find(t => t[0] === 'result' && t[1] === 'Yes');
+    const noResult = result.tags.find(t => t[0] === 'result' && t[1] === 'No');
+    expect(yesResult?.[2]).toBe('2');
+    expect(noResult?.[2]).toBe('1');
   });
 });

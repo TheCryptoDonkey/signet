@@ -523,3 +523,59 @@ export async function tallyElection(
 
   return signEvent(unsigned, tallyPrivateKey);
 }
+
+// ── Validation ───────────────────────────────────────────────────────────────
+
+export function validateElection(event: NostrEvent): ValidationResult {
+  const errors: string[] = [];
+  if (event.kind !== SIGNET_KINDS.ELECTION) {
+    errors.push(`Expected kind ${SIGNET_KINDS.ELECTION}, got ${event.kind}`);
+  }
+  if (!event.tags.some(t => t[0] === 'L' && t[1] === SIGNET_LABEL)) {
+    errors.push('Missing signet protocol label (["L", "signet"])');
+  }
+  if (!getTagValue(event, 'd')) errors.push('Missing "d" tag (election ID)');
+  if (!getTagValue(event, 'title')) errors.push('Missing "title" tag');
+  if (!getTagValue(event, 'scale')) errors.push('Missing "scale" tag');
+  if (!getTagValue(event, 'opens')) errors.push('Missing "opens" tag');
+  if (!getTagValue(event, 'closes')) errors.push('Missing "closes" tag');
+  if (!getTagValue(event, 're-vote')) errors.push('Missing "re-vote" tag');
+  const options = event.tags.filter(t => t[0] === 'option').map(t => t[1]);
+  if (options.length < 2) errors.push('Election must have at least 2 "option" tags');
+  const tallyPubkeys = event.tags.filter(t => t[0] === 'tally-pubkey').map(t => t[1]);
+  if (tallyPubkeys.length < 1) errors.push('Election must have at least 1 "tally-pubkey" tag');
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateBallot(event: NostrEvent): ValidationResult {
+  const errors: string[] = [];
+  if (event.kind !== SIGNET_KINDS.BALLOT) {
+    errors.push(`Expected kind ${SIGNET_KINDS.BALLOT}, got ${event.kind}`);
+  }
+  if (!event.tags.some(t => t[0] === 'L' && t[1] === SIGNET_LABEL)) {
+    errors.push('Missing signet protocol label (["L", "signet"])');
+  }
+  if (!getTagValue(event, 'd')) errors.push('Missing "d" tag');
+  if (!getTagValue(event, 'election')) errors.push('Missing "election" tag');
+  if (!getTagValue(event, 'key-image')) errors.push('Missing "key-image" tag');
+  if (!getTagValue(event, 'ring-sig')) errors.push('Missing "ring-sig" tag');
+  if (!getTagValue(event, 'encrypted-vote')) errors.push('Missing "encrypted-vote" tag');
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateElectionResult(event: NostrEvent): ValidationResult {
+  const errors: string[] = [];
+  if (event.kind !== SIGNET_KINDS.ELECTION_RESULT) {
+    errors.push(`Expected kind ${SIGNET_KINDS.ELECTION_RESULT}, got ${event.kind}`);
+  }
+  if (!event.tags.some(t => t[0] === 'L' && t[1] === SIGNET_LABEL)) {
+    errors.push('Missing signet protocol label (["L", "signet"])');
+  }
+  if (!getTagValue(event, 'd')) errors.push('Missing "d" tag');
+  if (!getTagValue(event, 'election')) errors.push('Missing "election" tag');
+  if (!getTagValue(event, 'total-ballots')) errors.push('Missing "total-ballots" tag');
+  if (!getTagValue(event, 'total-eligible')) errors.push('Missing "total-eligible" tag');
+  const results = event.tags.filter(t => t[0] === 'result');
+  if (results.length === 0) errors.push('Missing "result" tags');
+  return { valid: errors.length === 0, errors };
+}
