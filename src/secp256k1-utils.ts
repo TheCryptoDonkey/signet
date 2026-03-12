@@ -44,7 +44,12 @@ export function scalarEqual(a: bigint, b: bigint): boolean {
   return constantTimeEqual(aBuf, bBuf);
 }
 
-/** Hash to scalar: SHA-256 of concatenated data, reduced mod N */
+/** Hash to scalar: SHA-256 of concatenated data, reduced mod N.
+ *
+ *  NOTE: SHA-256 produces 256 bits and N is ~2^256, so the modular reduction
+ *  introduces a negligible bias (~2^-128). This is acceptable for Fiat-Shamir
+ *  challenges. A wider hash (e.g. SHA-512) would eliminate the bias entirely
+ *  per RFC 9380 hash-to-field, but is not required at this security level. */
 export function hashToScalar(...parts: Uint8Array[]): bigint {
   const data = concatBytes(...parts);
   const h = sha256(data);
@@ -62,6 +67,30 @@ export function safeMultiply(point: ProjectivePoint, scalar: bigint): Projective
 
 /** Generator G: standard secp256k1 base point */
 export const G = Point.BASE;
+
+/**
+ * Hash arbitrary data to a valid secp256k1 curve point using try-and-increment.
+ * Domain-separated with the provided seed prefix.
+ */
+export function hashToPoint(data: Uint8Array): ProjectivePoint {
+  const prefix = utf8ToBytes('signet-hash-to-point-v1');
+  for (let i = 0; i < 256; i++) {
+    const buf = new Uint8Array(prefix.length + data.length + 1);
+    buf.set(prefix);
+    buf.set(data, prefix.length);
+    buf[prefix.length + data.length] = i;
+    const h = sha256(buf);
+    const hex = '02' + bytesToHex(h);
+    try {
+      const point = Point.fromHex(hex);
+      point.assertValidity();
+      return point;
+    } catch {
+      continue;
+    }
+  }
+  throw new Error('Failed to hash to curve point');
+}
 
 /**
  * Generator H: nothing-up-my-sleeve second generator for Pedersen commitments.
