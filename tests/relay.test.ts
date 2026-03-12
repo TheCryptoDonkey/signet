@@ -136,7 +136,7 @@ describe('RelayClient', () => {
 
       lastWS().simulateError();
 
-      await expect(connectPromise).rejects.toThrow('Failed to connect');
+      await expect(connectPromise).rejects.toThrow('WebSocket connection failed');
     });
 
     it('rejects on timeout', async () => {

@@ -188,6 +188,11 @@ export function reconstructSecret(
     }
   }
   const secretLen = used[0].data.length;
+  for (const share of used) {
+    if (share.data.length !== secretLen) {
+      throw new Error('Inconsistent share lengths — shares may be from different secrets');
+    }
+  }
   const result = new Uint8Array(secretLen);
 
   // Lagrange interpolation at x = 0 for each byte position

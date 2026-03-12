@@ -3,6 +3,7 @@
 
 import { SIGNET_KINDS } from './constants.js';
 import { getTagValue } from './validation.js';
+import { SignetValidationError } from './errors.js';
 import type {
   NostrEvent,
   ParsedCredential,
@@ -216,9 +217,14 @@ export class SignetStore {
 
   /** Import events from JSON */
   import(json: string): number {
-    const parsed = JSON.parse(json);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(json);
+    } catch {
+      throw new SignetValidationError('Import data is not valid JSON');
+    }
     if (!Array.isArray(parsed)) {
-      throw new Error('Import data must be a JSON array');
+      throw new SignetValidationError('Import data must be a JSON array');
     }
     const events: NostrEvent[] = [];
     for (const item of parsed) {

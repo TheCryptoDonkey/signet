@@ -7,7 +7,7 @@ import { hkdf } from '@noble/hashes/hkdf';
 import { bytesToHex, hexToBytes, utf8ToBytes, randomBytes } from '@noble/hashes/utils';
 import { generateKeyPair as genKey, getPublicKey, signEvent } from './crypto.js';
 import { SIGNET_KINDS, SIGNET_LABEL, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
-import { getTagValue } from './validation.js';
+import { getTagValue, validateFieldSizeBounds } from './validation.js';
 import type { ValidationResult } from './validation.js';
 import { computeKeyImage, lsagSign, lsagVerify } from './lsag.js';
 import type { LsagSignature } from './lsag.js';
@@ -397,7 +397,15 @@ export function verifyBallot(
 
   let ringSig: LsagSignature;
   try {
-    ringSig = JSON.parse(ringSigStr) as LsagSignature;
+    const raw = JSON.parse(ringSigStr);
+    if (!raw || typeof raw !== 'object' || !Array.isArray(raw.ring) ||
+        typeof raw.message !== 'string' || typeof raw.c0 !== 'string' ||
+        !Array.isArray(raw.responses) || typeof raw.keyImage !== 'string' ||
+        typeof raw.electionId !== 'string') {
+      errors.push('Invalid ring-sig structure');
+      return { valid: false, errors };
+    }
+    ringSig = raw as LsagSignature;
   } catch {
     errors.push('Invalid ring-sig JSON');
     return { valid: false, errors };
@@ -508,7 +516,12 @@ export async function tallyElection(
 
     try {
       const decrypted = await decryptBallotContent(encryptedVote, tallyPrivateKey);
-      const vote = JSON.parse(decrypted) as { option: string };
+      const raw = JSON.parse(decrypted);
+      if (!raw || typeof raw !== 'object' || typeof raw.option !== 'string') {
+        invalidCount++;
+        continue;
+      }
+      const vote = raw as { option: string };
       const current = voteCounts.get(vote.option);
       if (current !== undefined) {
         voteCounts.set(vote.option, current + 1);
@@ -557,6 +570,7 @@ export async function tallyElection(
 
 export function validateElection(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
+  validateFieldSizeBounds(event, errors);
   if (event.kind !== SIGNET_KINDS.ELECTION) {
     errors.push(`Expected kind ${SIGNET_KINDS.ELECTION}, got ${event.kind}`);
   }
@@ -578,6 +592,7 @@ export function validateElection(event: NostrEvent): ValidationResult {
 
 export function validateBallot(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
+  validateFieldSizeBounds(event, errors);
   if (event.kind !== SIGNET_KINDS.BALLOT) {
     errors.push(`Expected kind ${SIGNET_KINDS.BALLOT}, got ${event.kind}`);
   }
@@ -594,6 +609,7 @@ export function validateBallot(event: NostrEvent): ValidationResult {
 
 export function validateElectionResult(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
+  validateFieldSizeBounds(event, errors);
   if (event.kind !== SIGNET_KINDS.ELECTION_RESULT) {
     errors.push(`Expected kind ${SIGNET_KINDS.ELECTION_RESULT}, got ${event.kind}`);
   }

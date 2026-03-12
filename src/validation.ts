@@ -25,7 +25,7 @@ export function getTagValues(event: NostrEvent | { tags: string[][] }, name: str
 }
 
 /** Validate field-size bounds on untrusted event data */
-function validateFieldSizeBounds(event: NostrEvent, errors: string[]): void {
+export function validateFieldSizeBounds(event: NostrEvent, errors: string[]): void {
   if (event.content.length > MAX_CONTENT_LENGTH) {
     errors.push(`Event content exceeds maximum length of ${MAX_CONTENT_LENGTH} characters`);
   }

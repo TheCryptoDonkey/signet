@@ -191,6 +191,15 @@ describe('shamir', () => {
         'Invalid share ID: 0 is not a valid x-coordinate',
       );
     });
+
+    it('throws when shares have inconsistent data lengths', () => {
+      const shares16 = splitSecret(secret16, 2, 3);
+      const shares32 = splitSecret(secret32, 2, 3);
+      // Mix shares from different secret lengths
+      expect(() => reconstructSecret([shares16[0], shares32[1]], 2)).toThrow(
+        'Inconsistent share lengths',
+      );
+    });
   });
 
   describe('BIP-39 word encoding', () => {

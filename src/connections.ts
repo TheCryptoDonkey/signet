@@ -4,6 +4,7 @@
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes, randomBytes } from '@noble/hashes/utils';
+import { SignetCryptoError, SignetValidationError } from './errors.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,10 +44,10 @@ export function computeSharedSecret(myPrivateKey: string, theirPublicKey: string
   // the full compressed point, so we prepend 0x02 (assume even y-coordinate).
   const theirPoint = secp256k1.ProjectivePoint.fromHex('02' + theirPublicKey);
   const privateKeyBigInt = BigInt('0x' + myPrivateKey) % secp256k1.CURVE.n;
-  if (privateKeyBigInt === 0n) throw new Error('Invalid private key (zero after mod N reduction)');
+  if (privateKeyBigInt === 0n) throw new SignetCryptoError('Invalid private key (zero after mod N reduction)');
   const sharedPoint = theirPoint.multiply(privateKeyBigInt);
   if (sharedPoint.equals(secp256k1.ProjectivePoint.ZERO)) {
-    throw new Error('ECDH produced identity point — invalid public key');
+    throw new SignetCryptoError('ECDH produced identity point — invalid public key');
   }
 
   // Derive shared secret: SHA-256 of the x-coordinate (32 bytes big-endian)
@@ -86,20 +87,20 @@ export function parseQRPayload(data: string): QRPayload {
   try {
     parsed = JSON.parse(data);
   } catch {
-    throw new Error('Invalid QR payload: malformed JSON');
+    throw new SignetValidationError('Invalid QR payload: malformed JSON');
   }
 
   if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error('Invalid QR payload: not an object');
+    throw new SignetValidationError('Invalid QR payload: not an object');
   }
 
   const obj = parsed as Record<string, unknown>;
 
   if (typeof obj.pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(obj.pubkey)) {
-    throw new Error('Invalid QR payload: pubkey must be a 64-character hex string');
+    throw new SignetValidationError('Invalid QR payload: pubkey must be a 64-character hex string');
   }
   if (typeof obj.nonce !== 'string' || obj.nonce.length < 16) {
-    throw new Error('Invalid QR payload: nonce must be at least 16 hex characters (64 bits of entropy)');
+    throw new SignetValidationError('Invalid QR payload: nonce must be at least 16 hex characters (64 bits of entropy)');
   }
 
   return parsed as QRPayload;
@@ -163,6 +164,13 @@ export class ConnectionStore {
   /** Import connections from an array, replacing any existing connections with the same pubkey. */
   import(connections: Connection[]): void {
     for (const conn of connections) {
+      if (!conn || typeof conn !== 'object') continue;
+      if (typeof conn.pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(conn.pubkey)) continue;
+      if (typeof conn.sharedSecret !== 'string' || !/^[0-9a-f]{64}$/i.test(conn.sharedSecret)) continue;
+      if (typeof conn.connectedAt !== 'number' || conn.connectedAt <= 0) continue;
+      if (typeof conn.theirInfo !== 'object' || conn.theirInfo === null) continue;
+      if (typeof conn.ourInfo !== 'object' || conn.ourInfo === null) continue;
+      if (conn.method !== 'qr-in-person' && conn.method !== 'online') continue;
       this.connections.set(conn.pubkey, conn);
     }
   }

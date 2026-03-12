@@ -510,6 +510,79 @@ describe('voting protocol', () => {
   });
 });
 
+describe('security hardening', () => {
+  it('verifyBallot handles malformed ring-sig JSON gracefully', () => {
+    const ballot = {
+      kind: SIGNET_KINDS.BALLOT, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
+      created_at: Math.floor(Date.now() / 1000),
+      content: '',
+      tags: [
+        ['L', 'signet'], ['d', 'test'], ['election', 'abc'],
+        ['key-image', 'ki'], ['ring-sig', 'not-json'], ['encrypted-vote', 'enc'],
+      ],
+    } as any;
+    const election = {
+      kind: SIGNET_KINDS.ELECTION, id: 'abc', sig: 'z', pubkey: 'b'.repeat(64),
+      created_at: 0, content: '',
+      tags: [
+        ['L', 'signet'], ['d', 'eid'], ['title', 'T'], ['scale', 'organisational'],
+        ['opens', '0'], ['closes', '99999999999'], ['re-vote', 'allowed'],
+        ['option', 'A'], ['option', 'B'], ['tally-pubkey', 'c'.repeat(64)],
+      ],
+    } as any;
+    const result = verifyBallot(ballot, election, ['a'.repeat(64)]);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Invalid ring-sig JSON');
+  });
+
+  it('verifyBallot handles structurally invalid ring-sig', () => {
+    const ballot = {
+      kind: SIGNET_KINDS.BALLOT, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
+      created_at: Math.floor(Date.now() / 1000),
+      content: '',
+      tags: [
+        ['L', 'signet'], ['d', 'test'], ['election', 'abc'],
+        ['key-image', 'ki'], ['ring-sig', JSON.stringify({ wrong: true })], ['encrypted-vote', 'enc'],
+      ],
+    } as any;
+    const election = {
+      kind: SIGNET_KINDS.ELECTION, id: 'abc', sig: 'z', pubkey: 'b'.repeat(64),
+      created_at: 0, content: '',
+      tags: [
+        ['L', 'signet'], ['d', 'eid'], ['title', 'T'], ['scale', 'organisational'],
+        ['opens', '0'], ['closes', '99999999999'], ['re-vote', 'allowed'],
+        ['option', 'A'], ['option', 'B'], ['tally-pubkey', 'c'.repeat(64)],
+      ],
+    } as any;
+    const result = verifyBallot(ballot, election, ['a'.repeat(64)]);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Invalid ring-sig structure');
+  });
+
+  it('validateElection enforces field-size bounds', () => {
+    const oversizedContent = 'x'.repeat(70000);
+    const event = {
+      kind: SIGNET_KINDS.ELECTION, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
+      created_at: 0, content: oversizedContent,
+      tags: [['L', 'signet']],
+    } as any;
+    const result = validateElection(event);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some(e => e.includes('maximum length'))).toBe(true);
+  });
+
+  it('validateBallot enforces field-size bounds', () => {
+    const event = {
+      kind: SIGNET_KINDS.BALLOT, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
+      created_at: 0, content: '',
+      tags: Array.from({ length: 110 }, (_, i) => ['tag' + i, 'v']),
+    } as any;
+    const result = validateBallot(event);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some(e => e.includes('too many tags'))).toBe(true);
+  });
+});
+
 describe('structural validation', () => {
   const authority = generateKeyPair();
   const tally = generateKeyPair();

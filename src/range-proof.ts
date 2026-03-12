@@ -305,13 +305,15 @@ function verifySumBinding(
  * @returns A range proof and the commitment
  */
 export function createRangeProof(value: number, min: number, max: number, bindingContext?: string): RangeProof {
-  if (value < min || value > max) throw new Error(`Value ${value} not in range [${min}, ${max}]`);
   if (min < 0) throw new Error('Minimum must be non-negative');
+  if (max < min) throw new Error('Maximum must be >= minimum');
+  if (value < min || value > max) throw new Error(`Value ${value} not in range [${min}, ${max}]`);
 
   const context = bindingContext ? utf8ToBytes(bindingContext) : EMPTY_CONTEXT;
 
   const range = max - min;
   const bits = bitsNeeded(range);
+  if (bits > 32) throw new Error('Range too large for range proof (max 2^32)');
 
   // Commit to the value
   const blinding = randomScalar();
@@ -383,6 +385,14 @@ export function verifyRangeProof(proof: RangeProof): boolean {
   try {
     const { min, max, bits, lowerProof, upperProof } = proof;
     const context = proof.context ? utf8ToBytes(proof.context) : EMPTY_CONTEXT;
+
+    // Validate range bounds
+    if (min < 0 || max < 0 || max < min) return false;
+
+    // Recompute expected bits from range — do not trust proof.bits blindly
+    const expectedBits = bitsNeeded(max - min);
+    if (bits !== expectedBits) return false;
+    if (bits > 32) return false;
 
     if (lowerProof.length !== bits || upperProof.length !== bits) return false;
 

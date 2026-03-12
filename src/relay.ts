@@ -149,7 +149,7 @@ export class RelayClient {
       this.ws.onerror = () => {
         clearTimeout(timeout);
         this.setState('error');
-        reject(new Error(`Failed to connect to ${this.url}`));
+        reject(new Error('WebSocket connection failed'));
       };
 
       this.ws.onmessage = (msg) => {
@@ -230,18 +230,27 @@ export class RelayClient {
    * Fetch events matching filters (returns after EOSE).
    * Convenience method that subscribes, collects events, and closes.
    */
-  fetch(filters: NostrFilter[]): Promise<NostrEvent[]> {
+  fetch(filters: NostrFilter[], timeoutMs: number = 30000): Promise<NostrEvent[]> {
     return new Promise((resolve) => {
       const events: NostrEvent[] = [];
+      let resolved = false;
+
+      const done = () => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timer);
+        this.closeSubscription(subId);
+        resolve(events);
+      };
 
       const subId = this.subscribe(
         filters,
         (event) => events.push(event),
-        () => {
-          this.closeSubscription(subId);
-          resolve(events);
-        }
+        () => done(),
       );
+
+      // Timeout guard: resolve with events collected so far if EOSE never arrives
+      const timer = setTimeout(() => done(), timeoutMs);
     });
   }
 
@@ -253,11 +262,14 @@ export class RelayClient {
 
   private handleMessage(data: string): void {
     try {
-      const msg = JSON.parse(data) as RelayMessage;
+      const msg: unknown = JSON.parse(data);
+      if (!Array.isArray(msg) || msg.length < 2 || typeof msg[0] !== 'string') return;
 
       switch (msg[0]) {
         case 'EVENT': {
-          const [, subId, event] = msg;
+          if (msg.length < 3 || typeof msg[1] !== 'string' || typeof msg[2] !== 'object' || msg[2] === null) break;
+          const subId = msg[1] as string;
+          const event = msg[2] as NostrEvent;
           const sub = this.subscriptions.get(subId);
           if (sub) {
             if (this.options.verifyEvents !== false) {
@@ -276,26 +288,27 @@ export class RelayClient {
         }
 
         case 'OK': {
-          const [, eventId, ok, message] = msg;
+          if (msg.length < 4 || typeof msg[1] !== 'string' || typeof msg[2] !== 'boolean' || typeof msg[3] !== 'string') break;
+          const eventId = msg[1] as string;
           const pending = this.pendingPublishes.get(eventId);
           if (pending) {
             clearTimeout(pending.timeout);
             this.pendingPublishes.delete(eventId);
-            pending.resolve({ ok, message });
+            pending.resolve({ ok: msg[2] as boolean, message: msg[3] as string });
           }
           break;
         }
 
         case 'EOSE': {
-          const [, subId] = msg;
-          const sub = this.subscriptions.get(subId);
+          if (typeof msg[1] !== 'string') break;
+          const sub = this.subscriptions.get(msg[1]);
           sub?.eoseCallback?.();
           break;
         }
 
         case 'AUTH': {
-          const [, challenge] = msg;
-          this.handleAuth(challenge);
+          if (typeof msg[1] !== 'string') break;
+          this.handleAuth(msg[1]);
           break;
         }
 
@@ -358,7 +371,7 @@ export async function publishToRelays(
       const result = await relay.publish(event);
       results.set(url, result);
     } catch (err) {
-      results.set(url, { ok: false, message: String(err) });
+      results.set(url, { ok: false, message: err instanceof Error ? err.message : 'Connection failed' });
     } finally {
       relay.disconnect();
     }

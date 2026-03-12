@@ -129,4 +129,32 @@ describe('range-proof', () => {
       expect(deserialized.max).toBe(12);
     });
   });
+
+  describe('security hardening', () => {
+    it('rejects max < min in createRangeProof', () => {
+      expect(() => createRangeProof(5, 10, 3)).toThrow('Maximum must be >= minimum');
+    });
+
+    it('rejects range too large (> 2^32)', () => {
+      expect(() => createRangeProof(0, 0, 2 ** 33)).toThrow('Range too large');
+    });
+
+    it('verifyRangeProof rejects when min > max', () => {
+      const proof = createRangeProof(5, 0, 10);
+      const tampered = { ...proof, min: 10, max: 0 };
+      expect(verifyRangeProof(tampered)).toBe(false);
+    });
+
+    it('verifyRangeProof rejects when proof.bits is tampered', () => {
+      const proof = createRangeProof(5, 0, 10);
+      const tampered = { ...proof, bits: 0, lowerProof: [], upperProof: [] };
+      expect(verifyRangeProof(tampered)).toBe(false);
+    });
+
+    it('verifyRangeProof rejects when proof.bits mismatches range', () => {
+      const proof = createRangeProof(5, 0, 10);
+      const tampered = { ...proof, bits: proof.bits + 1 };
+      expect(verifyRangeProof(tampered)).toBe(false);
+    });
+  });
 });

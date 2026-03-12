@@ -168,7 +168,14 @@ export async function verifyIdentityBridge(
   // Parse content
   let parsed: { ringSig: RingSignature; timestamp: number };
   try {
-    parsed = JSON.parse(event.content);
+    const raw = JSON.parse(event.content);
+    if (!raw || typeof raw !== 'object' ||
+        !raw.ringSig || typeof raw.ringSig !== 'object' ||
+        !Array.isArray(raw.ringSig.ring) || typeof raw.ringSig.message !== 'string' ||
+        typeof raw.timestamp !== 'number') {
+      return false;
+    }
+    parsed = raw;
   } catch {
     return false;
   }

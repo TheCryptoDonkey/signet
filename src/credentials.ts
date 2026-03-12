@@ -352,7 +352,9 @@ export function verifyRingProtectedContent(event: NostrEvent): {
   if (!event.content) return result;
 
   try {
-    const content = JSON.parse(event.content) as RingProtectedContent;
+    const raw = JSON.parse(event.content);
+    if (!raw || typeof raw !== 'object') return result;
+    const content = raw as RingProtectedContent;
     const subjectPubkey = getTagValue(event, 'd') || '';
 
     if (content.ringSignature) {
@@ -631,7 +633,7 @@ export function resolveCredentialChain(events: NostrEvent[]): CredentialChain | 
 
   while (cursor) {
     if (visited.has(cursor.id)) break;
-    if (history.length > MAX_CHAIN_DEPTH) break;
+    if (history.length >= MAX_CHAIN_DEPTH) break;
     visited.add(cursor.id);
 
     const supersedesId = getTagValue(cursor, 'supersedes');
