@@ -1,4 +1,4 @@
-// Simplified protocol library wrapper for My Signet
+// Simplified protocol library wrapper for My Signet (v2)
 
 import {
   generateMnemonic as _generateMnemonic,
@@ -16,7 +16,7 @@ import {
   computeBadge,
   buildBadgeFilters,
 } from 'signet-protocol';
-import type { FamilyIdentity } from '../types';
+import type { SignetIdentity } from '../types';
 
 // Wrap @scure/bip39 functions that require a wordlist parameter
 function generateMnemonic(): string {
@@ -40,38 +40,83 @@ export {
   buildBadgeFilters,
 };
 
-/** Create a new identity from a fresh mnemonic */
-export function createNewIdentity(displayName: string, isChild: boolean, guardianPubkey?: string): FamilyIdentity {
+/** Create a new identity with two keypairs from a fresh mnemonic */
+export function createNewIdentity(
+  displayName: string,
+  primaryKeypair: 'natural-person' | 'persona',
+  isChild: boolean,
+  guardianPubkey?: string
+): SignetIdentity {
   const mnemonic = generateMnemonic();
-  const { privateKey, publicKey } = deriveNostrKeyPair(mnemonic);
-
-  return {
-    id: publicKey,
-    publicKey,
-    privateKey,
-    mnemonic,
-    displayName,
-    isChild,
-    guardianPubkey,
-    createdAt: Math.floor(Date.now() / 1000),
-  };
+  return buildIdentity(mnemonic, displayName, primaryKeypair, isChild, guardianPubkey);
 }
 
 /** Restore an identity from an existing mnemonic */
-export function importFromMnemonic(mnemonic: string, displayName: string, isChild: boolean, guardianPubkey?: string): FamilyIdentity {
+export function importFromMnemonic(
+  mnemonic: string,
+  displayName: string,
+  primaryKeypair: 'natural-person' | 'persona',
+  isChild: boolean,
+  guardianPubkey?: string
+): SignetIdentity {
   if (!validateMnemonic(mnemonic)) {
     throw new Error('Invalid backup words');
   }
-  const { privateKey, publicKey } = deriveNostrKeyPair(mnemonic);
+  return buildIdentity(mnemonic, displayName, primaryKeypair, isChild, guardianPubkey);
+}
+
+function buildIdentity(
+  mnemonic: string,
+  displayName: string,
+  primaryKeypair: 'natural-person' | 'persona',
+  isChild: boolean,
+  guardianPubkey?: string
+): SignetIdentity {
+  // Natural Person keypair at account index 0 (m/44'/1237'/0'/0/0)
+  const np = deriveNostrKeyPair(mnemonic, 0);
+  // Persona keypair at account index 1 (m/44'/1237'/1'/0/0)
+  const persona = deriveNostrKeyPair(mnemonic, 1);
+
+  const primaryPub = primaryKeypair === 'natural-person' ? np.publicKey : persona.publicKey;
 
   return {
-    id: publicKey,
-    publicKey,
-    privateKey,
+    id: primaryPub,
     mnemonic,
-    displayName,
+    naturalPerson: {
+      publicKey: np.publicKey,
+      privateKey: np.privateKey,
+      displayName: primaryKeypair === 'natural-person' ? displayName : '',
+    },
+    persona: {
+      publicKey: persona.publicKey,
+      privateKey: persona.privateKey,
+      displayName: primaryKeypair === 'persona' ? displayName : '',
+    },
+    primaryKeypair,
     isChild,
     guardianPubkey,
     createdAt: Math.floor(Date.now() / 1000),
+    backedUp: false,
   };
+}
+
+/** Get the active keypair's public key */
+export function getActivePubkey(identity: SignetIdentity): string {
+  return identity.primaryKeypair === 'natural-person'
+    ? identity.naturalPerson.publicKey
+    : identity.persona.publicKey;
+}
+
+/** Get the active keypair's private key */
+export function getActivePrivateKey(identity: SignetIdentity): string {
+  return identity.primaryKeypair === 'natural-person'
+    ? identity.naturalPerson.privateKey
+    : identity.persona.privateKey;
+}
+
+/** Get the active display name */
+export function getActiveDisplayName(identity: SignetIdentity): string {
+  return identity.primaryKeypair === 'natural-person'
+    ? identity.naturalPerson.displayName
+    : identity.persona.displayName;
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { FamilyIdentity, AppPreferences, SecurityTier } from '../types';
+import type { SignetIdentity, AppPreferences, SecurityTier } from '../types';
+import { getActiveDisplayName } from '../lib/signet';
 
 const TIER_INFO: Record<SecurityTier, { label: string; description: string }> = {
   basic: { label: 'Basic', description: '1 word each — quick check' },
@@ -8,7 +9,7 @@ const TIER_INFO: Record<SecurityTier, { label: string; description: string }> = 
 };
 
 interface Props {
-  identity: FamilyIdentity;
+  identity: SignetIdentity;
   preferences: AppPreferences;
   securityTier: SecurityTier;
   onSetTheme: (theme: 'system' | 'light' | 'dark') => void;
@@ -28,7 +29,7 @@ export function Settings({ identity, preferences, securityTier, onSetTheme, onSe
       {/* Name */}
       <div className="card section">
         <div className="section-title">My Name</div>
-        <div style={{ fontWeight: 600 }}>{identity.displayName}</div>
+        <div style={{ fontWeight: 600 }}>{getActiveDisplayName(identity)}</div>
       </div>
 
       {/* Verification Security */}

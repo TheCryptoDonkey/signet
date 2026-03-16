@@ -1,18 +1,69 @@
-// My Signet Family App — Types
+// My Signet App — Types (v2)
 
-export interface FamilyIdentity {
-  /** Pubkey — primary key */
+export interface SignetIdentity {
+  /** Primary keypair pubkey — whichever keypair is currently active */
   id: string;
-  publicKey: string;
-  privateKey: string;
   mnemonic: string;
-  displayName: string;
+  naturalPerson: {
+    publicKey: string;
+    privateKey: string;
+    displayName: string;
+  };
+  persona: {
+    publicKey: string;
+    privateKey: string;
+    displayName: string;
+  };
+  primaryKeypair: 'natural-person' | 'persona';
   isChild: boolean;
   guardianPubkey?: string;
-  ageRange?: string;
   createdAt: number;
-  /** Whether privateKey and mnemonic are encrypted with encryptSecret(). Defaults to false for backwards compatibility. */
+  /** Whether private keys and mnemonic are encrypted */
   encrypted?: boolean;
+  /** Whether backup words have been saved */
+  backedUp?: boolean;
+}
+
+/** Self-entered identity document (pre-verification) */
+export interface IdentityDocument {
+  /** Unique local ID */
+  id: string;
+  /** Owner's primary pubkey */
+  ownerPubkey: string;
+  country: string;
+  documentType: string;
+  fullName: string;
+  dateOfBirth: string;
+  nationality?: string;
+  documentNumber: string;
+  documentExpiry?: string;
+  /** Additional country-specific fields */
+  additionalFields?: Record<string, string>;
+  /** Credential event ID if verified */
+  credentialId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Stored credential (after verification) */
+export interface StoredCredential {
+  /** Credential event ID */
+  id: string;
+  /** Which document this credential verifies */
+  documentId: string;
+  /** Which keypair (NP or Persona) */
+  keypairType: 'natural-person' | 'persona';
+  /** The signed Nostr event (Kind 30470) */
+  event: string;
+  /** Private Merkle leaves */
+  merkleLeaves?: Record<string, string>;
+  /** Merkle proofs for selective disclosure */
+  merkleProofs?: string;
+  /** Verifier's pubkey */
+  verifierPubkey: string;
+  verifiedAt: number;
+  /** Whether verifier's Kind 30473 has been confirmed */
+  verifierStatus: 'confirmed' | 'pending';
 }
 
 export interface FamilyMember {
@@ -56,4 +107,4 @@ export interface AppPreferences {
   securityTier?: SecurityTier;
 }
 
-export type Page = 'home' | 'family' | 'add' | 'member-detail' | 'settings' | 'child-settings';
+export type Page = 'home' | 'family' | 'add' | 'member-detail' | 'settings' | 'child-settings' | 'get-verified' | 'my-documents' | 'add-document';

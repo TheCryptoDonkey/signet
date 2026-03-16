@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { FamilyIdentity, ChildSettings as ChildSettingsType } from '../types';
+import type { SignetIdentity, ChildSettings as ChildSettingsType } from '../types';
+import { getActiveDisplayName } from '../lib/signet';
 import * as db from '../lib/db';
 
 interface Props {
-  identity: FamilyIdentity;
-  childIdentities: FamilyIdentity[];
+  identity: SignetIdentity;
+  childIdentities: SignetIdentity[];
 }
 
 export function ChildSettingsPage({ identity, childIdentities }: Props) {
@@ -52,13 +53,8 @@ export function ChildSettingsPage({ identity, childIdentities }: Props) {
         const s = settings.get(child.id);
         return (
           <div key={child.id} className="card section">
-            <h3 style={{ marginBottom: 4 }}>{child.displayName}</h3>
-            {child.ageRange && (
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
-                Age range: {child.ageRange}
-              </div>
-            )}
-            <div className="section-title">Who can contact {child.displayName}?</div>
+            <h3 style={{ marginBottom: 4 }}>{getActiveDisplayName(child)}</h3>
+            <div className="section-title">Who can contact {getActiveDisplayName(child)}?</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(['family-only', 'approved', 'open'] as const).map(policy => (
                 <label key={policy} style={{

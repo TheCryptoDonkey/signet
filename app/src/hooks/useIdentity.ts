@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { FamilyIdentity } from '../types';
+import type { SignetIdentity } from '../types';
 import * as db from '../lib/db';
 import { createNewIdentity, importFromMnemonic } from '../lib/signet';
 
 export function useIdentity() {
-  const [identities, setIdentities] = useState<FamilyIdentity[]>([]);
-  const [activeIdentity, setActiveIdentity] = useState<FamilyIdentity | null>(null);
+  const [identities, setIdentities] = useState<SignetIdentity[]>([]);
+  const [activeIdentity, setActiveIdentity] = useState<SignetIdentity | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
@@ -21,16 +21,27 @@ export function useIdentity() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  const create = useCallback(async (displayName: string, isChild: boolean, guardianPubkey?: string) => {
-    const identity = createNewIdentity(displayName, isChild, guardianPubkey);
+  const create = useCallback(async (
+    displayName: string,
+    primaryKeypair: 'natural-person' | 'persona',
+    isChild: boolean,
+    guardianPubkey?: string
+  ) => {
+    const identity = createNewIdentity(displayName, primaryKeypair, isChild, guardianPubkey);
     await db.saveIdentity(identity);
     await db.savePreferences({ ...(await db.getPreferences()), activeAccountId: identity.id });
     await loadAll();
     return identity;
   }, [loadAll]);
 
-  const restore = useCallback(async (mnemonic: string, displayName: string, isChild: boolean, guardianPubkey?: string) => {
-    const identity = importFromMnemonic(mnemonic, displayName, isChild, guardianPubkey);
+  const restore = useCallback(async (
+    mnemonic: string,
+    displayName: string,
+    primaryKeypair: 'natural-person' | 'persona',
+    isChild: boolean,
+    guardianPubkey?: string
+  ) => {
+    const identity = importFromMnemonic(mnemonic, displayName, primaryKeypair, isChild, guardianPubkey);
     await db.saveIdentity(identity);
     await db.savePreferences({ ...(await db.getPreferences()), activeAccountId: identity.id });
     await loadAll();
@@ -48,5 +59,14 @@ export function useIdentity() {
     await loadAll();
   }, [activeIdentity, loadAll]);
 
-  return { identity: activeIdentity, identities, loading, create, restore, remove };
+  const markBackedUp = useCallback(async (pubkey?: string) => {
+    const target = pubkey || activeIdentity?.id;
+    if (!target) return;
+    const identity = await db.getIdentity(target);
+    if (!identity) return;
+    await db.saveIdentity({ ...identity, backedUp: true });
+    await loadAll();
+  }, [activeIdentity, loadAll]);
+
+  return { identity: activeIdentity, identities, loading, create, restore, remove, markBackedUp };
 }

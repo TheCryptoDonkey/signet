@@ -1,22 +1,25 @@
-import type { FamilyIdentity, FamilyMember } from '../types';
+import type { SignetIdentity, FamilyMember } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
-import { encodeNpub } from '../lib/signet';
+import { encodeNpub, getActivePubkey, getActiveDisplayName } from '../lib/signet';
 import { useState } from 'react';
 
 interface Props {
-  identity: FamilyIdentity;
+  identity: SignetIdentity;
   members: FamilyMember[];
   onSelectMember: (pubkey: string) => void;
   onNavigateAdd: () => void;
+  onNavigateGetVerified: () => void;
+  onNavigateDocuments: () => void;
 }
 
-export function Home({ identity, members, onSelectMember, onNavigateAdd }: Props) {
+export function Home({ identity, members, onSelectMember, onNavigateAdd, onNavigateGetVerified, onNavigateDocuments: _onNavigateDocuments }: Props) {
   const [copied, setCopied] = useState(false);
-  const npub = encodeNpub(identity.publicKey);
+  const activePubkey = getActivePubkey(identity);
+  const npub = encodeNpub(activePubkey);
   const shortNpub = npub.slice(0, 12) + '...' + npub.slice(-8);
 
   const copyPubkey = () => {
-    navigator.clipboard?.writeText(identity.publicKey);
+    navigator.clipboard?.writeText(activePubkey);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -25,7 +28,7 @@ export function Home({ identity, members, onSelectMember, onNavigateAdd }: Props
     <div className="fade-in">
       {/* Greeting */}
       <div className="section" style={{ marginBottom: 20 }}>
-        <h1 style={{ marginBottom: 4 }}>{identity.displayName}</h1>
+        <h1 style={{ marginBottom: 4 }}>{getActiveDisplayName(identity)}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <StatusBadge isVerified={members.length > 0} isChild={identity.isChild} />
           {identity.isChild && identity.guardianPubkey && (
@@ -82,6 +85,32 @@ export function Home({ identity, members, onSelectMember, onNavigateAdd }: Props
         </div>
       )}
 
+      {/* Backup reminder — only when not backed up and has family members */}
+      {!identity.backedUp && members.length > 0 && (
+        <div className="card section" style={{ background: 'var(--warning-light, #fff8e1)', borderColor: 'var(--warning, #f9a825)' }}>
+          <div style={{ marginBottom: 8, fontSize: '0.9rem' }}>
+            Your account isn't backed up. If you lose this phone, you'll lose your connections.
+          </div>
+          <button className="btn btn-secondary" onClick={onNavigateGetVerified}>
+            Back up now
+          </button>
+        </div>
+      )}
+
+      {/* How verification works */}
+      <div
+        className="card section"
+        style={{ border: '1px dashed var(--border)', background: 'none', cursor: 'pointer' }}
+        onClick={onNavigateGetVerified}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && onNavigateGetVerified()}
+      >
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          How verification works →
+        </div>
+      </div>
+
       {/* Signet ID — small, at bottom */}
       <div className="card section">
         <div className="section-title">Your Signet ID</div>
@@ -93,7 +122,7 @@ export function Home({ identity, members, onSelectMember, onNavigateAdd }: Props
             {copied ? 'Copied!' : 'Copy'}
           </button>
           <button className="btn btn-secondary" onClick={() => {
-            navigator.share?.({ title: 'My Signet', text: identity.publicKey });
+            navigator.share?.({ title: 'My Signet', text: activePubkey });
           }} style={{ flex: 1 }}>
             Share
           </button>

@@ -1,32 +1,46 @@
 // IndexedDB storage for My Signet family app
 
 import { openDB, type IDBPDatabase } from 'idb';
-import type { FamilyIdentity, FamilyMember, ChildSettings, AppPreferences } from '../types';
+import type { SignetIdentity, FamilyMember, ChildSettings, AppPreferences, IdentityDocument, StoredCredential } from '../types';
 import { encryptSecret, decryptSecret } from './crypto-store';
 
 export { encryptSecret, decryptSecret } from './crypto-store';
 
 const DB_NAME = 'my-signet';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 function getDB(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains('identity')) {
-          db.createObjectStore('identity', { keyPath: 'id' });
+      upgrade(db, oldVersion) {
+        // Version 1 stores
+        if (oldVersion < 1) {
+          if (!db.objectStoreNames.contains('identity')) {
+            db.createObjectStore('identity', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('family')) {
+            const family = db.createObjectStore('family', { keyPath: 'pubkey' });
+            family.createIndex('ownerPubkey', 'ownerPubkey');
+          }
+          if (!db.objectStoreNames.contains('child-settings')) {
+            db.createObjectStore('child-settings', { keyPath: 'childPubkey' });
+          }
+          if (!db.objectStoreNames.contains('preferences')) {
+            db.createObjectStore('preferences', { keyPath: 'id' });
+          }
         }
-        if (!db.objectStoreNames.contains('family')) {
-          const family = db.createObjectStore('family', { keyPath: 'pubkey' });
-          family.createIndex('ownerPubkey', 'ownerPubkey');
-        }
-        if (!db.objectStoreNames.contains('child-settings')) {
-          db.createObjectStore('child-settings', { keyPath: 'childPubkey' });
-        }
-        if (!db.objectStoreNames.contains('preferences')) {
-          db.createObjectStore('preferences', { keyPath: 'id' });
+        // Version 2 stores
+        if (oldVersion < 2) {
+          if (!db.objectStoreNames.contains('documents')) {
+            const documents = db.createObjectStore('documents', { keyPath: 'id' });
+            documents.createIndex('ownerPubkey', 'ownerPubkey');
+          }
+          if (!db.objectStoreNames.contains('credentials')) {
+            const credentials = db.createObjectStore('credentials', { keyPath: 'id' });
+            credentials.createIndex('documentId', 'documentId');
+          }
         }
       },
     });
@@ -36,12 +50,12 @@ function getDB(): Promise<IDBPDatabase> {
 
 // --- Identity ---
 
-export async function getIdentity(pubkey: string): Promise<FamilyIdentity | undefined> {
+export async function getIdentity(pubkey: string): Promise<SignetIdentity | undefined> {
   const db = await getDB();
   return db.get('identity', pubkey);
 }
 
-export async function getAllIdentities(): Promise<FamilyIdentity[]> {
+export async function getAllIdentities(): Promise<SignetIdentity[]> {
   const db = await getDB();
   return db.getAll('identity');
 }
@@ -50,22 +64,30 @@ export async function getAllIdentities(): Promise<FamilyIdentity[]> {
  * @deprecated Stores privateKey and mnemonic in plaintext.
  * Use saveIdentityEncrypted instead to protect private key material at rest.
  */
-export async function saveIdentity(identity: FamilyIdentity): Promise<void> {
+export async function saveIdentity(identity: SignetIdentity): Promise<void> {
   const db = await getDB();
   await db.put('identity', identity);
 }
 
 /**
- * Encrypt privateKey and mnemonic with a passphrase-derived AES-256-GCM key before storing.
+ * Encrypt private keys and mnemonic with a passphrase-derived AES-256-GCM key before storing.
  * The stored record has encrypted: true so callers know to decrypt on load.
  */
-export async function saveIdentityEncrypted(identity: FamilyIdentity, passphrase: string): Promise<void> {
-  const encryptedPrivateKey = await encryptSecret(identity.privateKey, passphrase);
+export async function saveIdentityEncrypted(identity: SignetIdentity, passphrase: string): Promise<void> {
+  const encryptedNpPrivateKey = await encryptSecret(identity.naturalPerson.privateKey, passphrase);
+  const encryptedPersonaPrivateKey = await encryptSecret(identity.persona.privateKey, passphrase);
   const encryptedMnemonic = await encryptSecret(identity.mnemonic, passphrase);
 
-  const encryptedIdentity: FamilyIdentity = {
+  const encryptedIdentity: SignetIdentity = {
     ...identity,
-    privateKey: encryptedPrivateKey,
+    naturalPerson: {
+      ...identity.naturalPerson,
+      privateKey: encryptedNpPrivateKey,
+    },
+    persona: {
+      ...identity.persona,
+      privateKey: encryptedPersonaPrivateKey,
+    },
     mnemonic: encryptedMnemonic,
     encrypted: true,
   };
@@ -75,21 +97,28 @@ export async function saveIdentityEncrypted(identity: FamilyIdentity, passphrase
 }
 
 /**
- * Load an identity and decrypt privateKey and mnemonic if they were stored encrypted.
+ * Load an identity and decrypt private keys and mnemonic if they were stored encrypted.
  * Returns undefined if no identity exists for the given pubkey.
  * Throws if decryption fails (wrong passphrase).
  */
-export async function loadIdentityDecrypted(pubkey: string, passphrase: string): Promise<FamilyIdentity | undefined> {
+export async function loadIdentityDecrypted(pubkey: string, passphrase: string): Promise<SignetIdentity | undefined> {
   const db = await getDB();
-  const stored: FamilyIdentity | undefined = await db.get('identity', pubkey);
+  const stored: SignetIdentity | undefined = await db.get('identity', pubkey);
   if (!stored) return undefined;
 
   if (!stored.encrypted) return stored;
 
-  const privateKey = await decryptSecret(stored.privateKey, passphrase);
+  const npPrivateKey = await decryptSecret(stored.naturalPerson.privateKey, passphrase);
+  const personaPrivateKey = await decryptSecret(stored.persona.privateKey, passphrase);
   const mnemonic = await decryptSecret(stored.mnemonic, passphrase);
 
-  return { ...stored, privateKey, mnemonic, encrypted: false };
+  return {
+    ...stored,
+    naturalPerson: { ...stored.naturalPerson, privateKey: npPrivateKey },
+    persona: { ...stored.persona, privateKey: personaPrivateKey },
+    mnemonic,
+    encrypted: false,
+  };
 }
 
 export async function deleteIdentityRecord(pubkey: string): Promise<void> {
@@ -142,4 +171,53 @@ export async function getPreferences(): Promise<AppPreferences> {
 export async function savePreferences(prefs: AppPreferences): Promise<void> {
   const db = await getDB();
   await db.put('preferences', prefs);
+}
+
+// --- Identity Documents ---
+
+export async function getDocument(id: string): Promise<IdentityDocument | undefined> {
+  const db = await getDB();
+  return db.get('documents', id);
+}
+
+export async function getDocumentsByOwner(ownerPubkey: string): Promise<IdentityDocument[]> {
+  const db = await getDB();
+  return db.getAllFromIndex('documents', 'ownerPubkey', ownerPubkey);
+}
+
+export async function saveDocument(document: IdentityDocument): Promise<void> {
+  const db = await getDB();
+  await db.put('documents', document);
+}
+
+export async function deleteDocument(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('documents', id);
+}
+
+// --- Stored Credentials ---
+
+export async function getCredential(id: string): Promise<StoredCredential | undefined> {
+  const db = await getDB();
+  return db.get('credentials', id);
+}
+
+export async function getCredentialsByDocument(documentId: string): Promise<StoredCredential[]> {
+  const db = await getDB();
+  return db.getAllFromIndex('credentials', 'documentId', documentId);
+}
+
+export async function getAllCredentials(): Promise<StoredCredential[]> {
+  const db = await getDB();
+  return db.getAll('credentials');
+}
+
+export async function saveCredential(credential: StoredCredential): Promise<void> {
+  const db = await getDB();
+  await db.put('credentials', credential);
+}
+
+export async function deleteCredential(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('credentials', id);
 }

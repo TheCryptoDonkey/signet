@@ -1,11 +1,12 @@
-import type { FamilyMember as FamilyMemberType, FamilyIdentity } from '../types';
+import type { FamilyMember as FamilyMemberType, SignetIdentity } from '../types';
 import { StatusBadge } from '../components/StatusBadge';
 import { SignetWords } from '../components/SignetWords';
+import { getActivePubkey } from '../lib/signet';
 import { useState } from 'react';
 
 interface Props {
   member: FamilyMemberType;
-  identity: FamilyIdentity;
+  identity: SignetIdentity;
   onRemove: (pubkey: string) => void;
   wordCount?: number;
 }
@@ -27,7 +28,7 @@ export function FamilyMemberDetail({ member, identity, onRemove, wordCount }: Pr
       {/* Signet Me — directional verification */}
       <SignetWords
         sharedSecret={member.sharedSecret}
-        myPubkey={identity.publicKey}
+        myPubkey={getActivePubkey(identity)}
         theirPubkey={member.pubkey}
         wordCount={wordCount}
       />

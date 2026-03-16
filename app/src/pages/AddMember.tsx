@@ -3,11 +3,11 @@ import { useCamera } from '../hooks/useCamera';
 import { QRScanner } from '../components/QRScanner';
 import { QRCode } from '../components/QRCode';
 import { SignetWords } from '../components/SignetWords';
-import { parseQRPayload, computeSharedSecret, serializeQRPayload, createQRPayload } from '../lib/signet';
-import type { FamilyIdentity, FamilyMember } from '../types';
+import { parseQRPayload, computeSharedSecret, serializeQRPayload, createQRPayload, getActivePubkey, getActivePrivateKey, getActiveDisplayName } from '../lib/signet';
+import type { SignetIdentity, FamilyMember } from '../types';
 
 interface Props {
-  identity: FamilyIdentity;
+  identity: SignetIdentity;
   onAddMember: (member: FamilyMember) => Promise<void>;
   onDone: () => void;
   wordCount?: number;
@@ -25,7 +25,7 @@ export function AddMember({ identity, onAddMember, onDone, wordCount }: Props) {
   const [error, setError] = useState('');
 
   const qrPayload = serializeQRPayload(
-    createQRPayload(identity.publicKey, { name: identity.displayName })
+    createQRPayload(getActivePubkey(identity), { name: getActiveDisplayName(identity) })
   );
 
   const handleScan = (data: string) => {
@@ -52,11 +52,11 @@ export function AddMember({ identity, onAddMember, onDone, wordCount }: Props) {
   };
 
   const handleConfirm = async () => {
-    const secret = computeSharedSecret(identity.privateKey, theirPubkey);
+    const secret = computeSharedSecret(getActivePrivateKey(identity), theirPubkey);
     setSharedSecret(secret);
     await onAddMember({
       pubkey: theirPubkey,
-      ownerPubkey: identity.publicKey,
+      ownerPubkey: getActivePubkey(identity),
       displayName: theirName || 'Family member',
       sharedSecret: secret,
       verifiedAt: Math.floor(Date.now() / 1000),
@@ -211,7 +211,7 @@ export function AddMember({ identity, onAddMember, onDone, wordCount }: Props) {
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 24 }}>
           Use Signet Me below to verify it's really them.
         </p>
-        {sharedSecret && <SignetWords sharedSecret={sharedSecret} myPubkey={identity.publicKey} theirPubkey={theirPubkey} wordCount={wordCount} />}
+        {sharedSecret && <SignetWords sharedSecret={sharedSecret} myPubkey={getActivePubkey(identity)} theirPubkey={theirPubkey} wordCount={wordCount} />}
         <button className="btn btn-primary" onClick={onDone} style={{ marginTop: 16 }}>
           Done
         </button>

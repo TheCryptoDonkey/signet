@@ -2,29 +2,33 @@ import { useState } from 'react';
 import { validateMnemonic } from '../lib/signet';
 
 interface Props {
-  onCreate: (displayName: string, isChild: boolean, guardianPubkey?: string) => Promise<{ mnemonic: string }>;
-  onImport: (mnemonic: string, displayName: string, isChild: boolean, guardianPubkey?: string) => Promise<void>;
+  onCreate: (displayName: string, primaryKeypair: 'natural-person' | 'persona', isChild: boolean, guardianPubkey?: string) => Promise<void>;
+  onImport: (mnemonic: string, displayName: string, primaryKeypair: 'natural-person' | 'persona', isChild: boolean, guardianPubkey?: string) => Promise<void>;
 }
 
 type Flow = 'welcome' | 'create' | 'import';
-type CreateStep = 'name' | 'child-check' | 'guardian' | 'backup' | 'done';
-type ImportStep = 'phrase' | 'name' | 'done';
+type CreateStep = 'name-choice' | 'name' | 'child-check' | 'guardian' | 'done';
+type ImportStep = 'phrase' | 'name-choice' | 'name' | 'done';
 
 export function Onboarding({ onCreate, onImport }: Props) {
   const [flow, setFlow] = useState<Flow>('welcome');
-  const [createStep, setCreateStep] = useState<CreateStep>('name');
+  const [createStep, setCreateStep] = useState<CreateStep>('name-choice');
   const [importStep, setImportStep] = useState<ImportStep>('phrase');
 
   // Shared state
   const [displayName, setDisplayName] = useState('');
+  const [primaryKeypair, setPrimaryKeypair] = useState<'natural-person' | 'persona'>('natural-person');
   const [isChild, setIsChild] = useState(false);
   const [guardianPubkey, setGuardianPubkey] = useState('');
-  const [mnemonic, setMnemonic] = useState('');
   const [importWords, setImportWords] = useState('');
   const [error, setError] = useState('');
-  const [writtenDown, setWrittenDown] = useState(false);
 
   // --- Create flow ---
+  const handleNameChoice = (choice: 'natural-person' | 'persona') => {
+    setPrimaryKeypair(choice);
+    setCreateStep('name');
+  };
+
   const handleCreateName = () => {
     if (!displayName.trim()) return;
     setCreateStep('child-check');
@@ -50,12 +54,7 @@ export function Onboarding({ onCreate, onImport }: Props) {
   };
 
   const handleCreate = async (child: boolean, guardian?: string) => {
-    const result = await onCreate(displayName.trim(), child, guardian);
-    setMnemonic(result.mnemonic);
-    setCreateStep('backup');
-  };
-
-  const handleBackupDone = () => {
+    await onCreate(displayName.trim(), primaryKeypair, child, guardian);
     setCreateStep('done');
   };
 
@@ -63,16 +62,21 @@ export function Onboarding({ onCreate, onImport }: Props) {
   const handleImportPhrase = () => {
     const words = importWords.trim().toLowerCase();
     if (!validateMnemonic(words)) {
-      setError('That doesn\'t look right. Check you have exactly 12 words, separated by spaces.');
+      setError("That doesn't look right. Check you have exactly 12 words, separated by spaces.");
       return;
     }
     setError('');
+    setImportStep('name-choice');
+  };
+
+  const handleImportNameChoice = (choice: 'natural-person' | 'persona') => {
+    setPrimaryKeypair(choice);
     setImportStep('name');
   };
 
   const handleImportComplete = async () => {
     if (!displayName.trim()) return;
-    await onImport(importWords.trim().toLowerCase(), displayName.trim(), isChild, guardianPubkey || undefined);
+    await onImport(importWords.trim().toLowerCase(), displayName.trim(), primaryKeypair, isChild, guardianPubkey || undefined);
   };
 
   // --- Render ---
@@ -94,14 +98,37 @@ export function Onboarding({ onCreate, onImport }: Props) {
   }
 
   if (flow === 'create') {
+    if (createStep === 'name-choice') {
+      return (
+        <div className="page fade-in">
+          <h1 style={{ marginBottom: 8 }}>How do you want to appear?</h1>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
+            Do you want to use your real name, or a nickname?
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <button className="btn btn-primary" onClick={() => handleNameChoice('natural-person')}>Use my real name</button>
+            <button className="btn btn-secondary" onClick={() => handleNameChoice('persona')}>Use a nickname</button>
+          </div>
+          <button className="btn btn-ghost" onClick={() => setFlow('welcome')} style={{ marginTop: 8 }}>
+            Back
+          </button>
+        </div>
+      );
+    }
+
     if (createStep === 'name') {
       return (
         <div className="page fade-in">
-          <h1 style={{ marginBottom: 8 }}>What's your name?</h1>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>This is how your family will see you in the app.</p>
+          <h1 style={{ marginBottom: 8 }}>What should we call you?</h1>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
+            Your name, a nickname, whatever you like. You can change it anytime.
+          </p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 24 }}>
+            e.g. "Margaret Smith" or "DarkWolf99"
+          </p>
           <input
             className="input"
-            placeholder="Your name"
+            placeholder="Your name or nickname"
             value={displayName}
             onChange={e => setDisplayName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleCreateName()}
@@ -109,6 +136,9 @@ export function Onboarding({ onCreate, onImport }: Props) {
           />
           <button className="btn btn-primary" onClick={handleCreateName} disabled={!displayName.trim()} style={{ marginTop: 16 }}>
             Continue
+          </button>
+          <button className="btn btn-ghost" onClick={() => setCreateStep('name-choice')} style={{ marginTop: 8 }}>
+            Back
           </button>
         </div>
       );
@@ -125,6 +155,9 @@ export function Onboarding({ onCreate, onImport }: Props) {
             <button className="btn btn-primary" onClick={() => handleChildCheck(false)}>No, this is for me</button>
             <button className="btn btn-secondary" onClick={() => handleChildCheck(true)}>Yes, for a child</button>
           </div>
+          <button className="btn btn-ghost" onClick={() => setCreateStep('name')} style={{ marginTop: 8 }}>
+            Back
+          </button>
         </div>
       );
     }
@@ -136,7 +169,11 @@ export function Onboarding({ onCreate, onImport }: Props) {
           <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
             Ask the parent to open their Signet app, go to the home screen, and tap "Copy" under their Signet ID. Then paste it here.
           </p>
-          {error && <div style={{ padding: 8, background: 'var(--danger-light)', borderRadius: 'var(--radius-sm)', marginBottom: 12, color: 'var(--danger)', fontSize: '0.9rem' }}>{error}</div>}
+          {error && (
+            <div style={{ padding: 8, background: 'var(--danger-light)', borderRadius: 'var(--radius-sm)', marginBottom: 12, color: 'var(--danger)', fontSize: '0.9rem' }}>
+              {error}
+            </div>
+          )}
           <input
             className="input"
             placeholder="Paste parent's Signet ID"
@@ -154,41 +191,6 @@ export function Onboarding({ onCreate, onImport }: Props) {
       );
     }
 
-    if (createStep === 'backup') {
-      return (
-        <div className="page fade-in">
-          <h1 style={{ marginBottom: 8 }}>Your 12 backup words</h1>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
-            Write these down on paper and keep them somewhere safe. If you lose your phone, these words are the only way to get your Signet back.
-          </p>
-          <div className="card" style={{ marginBottom: 24 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {mnemonic.split(' ').map((word, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', width: 20, textAlign: 'right' }}>{i + 1}</span>
-                  <span style={{ fontWeight: 600 }}>{word}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, cursor: 'pointer' }}>
-            <input type="checkbox" checked={writtenDown} onChange={e => setWrittenDown(e.target.checked)} />
-            <span style={{ fontSize: '0.9rem' }}>I've written these down</span>
-          </label>
-          <button className="btn btn-primary" onClick={handleBackupDone} disabled={!writtenDown}>
-            Continue
-          </button>
-          <button
-            className="btn btn-ghost"
-            onClick={() => navigator.clipboard?.writeText(mnemonic)}
-            style={{ marginTop: 8 }}
-          >
-            Copy to clipboard
-          </button>
-        </div>
-      );
-    }
-
     // done — App.tsx will detect identity exists and show home
     return null;
   }
@@ -199,7 +201,11 @@ export function Onboarding({ onCreate, onImport }: Props) {
         <div className="page fade-in">
           <h1 style={{ marginBottom: 8 }}>Enter your 12 backup words</h1>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>Type or paste your 12 words, separated by spaces.</p>
-          {error && <div style={{ padding: 8, background: 'var(--danger-light)', borderRadius: 'var(--radius-sm)', marginBottom: 12, color: 'var(--danger)', fontSize: '0.9rem' }}>{error}</div>}
+          {error && (
+            <div style={{ padding: 8, background: 'var(--danger-light)', borderRadius: 'var(--radius-sm)', marginBottom: 12, color: 'var(--danger)', fontSize: '0.9rem' }}>
+              {error}
+            </div>
+          )}
           <textarea
             className="input"
             rows={4}
@@ -219,14 +225,37 @@ export function Onboarding({ onCreate, onImport }: Props) {
       );
     }
 
+    if (importStep === 'name-choice') {
+      return (
+        <div className="page fade-in">
+          <h1 style={{ marginBottom: 8 }}>How do you want to appear?</h1>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
+            Do you want to use your real name, or a nickname?
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <button className="btn btn-primary" onClick={() => handleImportNameChoice('natural-person')}>Use my real name</button>
+            <button className="btn btn-secondary" onClick={() => handleImportNameChoice('persona')}>Use a nickname</button>
+          </div>
+          <button className="btn btn-ghost" onClick={() => setImportStep('phrase')} style={{ marginTop: 8 }}>
+            Back
+          </button>
+        </div>
+      );
+    }
+
     if (importStep === 'name') {
       return (
         <div className="page fade-in">
-          <h1 style={{ marginBottom: 8 }}>What's your name?</h1>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>This is how your family will see you.</p>
+          <h1 style={{ marginBottom: 8 }}>What should we call you?</h1>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
+            Your name, a nickname, whatever you like. You can change it anytime.
+          </p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 24 }}>
+            e.g. "Margaret Smith" or "DarkWolf99"
+          </p>
           <input
             className="input"
-            placeholder="Your name"
+            placeholder="Your name or nickname"
             value={displayName}
             onChange={e => setDisplayName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleImportComplete()}
@@ -234,6 +263,9 @@ export function Onboarding({ onCreate, onImport }: Props) {
           />
           <button className="btn btn-primary" onClick={handleImportComplete} disabled={!displayName.trim()} style={{ marginTop: 16 }}>
             Restore My Signet
+          </button>
+          <button className="btn btn-ghost" onClick={() => setImportStep('name-choice')} style={{ marginTop: 8 }}>
+            Back
           </button>
         </div>
       );

@@ -11,23 +11,29 @@ import { FamilyMemberDetail } from './pages/FamilyMember';
 import { AddMember } from './pages/AddMember';
 import { Settings } from './pages/Settings';
 import { ChildSettingsPage } from './pages/ChildSettings';
+import { GetVerified } from './pages/GetVerified';
+import { MyDocuments } from './pages/MyDocuments';
+import { getActiveDisplayName, getActivePubkey, getActivePrivateKey } from './lib/signet';
 
 export function App() {
-  const { identity, identities, loading: identityLoading, create, restore, remove } = useIdentity();
+  const { identity, identities, loading: identityLoading, create, restore, remove, markBackedUp } = useIdentity();
   const { members, addMember, removeMember } = useFamily(identity?.id);
   const { preferences, loading: prefsLoading, setTheme, securityTier, wordCount, setSecurityTier } = usePreferences();
 
   const [page, setPage] = useState<Page>('home');
   const [selectedMemberPubkey, setSelectedMemberPubkey] = useState<string | null>(null);
 
-  const handleCreate = useCallback(async (displayName: string, isChild: boolean, guardianPubkey?: string) => {
-    const created = await create(displayName, isChild, guardianPubkey);
-    return { mnemonic: created.mnemonic };
+  const handleCreate = useCallback(async (displayName: string, primaryKeypair: 'natural-person' | 'persona', isChild: boolean, guardianPubkey?: string) => {
+    await create(displayName, primaryKeypair, isChild, guardianPubkey);
   }, [create]);
 
-  const handleImport = useCallback(async (mnemonic: string, displayName: string, isChild: boolean, guardianPubkey?: string) => {
-    await restore(mnemonic, displayName, isChild, guardianPubkey);
+  const handleImport = useCallback(async (mnemonic: string, displayName: string, primaryKeypair: 'natural-person' | 'persona', isChild: boolean, guardianPubkey?: string) => {
+    await restore(mnemonic, displayName, primaryKeypair, isChild, guardianPubkey);
   }, [restore]);
+
+  const handleMarkBackedUp = useCallback(async () => {
+    await markBackedUp();
+  }, [markBackedUp]);
 
   const handleSelectMember = useCallback((pubkey: string) => {
     setSelectedMemberPubkey(pubkey);
@@ -113,6 +119,24 @@ export function App() {
     );
   }
 
+  // Get Verified
+  if (page === 'get-verified') {
+    return (
+      <Layout activePage={page} onNavigate={setPage} onSettingsOpen={() => setPage('settings')} title="Get Verified" showBack onBack={() => setPage('home')}>
+        <GetVerified identity={identity} onMarkBackedUp={handleMarkBackedUp} />
+      </Layout>
+    );
+  }
+
+  // My Documents
+  if (page === 'my-documents') {
+    return (
+      <Layout activePage={page} onNavigate={setPage} onSettingsOpen={() => setPage('settings')} title="My Documents" showBack onBack={() => setPage('home')}>
+        <MyDocuments documents={[]} onAddDocument={() => setPage('add-document')} onSelectDocument={() => {}} />
+      </Layout>
+    );
+  }
+
   // Home (default) — shows family members front and centre
   return (
     <Layout activePage="home" onNavigate={setPage} onSettingsOpen={() => setPage('settings')}>
@@ -121,6 +145,8 @@ export function App() {
         members={members}
         onSelectMember={handleSelectMember}
         onNavigateAdd={() => setPage('add')}
+        onNavigateGetVerified={() => setPage('get-verified')}
+        onNavigateDocuments={() => setPage('my-documents')}
       />
     </Layout>
   );
