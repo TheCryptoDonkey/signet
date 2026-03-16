@@ -1,7 +1,8 @@
 # My Signet App — v2 Specification
 
 > Status: Ready to build
-> Date: 2026-03-14
+> Date: 2026-03-16 (updated after Holodeck session)
+> Changelog: Holodeck session resolved onboarding friction, ceremony flow, verifier model, IQ benchmarking, infrastructure funding
 > This document is self-contained. No other files are needed for full context.
 
 ---
@@ -85,11 +86,19 @@ SHA-256(
 ```
 The document number is NEVER stored or published. Only the one-way hash appears in the credential.
 
-**Merkle tree (5 leaves):**
-- name, nationality, documentType, dateOfBirth, nullifier
+**Merkle tree (dynamic key-value leaves):**
+- Core leaves: name, nationality, documentType, dateOfBirth, documentNumber, documentExpiry, nullifier
+- Additional leaves vary by document type and country (see §0.8 attribute namespacing)
 - Uses RFC 6962 domain separation (0x00 leaf prefix, 0x01 internal prefix)
 - Only the root is published. The subject keeps the leaves and proofs privately.
-- Selective disclosure: the subject can prove any single attribute (e.g., nationality to a bank) by providing the leaf + Merkle proof, without revealing the other leaves.
+- Selective disclosure: the subject can prove any single attribute (e.g., passport number to an airline, nationality to a bank) by providing the leaf + Merkle proof, without revealing the other leaves.
+
+**Document number as a leaf:** Unlike the previous spec (which discarded the document number after nullifier computation), the document number is now stored as a Merkle leaf. This enables selective disclosure for use cases like booking flights or banking KYC. Note: revealing the document number via selective disclosure confirms the nullifier (since the nullifier is derived from the document number), but the nullifier is already public — so this creates no additional linkability.
+
+**Document expiry as a leaf:** The document's expiry date is stored as a Merkle leaf (`signet:documentExpiry`). This enables:
+- IQ scoring to apply accelerated decay after expiry (see §0.12)
+- Consumers (airlines, banks) to enforce their own hard cliffs via selective disclosure
+- The app to prompt renewal before expiry
 
 **Age ranges:** `0-3 | 4-7 | 8-12 | 13-17 | 18+`
 
@@ -361,6 +370,21 @@ Renew at your next appointment to restore your score.
 
 **Why this fits the confidence model:** Over time, the probability that a verification is still accurate decreases. People change names, move countries, documents can be compromised. A 5-year-old verification is genuinely less trustworthy than a fresh one. The decay represents real-world confidence erosion.
 
+**Accelerated decay for expired documents:** When a document's expiry date passes (available from the `signet:documentExpiry` Merkle leaf), the half-life shortens dramatically:
+
+| Document state | Half-life |
+|---|---|
+| In-date | 3 years (standard) |
+| Expired | 6 months (accelerated) |
+
+An expired passport still contributes to IQ — you're still a real person. But confidence erodes faster. An out-of-date passport alongside an in-date driving licence gives a combined score where the valid document holds strong and the expired one fades gradually. This is the right model because:
+- An expired document is still better than no document (the person was verified)
+- Renewal takes time (6+ weeks for a passport) — a hard cliff punishes people for bureaucratic delays
+- Homeless or disadvantaged users may not be able to renew immediately
+- Consumers who need current document validity (airlines, banks) can enforce their own hard cliffs via selective disclosure of the expiry date — that's their business logic, not Signet's
+
+**Signet's position: we attest to reality, we don't enforce policy.** The document expired — that's a fact in the Merkle tree. What anyone does with that fact is their decision.
+
 **Renewal:** Same ceremony as the first time. Visit a verifier, check documents, new photo, issue new credentials. The new credential supersedes the old one. IQ jumps back up. Takes 5 minutes.
 
 **Photo decay specifically:** A photo decays faster (2-year half-life) because appearance changes. The app could nudge: "Your verified photo is 18 months old. Update it at your next appointment." This keeps the visual check useful for venue scenarios.
@@ -446,6 +470,8 @@ The `id` field is the pubkey of whichever keypair is currently primary.
 
 ### 3.1 Create flow
 
+**Design principle: minimise friction to get in, maximise gravity when it matters.** Backup words are NOT shown during onboarding. They appear later, before the irreversible step of professional verification (see §6).
+
 **Step 1 — Welcome**
 ```
 Welcome to Signet
@@ -465,8 +491,11 @@ Do you want to use your real name, or a nickname?
 
 **Step 3a — Real name (Natural Person primary)**
 ```
-What's your name?
-This is how people will see you.
+What should we call you?
+Your name, a nickname, whatever you like.
+You can change it anytime.
+
+e.g. "Margaret Smith" or "DarkWolf99"
 
 [_____________]
 [Continue]
@@ -475,11 +504,14 @@ This is how people will see you.
 **Step 3b — Nickname (Persona primary)**
 ```
 Pick a nickname.
-This is how people will see you. Your real name stays private.
+This is how people will see you.
+Your real name stays private.
 
 [_____________]
 [Continue]
 ```
+
+The display name is NOT a username. It is not unique, not permanent, and not tied to any credential. It is a local label that can be changed freely at any time. The persona vs natural person distinction only matters at professional verification.
 
 **Step 4 — Child check**
 ```
@@ -498,25 +530,23 @@ Ask the parent to open their Signet app and tap "Copy" under their Signet ID. Th
 [Continue]
 ```
 
-**Step 5 — Backup words**
-```
-Your 12 backup words
-Write these down on paper and keep them somewhere safe.
-If you lose your phone, these words are the only way to get your Signet back.
+**Step 5 — Done**
+App detects identity exists, shows home screen. No backup words shown. The user is in.
 
-  1. apple     7. garden
-  2. river     8. marble
-  3. ocean     9. falcon
-  4. tiger    10. beacon
-  5. cloud    11. silver
-  6. brave    12. puzzle
+### 3.1.1 Backup word reminders (stake-based escalation)
 
-[ ] I've written these down
-[Continue]
-```
+Backup words are never shown during onboarding. Instead, reminders escalate based on what's at stake — not on a timer:
 
-**Step 6 — Done**
-App detects identity exists, shows home screen.
+| Trigger | Reminder |
+|---|---|
+| Account created, no connections | No reminder. Nothing to lose yet. |
+| First family member added | Gentle first mention: "You've got connections now. If you lose this phone, you'll lose them." |
+| Multiple members / regular Signet Me use | Slightly more prominent, still dismissable. |
+| User taps "How verification works" | Hard gate: backup ceremony must be completed before the verification QR is generated (see §6). |
+
+The reminder is always a small, non-blocking indicator on the home screen: "Not backed up." Tapping it opens the backup ceremony whenever they're ready. No nag, no countdown, just always visible until they act. The escalation follows the stakes, so the nudge always makes sense in context.
+
+**The danger of over-nagging:** If we badger them too much, they'll write the words on a Post-it note just to make it go away. That's worse than not backing up at all. The reminder must feel like helpful information, not a chore.
 
 ### 3.2 Import flow
 
@@ -694,51 +724,151 @@ Results:
 
 ## 6. Getting Verified (Subject Side)
 
-This is the flow for a regular user who wants to get their identity professionally verified.
+This is the flow for a regular user who wants to get their identity professionally verified. The flow has three phases: **education** (at home), **backup ceremony** (hard gate), and **action** (in the room with the verifier).
 
 ### 6.1 Entry point
 
 A subtle card on the home screen (dashed border, muted text):
 ```
-Get verified at your next appointment →
+How verification works →
 ```
 
-Tapping it opens the Get Verified screen.
+Tapping it opens the education screen. This is NOT an action — it's information. The user can read it sitting on the sofa, days before any appointment.
 
-### 6.2 Get Verified screen
+### 6.2 How verification works (education screen)
 
 ```
 ┌─────────────────────────────┐
-│  Get Verified               │
+│  How verification works     │
 │                             │
-│  Visit any registered       │
-│  Signet verifier — your     │
-│  solicitor, doctor, or      │
-│  notary — and show them     │
-│  this QR code.              │
+│  1. Enter your details      │
+│     Add your name, date of  │
+│     birth, and document     │
+│     info in the app.        │
 │                             │
-│  They'll check your ID and  │
-│  verify your account on     │
-│  the spot.                  │
+│  2. Visit a verifier        │
+│     Your GP, solicitor,     │
+│     teacher, accountant, or │
+│     any registered          │
+│     professional.           │
 │                             │
-│  ┌───────────────┐          │
-│  │               │          │
-│  │   [QR CODE]   │          │
-│  │               │          │
-│  └───────────────┘          │
+│  3. They check your ID      │
+│     Show your passport or   │
+│     driving licence. They   │
+│     confirm your details    │
+│     on their phone.         │
 │                             │
-│  This QR contains your two  │
-│  Signet IDs. No personal    │
-│  data is shared until the   │
-│  verifier checks your       │
-│  documents in person.       │
+│  4. Done                    │
+│     Takes about 3 minutes.  │
 │                             │
+│  [Enter my details]         │
 │  [Find a verifier near me]  │
 │  (future — not MVP)         │
 └─────────────────────────────┘
 ```
 
-### 6.3 QR payload
+### 6.2.1 Self-entry of details
+
+The user enters their own identity details at home, at their own pace:
+
+```
+┌─────────────────────────────┐
+│  My Details                 │
+│                             │
+│  Full name (as on document) │
+│  [Margaret Anne Smith     ] │
+│                             │
+│  Date of birth              │
+│  [22/03/1965             ]  │
+│                             │
+│  Nationality                │
+│  [British                ]  │
+│                             │
+│  Document type              │
+│  [Passport / ID Card / ..] │
+│                             │
+│  Document number             │
+│  [123456789              ]  │
+│                             │
+│  Issuing country            │
+│  [GB                     ]  │
+│                             │
+│  Document expiry date       │
+│  [22/03/2035             ]  │
+│                             │
+│  [Save]                     │
+└─────────────────────────────┘
+```
+
+This data is stored locally (encrypted in IndexedDB). It is NOT published, NOT sent anywhere. It will be transferred to the verifier's app during the ceremony for confirmation.
+
+The user can add multiple documents (passport, driving licence, etc.) over time. Each becomes a separate credential after verification.
+
+### 6.2.2 Backup ceremony (hard gate)
+
+When the user taps **"I'm with my verifier"** (see §6.3), the app checks whether backup words have been saved. If not, the backup ceremony is triggered:
+
+```
+┌─────────────────────────────┐
+│  Before you verify          │
+│                             │
+│  You're about to tie your   │
+│  real identity to this      │
+│  account. Before you do,    │
+│  let's secure it properly.  │
+│                             │
+│  Your 12 backup words       │
+│  Write these down on paper  │
+│  and keep them somewhere    │
+│  safe — a drawer, a safe,   │
+│  NOT a Post-it note.        │
+│                             │
+│  If you lose your phone,    │
+│  these words are the only   │
+│  way to get your Signet     │
+│  back.                      │
+│                             │
+│  1. apple     7. garden     │
+│  2. river     8. marble     │
+│  3. ocean     9. falcon     │
+│  4. tiger    10. beacon     │
+│  5. cloud    11. silver     │
+│  6. brave    12. puzzle     │
+│                             │
+│  [ ] I've written these     │
+│      down somewhere safe    │
+│  [Continue]                 │
+│  [Copy to clipboard]        │
+└─────────────────────────────┘
+```
+
+This is the ONE moment the backup words are shown with gravity. The user understands why it matters because they're about to do something irreversible. The ceremony feels significant, not bureaucratic.
+
+A brief screen during the flow is also shown to both parties: "Have you stored your backup words somewhere safe?" This may prompt a natural conversation with the verifier — but the verifier does not enforce it. Their role is confirmation only.
+
+### 6.3 "I'm with my verifier" (action screen)
+
+```
+┌─────────────────────────────┐
+│  I'm with my verifier       │
+│                             │
+│  Ask them to show you       │
+│  their verifier QR code     │
+│  on their phone.            │
+│                             │
+│  [Scan verifier's QR]       │
+│                             │
+│  This will send your        │
+│  details to their app for   │
+│  confirmation. No data      │
+│  leaves your phone until    │
+│  you scan.                  │
+└─────────────────────────────┘
+```
+
+After scanning the verifier's QR, the user's self-entered details are transferred to the verifier's app. The verifier then confirms or rejects (see §7).
+
+### 6.4 QR payload
 
 The QR code contains both pubkeys:
 
@@ -844,84 +974,89 @@ interface VerifierRegistration {
 
 ### 7.3 Verify Someone flow
 
-**Step 1 — Scan subject's QR**
+**Key design change:** The verifier does NOT enter any data. The subject enters their own details at home (see §6.2.1). The verifier only **confirms or rejects** what the subject entered, by comparing it to the physical documents in their hand. This eliminates fat-finger errors and keeps the verifier's role pure: "I confirm this person is real."
 
-The verifier taps "Verify Someone" on the home screen, then scans the subject's QR code (from their "Get Verified" screen).
+**Step 1 — Show verifier QR**
+
+The verifier taps "Verify Someone" on the home screen. Their app shows a QR code identifying them as a verifier:
 
 ```
 ┌─────────────────────────────┐
 │  Verify Someone             │
 │                             │
-│  Scan their QR code         │
+│  Show this QR code to the   │
+│  person you're verifying.   │
+│  They'll scan it with       │
+│  their Signet app.          │
 │                             │
-│  ┌───────────────────┐      │
-│  │                   │      │
-│  │   [CAMERA VIEW]   │      │
-│  │                   │      │
-│  └───────────────────┘      │
+│  ┌───────────────┐          │
+│  │               │          │
+│  │   [QR CODE]   │          │
+│  │               │          │
+│  └───────────────┘          │
 │                             │
-│  Ask them to open their     │
-│  Signet app and tap         │
-│  "Get Verified."            │
+│  Once they scan, their      │
+│  details will appear here   │
+│  for you to confirm.        │
 └─────────────────────────────┘
 ```
 
-**Step 2 — Confirm subject**
+**Step 2 — Receive subject's details**
 
-After scanning, the verifier sees the subject's details:
+After the subject scans the verifier's QR (from their "I'm with my verifier" screen, §6.3), the subject's self-entered details are transferred to the verifier's app. The verifier now sees:
 
 ```
 ┌─────────────────────────────┐
 │  Verify: Margaret Smith     │
 │                             │
+│  Name: Margaret Anne Smith  │
+│  DOB: 22 March 1965        │
+│  Nationality: British       │
+│  Document: Passport (GB)    │
+│  Number: 123456789          │
+│  Expiry: 22 March 2035      │
+│                             │
 │  ○ Adult account            │
-│    or                       │
-│  ○ Child (guardian: npub..) │
 │                             │
-│  Check their identity       │
-│  documents now.             │
+│  Compare these details to   │
+│  the physical document.     │
 │                             │
-│  [Continue with documents]  │
+│  [Confirm — details correct]│
+│  [Reject — details wrong]   │
 │  [Cancel]                   │
 └─────────────────────────────┘
 ```
 
-**Step 3 — Document entry**
+For child accounts, additional fields are shown:
+- Guardian pubkey (pre-filled from subject's app)
+- The verifier confirms: "I confirm this person is the legal guardian"
+- For teachers: school enrollment records serve as evidence of the parent-child relationship — a birth certificate may not be needed if the school already verified it at enrollment
 
-The verifier fills in details from the physical documents (passport, birth certificate, etc.):
+**Step 3a — Rejection (no penalty)**
+
+If the verifier taps "Reject," the details bounce back to the subject's app with an optional note:
 
 ```
 ┌─────────────────────────────┐
-│  Identity Documents         │
+│  Details rejected           │
 │                             │
-│  Full name                  │
-│  [Margaret Anne Smith     ] │
+│  Note from verifier:        │
+│  "Passport number has a     │
+│   typo — check digit 9"    │
 │                             │
-│  Date of birth              │
-│  [1965-03-22             ]  │
+│  The person can fix their   │
+│  details and resubmit.      │
 │                             │
-│  Nationality                │
-│  [British                ]  │
-│                             │
-│  Document type              │
-│  [Passport / ID Card / ..] │
-│                             │
-│  Document number             │
-│  [123456789              ]  │
-│                             │
-│  Issuing country            │
-│  [GB                     ]  │
-│                             │
-│  [Issue Credentials]        │
-│  [Cancel]                   │
+│  [Wait for resubmission]    │
+│  [Cancel verification]      │
 └─────────────────────────────┘
 ```
 
-For child accounts, additional fields:
-- Guardian's pubkey (pre-filled from QR)
-- Relationship confirmation ("I confirm this person is the legal guardian")
+The subject fixes the error on their phone and resubmits. This loop has no penalty — it's just a correction cycle. The verifier waits.
 
-**Step 4 — Confirmation**
+**Step 3b — Confirmation**
+
+If the verifier taps "Confirm," a summary is shown:
 
 ```
 ┌─────────────────────────────┐
@@ -940,63 +1075,51 @@ For child accounts, additional fields:
 │  • Persona credential       │
 │    (anonymous, age only)    │
 │                             │
-│  The document number is     │
-│  never stored or published. │
-│  Only a one-way hash is     │
-│  recorded to prevent        │
-│  duplicates.                │
-│                             │
 │  [Confirm & Issue]          │
 │  [Back]                     │
 └─────────────────────────────┘
 ```
 
-**Step 5 — Credential delivery**
+**Step 4 — Credential delivery**
 
-The ceremony runs locally (`createTwoCredentialCeremony`). The app then shows the credentials as a QR code for the subject to scan:
+The ceremony runs locally on the verifier's device (`createTwoCredentialCeremony`). The credentials are transferred back to the subject's app (via the existing connection or QR):
 
 ```
 ┌─────────────────────────────┐
 │  Credentials Issued ✓       │
 │                             │
-│  Ask them to scan this      │
-│  QR code to receive their   │
-│  credentials.               │
-│                             │
-│  ┌───────────────┐          │
-│  │               │          │
-│  │   [QR CODE]   │          │
-│  │               │          │
-│  └───────────────┘          │
+│  Margaret's credentials     │
+│  have been sent to their    │
+│  app.                       │
 │                             │
 │  [Done]                     │
 └─────────────────────────────┘
 ```
 
-**Step 6 — Done**
+**Step 5 — Done**
 
-Both parties return to their home screens. The subject's credentials are now stored. The verifier's home screen is unchanged.
+Both parties return to their home screens. The subject's credentials are stored in their app. The verifier's home screen is unchanged.
 
 ### 7.4 What happens during the ceremony
 
 All local computation — no network required:
 
-1. Parse subject's two pubkeys from QR payload
+1. Receive subject's two pubkeys and self-entered details from the data transfer
 2. Compute nullifier: `SHA-256(len||docType || len||country || len||docNumber || len||"signet-nullifier-v2")`
 3. Compute age range from DOB: `0-3 | 4-7 | 8-12 | 13-17 | 18+`
 4. Determine tier: `18+` → Tier 3 (adult), child range → Tier 4 (adult+child)
-5. Build Merkle tree from 5 leaves: name, nationality, documentType, dateOfBirth, nullifier
+5. Build dynamic Merkle tree from verified attributes: name, nationality, documentType, dateOfBirth, documentNumber, documentExpiry, nullifier (plus any additional attributes the document supports)
 6. Sign Natural Person credential (Kind 30470): entity-type, merkle-root, nullifier, age-range, guardian tags
 7. Sign Persona credential (Kind 30470): entity-type=persona, age-range, guardian tags — NO nullifier, NO merkle-root
-8. Return both signed events + Merkle proofs to caller
+8. Transfer both signed events + Merkle proofs back to the subject's app
 
-The document number itself is used only to compute the nullifier hash, then discarded. It is never stored in the credential, in IndexedDB, or anywhere on the device.
+The document number is now stored as a Merkle leaf (for selective disclosure) AND used to compute the nullifier. Both appear in the credential.
 
 ### 7.5 Batch verification (family scenario)
 
 A common scenario: a family of four visits a solicitor. The verifier flow supports rapid sequential verification:
 
-1. Verify parent A → scan QR, check passport, issue credentials
+1. Verify parent A → receive details, check passport, confirm, issue credentials
 2. Verify parent B → scan QR, check passport, issue credentials
 3. Verify child 1 → scan QR, check birth certificate, confirm guardian, issue credentials
 4. Verify child 2 → same
@@ -1183,7 +1306,7 @@ The MVP is fully offline. These features require Nostr relay connectivity:
 ## 12. File Structure
 
 ```
-family-app/                         → rename to my-signet/ when ready
+app/                                — My Signet (renamed from family-app/ on 2026-03-16)
 ├── src/
 │   ├── main.tsx
 │   ├── App.tsx                     — Router, state orchestrator
@@ -1604,17 +1727,238 @@ These accessibility concerns require additional design work beyond the app's UI:
 
 ---
 
-## 20. Open Questions (Pre-Production)
+## 20. Verifier IQ (Verifier Trust Scoring)
+
+Not all verifiers are equal. A verifier confirmed by their professional body is worth more than one who's only cross-verified by peers. The **Verifier IQ** determines how much IQ their credentials contribute to users.
+
+### 20.1 Verifier confirmation methods (ranked by strength)
+
+| Method | Code | Verifier IQ | Effect on user's IQ | Description |
+|---|---|---|---|---|
+| Professional body issues Kind 30473 directly | B | 100% | Full (80 pts) | The GMC, SRA, TRA etc. has a Signet keypair and signs the verifier's credential directly. Strongest proof. |
+| NIP-05 on professional body's domain | A | 90% | Near-full (72 pts) | The body's website hosts a `.well-known/nostr.json` mapping registration numbers to pubkeys. Trivial technical ask for the body. |
+| Pubkey on the verifier's own professional website | D | 50% | Half strength (40 pts) | Their law firm or GP surgery website publishes their Signet pubkey. Weaker — the website could be faked, but domain age and reputation are checkable. |
+| Cross-verification by other professionals only | C | 25% | Quarter strength (20 pts) | Other verified professionals vouch for the new verifier. Weakest — vulnerable to coordinated fakes, but works for bootstrapping. |
+
+**Trust flows backwards:** When a verifier upgrades (e.g., from C to A), ALL credentials they've previously issued automatically gain the higher IQ contribution. No second visit needed. The credential was always cryptographically valid — what changed is our confidence in the verifier.
+
+**Bootstrap strategy:** Start with C (cross-verification) to get the network moving. Everyone has an incentive to upgrade to A or B because it makes their credentials worth more.
+
+### 20.2 Separate professional keypair
+
+Verifiers MUST use a **dedicated professional keypair** for signing credentials, separate from their personal Nostr identity. This keypair:
+- Only signs Kind 30470 credentials and Kind 30473 verifier events
+- Does NOT receive DMs, does NOT post notes, does NOT participate in social Nostr
+- Has no inbox to spam
+- Is the keypair registered with their professional body
+
+This keeps professional and personal identities separate and prevents the verifier's personal Nostr account from being discoverable through their professional role.
+
+### 20.3 Verifier registration checks (verification bot)
+
+A reference verification bot checks verifier claims against public professional registers:
+
+| Check | What it does | Automated? |
+|---|---|---|
+| Registration number lookup | Queries GMC, SRA, TRA, NMC etc. public registers | Yes — HTTP scraping or API |
+| NIP-05 verification | Checks `.well-known/nostr.json` on professional body domains | Yes — HTTP request |
+| Website pubkey verification | Checks the verifier's professional website for their published pubkey | Yes — HTTP crawl |
+| Domain age and reputation | Checks domain registration date, backlinks, Companies House | Yes — WHOIS + crawl |
+| Volume anomaly detection | Flags verifiers issuing credentials at unusual rates | Yes — event analysis |
+| Cross-profession requirement | Ensures cross-verification vouches come from 2+ different professions | Yes — event analysis |
+
+The bot publishes its findings as Nostr events. Multiple independent bots checking the same verifier = consensus. The bot does not decide who's verified — it checks public registers and publishes what it finds.
+
+**Funding:** Initially run at own cost as a reference server. Target model: community-funded via Lightning micropayments (see §22).
+
+### 20.4 Priority checks via L402
+
+Users can trigger an immediate check of their verifier's status by paying a small Lightning invoice via the L402 protocol:
+
+1. User's app calls: `POST /check?verifier=<pubkey>`
+2. Bot returns 402 Payment Required with a Lightning invoice (a few sats)
+3. User pays (automatically if the app has a wallet, or via QR scan)
+4. Bot runs the specific check immediately, publishes result
+5. User's IQ updates
+
+Users who don't want to pay wait for the next scheduled free run (e.g., every 24 hours). Priority checks are self-funding — each payment covers its own compute cost and contributes surplus to the meter.
+
+---
+
+## 21. Acceptable Verifiers (UK Countersigning Standard)
+
+The spec previously named only "solicitors, doctors, notaries" as acceptable verifiers. This is far too narrow. The acceptable verifier list aligns with the **UK passport countersigning standard** — 40+ professions, each with a registered professional body.
+
+### 21.1 Acceptable professions
+
+| Category | Professions |
+|---|---|
+| **Legal** | Solicitor, barrister, legal executive, commissioner for oaths, notary public, Justice of the Peace |
+| **Medical** | Doctor (GP/consultant), dentist, optician, pharmacist, nurse (RGN/RMN), chiropodist, veterinary surgeon |
+| **Financial** | Accountant (chartered), bank/building society official, insurance agent, financial adviser, valuer/auctioneer |
+| **Education** | Head teacher, teacher, lecturer |
+| **Public service** | Police officer, fire service official, civil servant (permanent), local government officer, councillor, MP, social worker |
+| **Religious** | Minister of religion, Salvation Army officer |
+| **Engineering** | Chartered engineer, chartered surveyor |
+| **Other regulated** | Airline pilot, Merchant Navy officer, funeral director, photographer (professional), trade union officer, company director |
+
+Everyone already knows someone on this list. Your GP. Your kids' teacher. Your accountant. The solicitor who did your house purchase. Verification should be bundled with existing appointments — zero additional cost.
+
+### 21.2 Teachers as the primary child verification channel
+
+Teachers are the most efficient verifier for children:
+
+- They **know the child** — they see them every day
+- They **know the parents** — parents' evenings, school pick-ups, emergency contacts
+- The **school already verified the birth certificate** at enrollment
+- They have the **child's DOB** on file
+- They have the **parent-guardian relationship** documented
+
+A parent at parents' evening shows their passport, teacher confirms the child — 3 minutes, zero cost. One teacher could verify an entire class in a single parents' evening session.
+
+**Professional knowledge counts as evidence.** A teacher doesn't need to re-verify what the school already verified at enrollment. Their professional standing (regulated by the Teaching Regulation Agency) and daily knowledge of the child is the evidence. If the TRA can strike them off for misconduct, they have skin in the game.
+
+### 21.3 Verifier role clarity
+
+The verifier's role is exactly one thing: **"I confirm this person is real."**
+
+Not "I endorse Signet." Not "I understand the protocol." Not "I advocate for how this person uses their identity." Just: "I checked their documents, this person is who they say they are." The same thing they already do when they countersign a passport photo.
+
+**Don't be Bitcoin.** Nobody needs to understand Merkle trees, nullifiers, or secp256k1. The pitch to a professional: "This is the best system for protecting kids online. All you do is confirm the person is real, like countersigning a passport. Your professional registration means you're accountable. That's it."
+
+---
+
+## 22. Infrastructure and Funding
+
+### 22.1 Verification bot
+
+A reference verification bot runs the checks described in §20.3. Initially self-funded by the project. Open source — anyone can fork and run their own.
+
+### 22.2 Lightning meter model
+
+Target funding model: community-funded via Lightning micropayments using toll-booth (L402 middleware).
+
+**How it works:**
+- A public "meter" shows the balance, cost per check, and estimated runway
+- Anyone can top up the meter with Lightning sats
+- Like putting 50p in a parking meter — the infrastructure runs as long as there's balance
+
+**Critical constraint:** Lightning payments go **directly from the contributor to the hosting provider's Lightning node.** There is no Signet wallet, no intermediary, no custody. The invoice is generated by the hosting provider's node, not ours. This means:
+- No money transmission (no FCA registration)
+- No taxable event for the project (no HMRC liability)
+- No entity needed (no accounts, no books)
+- The hosting provider receives payment for services — that's their tax event
+
+If there is ANY wallet in between — even an auto-forwarding one — the model breaks. The no-custody constraint is non-negotiable.
+
+### 22.3 Bootstrap phase
+
+Run a reference verification bot at own cost. The Lightning meter is the target but isn't blocking. Get the bot running first, figure out direct-to-provider Lightning payment later.
+
+---
+
+## 23. Market Positioning (IQ Benchmarking)
+
+The global identity verification market is $14-16 billion (2025-2026). The age verification sub-sector is $2.5 billion, projected to reach $7.1 billion by 2033. Key players: Onfido (acquired by Entrust for $650M), Yoti ($39M revenue in 2025, 62% YoY growth), Jumio, Veriff, Sumsub.
+
+Every player in this market sits between IQ 5 and IQ 75 on our scale. None achieve what a single Signet professional verification does.
+
+### 23.1 Every verification method scored on Signet IQ
+
+**IQ 0-5: Proves nothing**
+
+| Method | IQ | What it actually proves |
+|---|---|---|
+| Self-declaration checkbox ("I am 18") | 2 | The user clicked a button. 22-47% of children fake their age this way. |
+| Device-level age signal (Apple/Google) | 3 | Someone declared an age at device setup. A child can lie. |
+| Social media behavioural inference | 5 | An AI guesses your age from behaviour. A child who mimics adults passes. |
+
+**IQ 5-15: Proves access to something**
+
+| Method | IQ | What it actually proves |
+|---|---|---|
+| Debit card ownership | 5 | Access to a card. UK children can have debit cards from age 11. |
+| Credit card ownership | 10 | Access to a credit card. Children use parents' cards routinely. |
+| MNO (mobile number) check | 12 | The SIM is registered to an adult. Many children on parent contracts. |
+| Email-based age estimation | 12 | The email has a history with age-gated services. Parent's email bypasses it. |
+
+**IQ 15-35: Database match, no person present**
+
+| Method | IQ | What it actually proves |
+|---|---|---|
+| Parental consent (COPPA) | 15 | Someone claiming to be a parent consented. Child can impersonate. |
+| Credit reference / electoral roll | 20 | A person with that name/DOB exists in a database. Not who's at the keyboard. |
+| AI facial age estimation (Yoti etc.) | 25 | AI estimates the face is probably adult. Deepfakes and age filters defeat it. |
+| Challenge 25 (in-person retail) | 30 | A shop worker thinks you look old enough. Subjective. |
+| Open banking | 35 | A verified bank account holder is 18+. Strong database but not who's using it. |
+
+**IQ 35-65: Document seen, some biometric**
+
+| Method | IQ | What it actually proves |
+|---|---|---|
+| Government ID photo upload (OCR) | 45 | Someone uploaded a photo of a document. No liveness. |
+| Video selfie + ID + liveness | 55 | Face matches document, person is live. Deepfake attacks documented but harder. |
+| Digital identity wallet (eIDAS) | 60-75 | A trusted provider previously verified this person. Depends on initial proofing. |
+
+**IQ 70-85: Cryptographic or professional**
+
+| Method | IQ | What it actually proves |
+|---|---|---|
+| NFC chip reading + liveness | 75 | Government-signed cryptographic data from document chip matches a live person. |
+| **Signet Tier 3 (single verification)** | **80** | A licensed professional inspected physical documents and confirmed the person is real. Their career is on the line. |
+
+**IQ 80-200: Signet progressive verification (no market equivalent)**
+
+| Level | IQ | What it adds |
+|---|---|---|
+| Single professional verification | 80 | One document, one verifier. Already exceeds everything above. |
+| + second document, different verifier | 105 | Independent confirmation from a different professional. |
+| + peer vouches from verified people | 120 | Social proof from people who've staked their reputation. |
+| + multiple document types + longevity | 140 | Passport + driving licence + NI card + years of account history. |
+| + cross-verification + identity bridges | 160-200 | Maximum possible confidence. |
+
+### 23.2 Contextual IQ prompting (no gamification)
+
+The app NEVER tells users their score isn't good enough. External demand drives upgrades:
+
+| User | Scenario | What the app says |
+|---|---|---|
+| Gran (IQ 0) | Just uses Signet Me with family | Nothing. She's happy. App never nags. |
+| Parent (IQ 0) | Kid needs age verification for Steam | "Steam needs a verified age range. Here's how to get verified." |
+| Security enthusiast (IQ 120) | Wants to max out | Discovers IQ details in Settings. Chases 200 on their own. |
+
+The IQ score is visible if you look for it, but the app never pushes. Motivation is always external — a platform requirement, a specific use case, a real need. If nothing requires a higher score, the app stays silent.
+
+---
+
+## 24. Protocol Changes Required
+
+These changes to `spec/protocol.md` are required to support the v2 app:
+
+| Change | Type | Complexity | Description |
+|---|---|---|---|
+| Dynamic Merkle tree | **Breaking** | High | Arbitrary key-value leaves instead of fixed 5. New leaf format: `key:value` pairs. Proof format unchanged (RFC 6962). |
+| `signet:documentNumber` leaf | Additive | Low | Document number stored as a Merkle leaf for selective disclosure. |
+| `signet:documentExpiry` leaf | Additive | Low | Document expiry date as a Merkle leaf. Enables accelerated IQ decay and consumer-side hard cliffs. |
+| Attribute namespacing | Additive | Medium | `signet:` (universal), `gb:` (UK), `us:` (USA) etc. Extensible vocabulary for country-specific attributes. |
+| Scoped credentials | **Breaking** | High | One credential per document per verifier, rather than one credential covering everything. Credentials stack. |
+| Verifier IQ model | Additive | Medium | New scoring layer for verifier trust. Affects how credential IQ contributions are weighted. |
+| Accelerated decay for expired documents | Additive | Low | Half-life shortens from 3 years to 6 months when document expiry passes. |
+| Ceremony flow (user enters data) | App-level | None | Not a protocol change — the ceremony cryptography is identical. Only the UX changes. |
+
+---
+
+## 25. Open Questions (Pre-Production)
 
 These items require further thought before production. They are acknowledged gaps, not oversights.
 
-### 20.1 Credential portability
+### 25.1 Credential portability
 
 Users may switch from My Signet to another Signet-compatible app (e.g., Fathom). Credentials are standard Nostr events and can be exported. Merkle proofs could be transferred via QR or recovered from Blossom (if the user opted for Blossom backup).
 
 **Vulnerability concern:** The transfer of Merkle proofs is a sensitive operation — the proofs contain private attribute data (name, DOB, etc.). The transfer mechanism must be end-to-end encrypted and authenticated. QR exchange (in person) is safe. Remote transfer via relay needs encryption. **This needs careful design before production — it is a potential vulnerability point.**
 
-### 20.2 Printed QR card (non-smartphone users)
+### 25.2 Printed QR card (non-smartphone users)
 
 A downstream app concern, not a protocol issue. The protocol provides everything needed: a published credential with a QR-encodable pubkey, a photo hash in the Merkle tree, and optional Blossom storage for remote photo retrieval. Any app or third-party service can produce a physical card from this data.
 
@@ -1624,7 +1968,7 @@ Two tiers envisioned:
 
 **This is an app-level feature, not a protocol change.** To be designed as part of the app's settings/ordering flow.
 
-### 20.3 Physical ID fallback principle
+### 25.3 Physical ID fallback principle
 
 Signet is an enhancement, never a gate. Any venue, service, or platform that accepts Signet SHOULD also accept traditional physical ID (passport, driving licence). Signet provides better privacy and stronger verification, but must never exclude someone who only has a passport.
 
@@ -1659,7 +2003,7 @@ Questions for review:
 
 ## Appendix B: Migration from Current Family App
 
-The current `family-app/` codebase can be incrementally migrated:
+The current `app/` codebase (formerly `family-app/`, renamed 2026-03-16) can be incrementally migrated:
 
 | Current | v2 | Migration |
 |---------|-----|-----------|
