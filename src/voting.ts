@@ -141,7 +141,10 @@ export function parseElection(event: NostrEvent): ParsedElection | null {
   if (thresholdStr) {
     const parts = thresholdStr.split('/');
     if (parts.length === 2) {
-      tallyThreshold = [parseInt(parts[0], 10), parseInt(parts[1], 10)];
+      const m = parseInt(parts[0], 10);
+      const n = parseInt(parts[1], 10);
+      if (isNaN(m) || isNaN(n) || m < 1 || n < 1 || m > n) return null;
+      tallyThreshold = [m, n];
     }
   }
 
@@ -155,11 +158,6 @@ export function parseElection(event: NostrEvent): ParsedElection | null {
   const closes = parseInt(closesStr, 10);
   if (isNaN(opens) || isNaN(closes)) return null;
 
-  if (tallyThreshold) {
-    const [m, n] = tallyThreshold;
-    if (isNaN(m) || isNaN(n) || m < 1 || n < 1 || m > n) return null;
-  }
-  if (ringSize !== undefined && isNaN(ringSize)) return null;
   if (isNaN(eligibleMinTier)) return null;
 
   const parsed: ParsedElection = {

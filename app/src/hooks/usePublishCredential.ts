@@ -22,13 +22,29 @@ export function usePublishCredential(relayUrl?: string) {
       const ws = new WebSocket(relayUrl);
       await new Promise<void>((resolve, reject) => {
         ws.onopen = () => {
-          const event = JSON.parse(eventJson);
+          let event: unknown;
+          try {
+            event = JSON.parse(eventJson);
+            if (typeof event !== 'object' || event === null) {
+              reject(new Error('Invalid event JSON'));
+              ws.close();
+              return;
+            }
+          } catch {
+            reject(new Error('Invalid event JSON'));
+            ws.close();
+            return;
+          }
           ws.send(JSON.stringify(['EVENT', event]));
           // Wait briefly for OK response
           ws.onmessage = (msg) => {
-            const data = JSON.parse(msg.data);
-            if (data[0] === 'OK') {
-              resolve();
+            try {
+              const data: unknown = JSON.parse(msg.data as string);
+              if (Array.isArray(data) && data[0] === 'OK') {
+                resolve();
+              }
+            } catch {
+              // Malformed relay message — keep waiting for timeout
             }
           };
           // Timeout after 5 seconds

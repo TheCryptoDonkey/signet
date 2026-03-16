@@ -83,22 +83,20 @@ export function validateCredential(event: NostrEvent): ValidationResult {
   const method = getTagValue(event, 'method');
   if (!method) errors.push('Missing "method" tag');
 
-  // Tier-specific validations
-  const tierNum = parseInt(tier || '0', 10) as SignetTier;
-
-  if (tierNum === 1 && type !== 'self') {
+  // Tier-specific validations — use string comparison (tier is already whitelisted above)
+  if (tier === '1' && type !== 'self') {
     errors.push('Tier 1 must have type "self"');
   }
 
-  if (tierNum === 2 && type !== 'peer') {
+  if (tier === '2' && type !== 'peer') {
     errors.push('Tier 2 must have type "peer"');
   }
 
-  if ((tierNum === 3 || tierNum === 4) && type !== 'professional') {
-    errors.push(`Tier ${tierNum} must have type "professional"`);
+  if ((tier === '3' || tier === '4') && type !== 'professional') {
+    errors.push(`Tier ${tier} must have type "professional"`);
   }
 
-  if (tierNum === 4) {
+  if (tier === '4') {
     if (scope !== 'adult+child') {
       errors.push('Tier 4 must have scope "adult+child"');
     }
@@ -107,8 +105,8 @@ export function validateCredential(event: NostrEvent): ValidationResult {
     }
   }
 
-  if ((tierNum === 3 || tierNum === 4) && !getTagValue(event, 'profession')) {
-    errors.push(`Tier ${tierNum} should include "profession" tag`);
+  if ((tier === '3' || tier === '4') && !getTagValue(event, 'profession')) {
+    errors.push(`Tier ${tier} should include "profession" tag`);
   }
 
   return { valid: errors.length === 0, errors };
