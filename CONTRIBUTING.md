@@ -32,8 +32,7 @@ src/          — Protocol library (TypeScript, no framework dependencies)
 tests/        — Protocol tests (vitest)
 spec/         — Protocol specification (source of truth)
 examples/     — Example flows
-app/          — My Signet family app (React + Vite)
-dev-app/      — Developer reference app (React + Vite)
+app/          — My Signet app (React + Vite)
 docs/         — Developer documentation
 ```
 

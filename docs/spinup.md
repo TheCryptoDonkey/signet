@@ -20,26 +20,22 @@ docker start strfry-relay
 
 The relay listens on `ws://localhost:7777`. Health check: `curl -s http://localhost:7777/`.
 
-### 2. Start the apps
+### 2. Start the app
 
 ```bash
 # My Signet app (port 5174)
 cd app && node node_modules/vite/bin/vite.js --host &
-
-# Dev app (port 5175)
-cd dev-app && node node_modules/vite/bin/vite.js --host &
 ```
 
 ### 3. Access
 
 | App | URL |
 |-----|-----|
-| My Signet app | https://localhost:5174/ |
-| Dev app | https://localhost:5175/ |
+| My Signet | https://localhost:5174/ |
 
-From other devices on the network: `https://10.10.10.60:5174/` and `https://10.10.10.60:5175/`.
+From other devices on the network: `https://10.10.10.60:5174/`.
 
-Both apps are HTTPS-only. Use `https://` — plain `http://` will not work.
+HTTPS-only. Use `https://` — plain `http://` will not work.
 
 ## One-Command Spinup
 
@@ -47,27 +43,23 @@ Both apps are HTTPS-only. Use `https://` — plain `http://` will not work.
 # From the Signet root directory:
 docker ps --format '{{.Names}}' | grep -q "^strfry-relay$" || docker start strfry-relay
 (cd app && node node_modules/vite/bin/vite.js --host &)
-(cd dev-app && node node_modules/vite/bin/vite.js --host &)
 ```
 
 ## Certificate
 
-Both apps share one self-signed certificate (`dev-app/cert/signet.pem`). Install it once — it covers both ports on all local interfaces.
+The self-signed certificate is at `app/cert/signet.pem` (if present). Install it once — it covers all local interfaces.
 
 ### Downloading
 
-Both apps have a **Download Certificate** button in Settings. Or fetch directly:
+The app has a **Download Certificate** button in Settings. Or fetch directly:
 
 - https://localhost:5174/signet.pem
-- https://localhost:5175/signet.pem
 
 ### Regenerating
 
 ```bash
-bash dev-app/cert/generate-cert.sh
+bash app/cert/generate-cert.sh
 ```
-
-Regenerates the cert and copies it to both `app/public/` and `dev-app/public/`.
 
 ### Installing on devices
 
@@ -111,7 +103,6 @@ docker run -d \
 | Port | Service |
 |------|---------|
 | 5174 | My Signet app (HTTPS) |
-| 5175 | Signet dev app (HTTPS) |
 | 7777 | strfry relay (WebSocket, shared with Fathom) |
 | 7778 | Blossom server (Fathom) |
 
@@ -125,4 +116,4 @@ Avoid: 3000, 5173, 80, 443 (used by Fathom/nginx).
 
 **Self-signed cert warning** — Install the certificate (see above), or accept it manually in the browser.
 
-**Cert doesn't cover your IP** — Edit `dev-app/cert/generate-cert.sh`, add your IP to the SAN list, then run `bash dev-app/cert/generate-cert.sh`.
+**Cert doesn't cover your IP** — Edit `app/cert/generate-cert.sh`, add your IP to the SAN list, then run `bash app/cert/generate-cert.sh`.

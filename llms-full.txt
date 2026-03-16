@@ -3019,7 +3019,7 @@ All modules are re-exported from the package root (`signet-protocol`). Import fr
 
 ### Where to start
 
-The `signet-protocol` npm package contains everything. The developer reference app in the `dev-app/` directory of this repository is a working Level 3 implementation and is the recommended starting point for understanding the full flow. The protocol specification at `spec/protocol.md` is the authoritative source of truth for all behaviour.
+The `signet-protocol` npm package contains everything. The My Signet app in the `app/` directory of this repository is a working implementation with power-user features accessible in Settings. The protocol specification at `spec/protocol.md` is the recommended starting point for understanding the full flow. The protocol specification at `spec/protocol.md` is the authoritative source of truth for all behaviour.
 
 ---
 
