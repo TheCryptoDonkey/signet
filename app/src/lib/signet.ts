@@ -4,7 +4,6 @@ import {
   generateMnemonic as _generateMnemonic,
   validateMnemonic as _validateMnemonic,
   BIP39_WORDLIST,
-  deriveNostrKeyPair,
   deriveChildAccount,
   computeSharedSecret,
   createQRPayload,
