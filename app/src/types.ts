@@ -105,6 +105,10 @@ export interface AppPreferences {
   activeAccountId?: string;
   /** Verification security tier (default: basic) */
   securityTier?: SecurityTier;
+  /** User's configured relay URL for publishing credentials */
+  relayUrl?: string;
+  /** Power mode toggle state — reveals advanced settings */
+  powerMode?: boolean;
 }
 
 export type Page = 'home' | 'family' | 'add' | 'member-detail' | 'settings' | 'child-settings' | 'get-verified' | 'my-documents' | 'add-document' | 'verify-someone' | 'shamir' | 'identity-bridge' | 'import-nsec';

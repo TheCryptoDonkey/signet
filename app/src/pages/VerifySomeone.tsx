@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import type { SignetIdentity } from '../types';
-import { getActivePubkey } from '../lib/signet';
+import { getActivePubkey, getActivePrivateKey, createTwoCredentialCeremony } from '../lib/signet';
 import { QRCode } from '../components/QRCode';
+import { QRScanner } from '../components/QRScanner';
 
 interface Props {
   identity: SignetIdentity;
 }
 
 // Step in the ceremony flow
-type Step = 'show-qr' | 'waiting' | 'review-details' | 'rejected' | 'confirmation' | 'done';
+type Step = 'show-qr' | 'scanning' | 'review-details' | 'rejected' | 'confirmation' | 'issuing' | 'done';
 
 interface SubjectDetails {
   fullName: string;
@@ -16,6 +17,7 @@ interface SubjectDetails {
   nationality: string;
   documentType: string;
   documentNumber: string;
+  documentCountry: string;
   documentExpiry: string;
   isChild: boolean;
   guardianPubkey?: string;
@@ -23,19 +25,23 @@ interface SubjectDetails {
   personaPubkey: string;
 }
 
-// Simulated subject details used when "Simulate receiving details" is pressed
-const SIMULATED_DETAILS: SubjectDetails = {
-  fullName: 'Margaret O\'Sullivan',
-  dateOfBirth: '1985-04-12',
-  nationality: 'Irish',
-  documentType: 'Passport',
-  documentNumber: 'P1234567',
-  documentExpiry: '2031-04-11',
-  isChild: false,
-  guardianPubkey: undefined,
-  subjectPubkey: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2',
-  personaPubkey: 'b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3',
-};
+// Shape of the QR payload from the subject's app
+interface VerifyRequestPayload {
+  type: string;
+  naturalPersonPubkey: string;
+  personaPubkey: string;
+  details: {
+    name: string;
+    dateOfBirth: string;
+    nationality: string;
+    documentType: string;
+    documentNumber: string;
+    documentCountry: string;
+    documentExpiry: string;
+  };
+  isChild: boolean;
+  guardianPubkey: string | null;
+}
 
 function computeAgeRange(dob: string): string {
   const birthYear = new Date(dob).getFullYear();
@@ -105,13 +111,75 @@ export function VerifySomeone({ identity }: Props) {
   const [subject, setSubject] = useState<SubjectDetails | null>(null);
   const [rejectNote, setRejectNote] = useState('');
   const [waitingResubmit, setWaitingResubmit] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [ceremonyError, setCeremonyError] = useState<string | null>(null);
+  const [credentialQR, setCredentialQR] = useState<string | null>(null);
 
-  // ── Step navigation helpers ────────────────────────────────────────────────
+  // ── QR scan handler ────────────────────────────────────────────────────────
 
-  function handleSimulateReceived() {
-    setSubject(SIMULATED_DETAILS);
+  function handleScan(data: string) {
+    setScanError(null);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(data);
+    } catch {
+      setScanError('Invalid QR code — could not parse JSON.');
+      return;
+    }
+
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      (parsed as Record<string, unknown>).type !== 'signet-verify-request'
+    ) {
+      setScanError('Invalid QR code — not a Signet verify-request.');
+      return;
+    }
+
+    const p = parsed as VerifyRequestPayload;
+
+    if (
+      typeof p.naturalPersonPubkey !== 'string' ||
+      typeof p.personaPubkey !== 'string' ||
+      typeof p.details !== 'object' ||
+      p.details === null
+    ) {
+      setScanError('QR code is missing required fields.');
+      return;
+    }
+
+    const d = p.details;
+    if (
+      typeof d.name !== 'string' ||
+      typeof d.dateOfBirth !== 'string' ||
+      typeof d.nationality !== 'string' ||
+      typeof d.documentType !== 'string' ||
+      typeof d.documentNumber !== 'string' ||
+      typeof d.documentCountry !== 'string'
+    ) {
+      setScanError('QR code details are incomplete.');
+      return;
+    }
+
+    const subjectDetails: SubjectDetails = {
+      fullName: d.name,
+      dateOfBirth: d.dateOfBirth,
+      nationality: d.nationality,
+      documentType: d.documentType,
+      documentNumber: d.documentNumber,
+      documentCountry: d.documentCountry,
+      documentExpiry: typeof d.documentExpiry === 'string' ? d.documentExpiry : '',
+      isChild: p.isChild === true,
+      guardianPubkey: typeof p.guardianPubkey === 'string' ? p.guardianPubkey : undefined,
+      subjectPubkey: p.naturalPersonPubkey,
+      personaPubkey: p.personaPubkey,
+    };
+
+    setSubject(subjectDetails);
     setStep('review-details');
   }
+
+  // ── Step navigation helpers ────────────────────────────────────────────────
 
   function handleConfirmDetails() {
     setStep('confirmation');
@@ -127,7 +195,7 @@ export function VerifySomeone({ identity }: Props) {
     setTimeout(() => {
       setWaitingResubmit(false);
       setRejectNote('');
-      setStep('review-details');
+      setStep('scanning');
     }, 2000);
   }
 
@@ -138,9 +206,43 @@ export function VerifySomeone({ identity }: Props) {
     setWaitingResubmit(false);
   }
 
-  function handleIssueCredentials() {
-    // Placeholder: in production this calls createTwoCredentialCeremony
-    setStep('done');
+  async function handleIssueCredentials() {
+    if (!subject) return;
+    setCeremonyError(null);
+    setStep('issuing');
+
+    try {
+      const verifierPrivateKey = getActivePrivateKey(identity);
+
+      const result = await createTwoCredentialCeremony(
+        verifierPrivateKey,
+        subject.subjectPubkey,
+        subject.personaPubkey,
+        {
+          name: subject.fullName,
+          nationality: subject.nationality,
+          documentType: subject.documentType,
+          documentNumber: subject.documentNumber,
+          documentCountry: subject.documentCountry,
+          dateOfBirth: subject.dateOfBirth,
+          profession: 'professional',
+          jurisdiction: 'global',
+          guardianPubkeys: subject.guardianPubkey ? [subject.guardianPubkey] : undefined,
+        },
+      );
+
+      const qrData = JSON.stringify({
+        type: 'signet-credentials-v1',
+        naturalPerson: result.naturalPerson,
+        persona: result.persona,
+      });
+
+      setCredentialQR(qrData);
+      setStep('done');
+    } catch (err) {
+      setCeremonyError(err instanceof Error ? err.message : 'Unknown error issuing credentials.');
+      setStep('confirmation');
+    }
   }
 
   function handleDone() {
@@ -148,19 +250,24 @@ export function VerifySomeone({ identity }: Props) {
     setSubject(null);
     setRejectNote('');
     setWaitingResubmit(false);
+    setCredentialQR(null);
+    setCeremonyError(null);
   }
 
   function handleCancel() {
     setStep('show-qr');
     setSubject(null);
     setRejectNote('');
+    setScanError(null);
+    setCeremonyError(null);
+    setCredentialQR(null);
   }
 
-  // ── Step numbering (show-qr=1, waiting/review=2, rejected/confirmation=3, done=4) ──
+  // ── Step numbering (show-qr=1, scanning/review=2, rejected/confirmation=3, issuing/done=4) ──
 
   function stepNumber(): number {
     if (step === 'show-qr') return 1;
-    if (step === 'waiting' || step === 'review-details') return 2;
+    if (step === 'scanning' || step === 'review-details') return 2;
     if (step === 'rejected' || step === 'confirmation') return 3;
     return 4;
   }
@@ -178,7 +285,7 @@ export function VerifySomeone({ identity }: Props) {
           <div className="section">
             <h2 style={{ marginBottom: 8 }}>Your verifier code</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 24 }}>
-              Show this QR code to the person you're verifying. They'll scan it with their Signet app.
+              Show this QR code to the person you&apos;re verifying. They&apos;ll scan it with their Signet app.
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
@@ -205,57 +312,43 @@ export function VerifySomeone({ identity }: Props) {
             <button
               className="btn btn-primary"
               style={{ width: '100%' }}
-              onClick={() => setStep('waiting')}
+              onClick={() => { setScanError(null); setStep('scanning'); }}
             >
-              They've scanned it — continue
+              They&apos;ve scanned it — scan their QR
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Step 2: Waiting for subject's details ────────────────────────── */}
-      {step === 'waiting' && (
+      {/* ── Step 2: Scan subject's QR code ───────────────────────────────── */}
+      {step === 'scanning' && (
         <div>
           <div className="section">
-            <h2 style={{ marginBottom: 8 }}>Waiting for connection</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 24 }}>
-              Ask the person to confirm their details on their app. Their information will appear here.
+            <h2 style={{ marginBottom: 8 }}>Scan their QR code</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 20 }}>
+              Ask the person to show their Signet QR code, then scan it here.
             </p>
 
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 16,
-                padding: '32px 0',
-              }}
-            >
+            <QRScanner onScan={handleScan} active={step === 'scanning'} />
+
+            {scanError && (
               <div
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  border: '3px solid var(--border)',
-                  borderTopColor: 'var(--accent, #6366f1)',
-                  animation: 'spin 1s linear infinite',
+                  marginTop: 16,
+                  background: 'var(--bg-input, #f5f5f5)',
+                  border: '1px solid var(--danger)',
+                  borderRadius: 'var(--radius-sm, 8px)',
+                  padding: '10px 14px',
+                  fontSize: 13,
+                  color: 'var(--danger)',
                 }}
-              />
-              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                Waiting for connection...
-              </span>
-            </div>
+              >
+                {scanError}
+              </div>
+            )}
           </div>
 
-          <div className="section" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button
-              className="btn btn-secondary"
-              style={{ width: '100%' }}
-              onClick={handleSimulateReceived}
-            >
-              Simulate receiving details
-            </button>
+          <div className="section">
             <button
               className="btn btn-ghost"
               style={{ width: '100%' }}
@@ -282,6 +375,7 @@ export function VerifySomeone({ identity }: Props) {
               <DetailRow label="Nationality" value={subject.nationality} />
               <DetailRow label="Document type" value={formatDocumentType(subject.documentType)} />
               <DetailRow label="Document number" value={subject.documentNumber} />
+              <DetailRow label="Document country" value={subject.documentCountry} />
               <DetailRow label="Expiry" value={subject.documentExpiry || '—'} />
               <DetailRow label="Person type" value={subject.isChild ? 'Child (under 18)' : 'Adult (18+)'} />
               {subject.isChild && subject.guardianPubkey && (
@@ -388,6 +482,7 @@ export function VerifySomeone({ identity }: Props) {
               <DetailRow label="Nationality" value={subject.nationality} />
               <DetailRow label="Document type" value={formatDocumentType(subject.documentType)} />
               <DetailRow label="Document number" value={subject.documentNumber} />
+              <DetailRow label="Document country" value={subject.documentCountry} />
               <DetailRow label="Expiry" value={subject.documentExpiry || '—'} />
               <DetailRow label="Age range" value={computeAgeRange(subject.dateOfBirth)} />
               <DetailRow label="Tier" value={`Tier ${computeTier(subject)}`} />
@@ -417,6 +512,22 @@ export function VerifySomeone({ identity }: Props) {
                 Persona credential — anonymous, age range only ({computeAgeRange(subject.dateOfBirth)})
               </div>
             </div>
+
+            {ceremonyError && (
+              <div
+                style={{
+                  marginTop: 16,
+                  background: 'var(--bg-input, #f5f5f5)',
+                  border: '1px solid var(--danger)',
+                  borderRadius: 'var(--radius-sm, 8px)',
+                  padding: '10px 14px',
+                  fontSize: 13,
+                  color: 'var(--danger)',
+                }}
+              >
+                Error: {ceremonyError}
+              </div>
+            )}
           </div>
 
           <div className="section" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -438,8 +549,45 @@ export function VerifySomeone({ identity }: Props) {
         </div>
       )}
 
-      {/* ── Step 4: Done ─────────────────────────────────────────────────── */}
-      {step === 'done' && subject && (
+      {/* ── Step 4: Issuing (spinner) ─────────────────────────────────────── */}
+      {step === 'issuing' && (
+        <div>
+          <div className="section">
+            <h2 style={{ marginBottom: 8 }}>Issuing credentials</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 24 }}>
+              Signing credentials — this will only take a moment.
+            </p>
+
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 16,
+                padding: '32px 0',
+              }}
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  border: '3px solid var(--border)',
+                  borderTopColor: 'var(--accent, #6366f1)',
+                  animation: 'spin 1s linear infinite',
+                }}
+              />
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                Generating credentials...
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 4: Done — show credentials QR ───────────────────────────── */}
+      {step === 'done' && subject && credentialQR && (
         <div>
           <div className="section" style={{ textAlign: 'center' }}>
             <div
@@ -459,19 +607,20 @@ export function VerifySomeone({ identity }: Props) {
               ✓
             </div>
 
-            <h2 style={{ marginBottom: 8 }}>Credentials Issued</h2>
+            <h2 style={{ marginBottom: 8 }}>Credentials Ready</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 24 }}>
-              {subject.fullName.split(' ')[0]}&apos;s credentials have been sent to their app.
+              Ask {subject.fullName.split(' ')[0]} to scan this QR code to receive their credentials.
             </p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+              <QRCode data={credentialQR} size={240} />
+            </div>
 
             <div className="card" style={{ textAlign: 'left', marginBottom: 0 }}>
               <DetailRow label="Issued to" value={subject.fullName} />
-              <DetailRow label="Person credential" value="Sent" />
-              <DetailRow label="Persona credential" value="Sent" />
-              <DetailRow
-                label="Age range"
-                value={computeAgeRange(subject.dateOfBirth)}
-              />
+              <DetailRow label="Person credential" value="Ready" />
+              <DetailRow label="Persona credential" value="Ready" />
+              <DetailRow label="Age range" value={computeAgeRange(subject.dateOfBirth)} />
               <DetailRow label="Tier" value={`Tier ${computeTier(subject)}`} />
             </div>
           </div>

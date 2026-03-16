@@ -31,8 +31,21 @@ export function usePreferences() {
     await db.savePreferences(updated);
   }, [preferences]);
 
+  const setRelayUrl = useCallback(async (url: string) => {
+    const updated = { ...preferences, relayUrl: url };
+    setPreferences(updated);
+    await db.savePreferences(updated);
+  }, [preferences]);
+
+  const setPowerMode = useCallback(async (enabled: boolean) => {
+    const updated = { ...preferences, powerMode: enabled };
+    setPreferences(updated);
+    await db.savePreferences(updated);
+  }, [preferences]);
+
   const securityTier: SecurityTier = preferences.securityTier ?? 'basic';
   const wordCount = TIER_WORD_COUNT[securityTier];
+  const powerMode = preferences.powerMode ?? false;
 
-  return { preferences, loading, setTheme, securityTier, wordCount, setSecurityTier };
+  return { preferences, loading, setTheme, securityTier, wordCount, setSecurityTier, setRelayUrl, setPowerMode, powerMode };
 }

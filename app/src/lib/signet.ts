@@ -18,6 +18,7 @@ import {
   splitSecret,
   shareToWords,
   mnemonicToEntropy,
+  createTwoCredentialCeremony,
 } from 'signet-protocol';
 import type { SignetIdentity } from '../types';
 
@@ -44,6 +45,7 @@ export {
   splitSecret,
   shareToWords,
   mnemonicToEntropy,
+  createTwoCredentialCeremony,
 };
 
 /** Create a new identity with two keypairs from a fresh mnemonic */

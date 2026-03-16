@@ -190,6 +190,11 @@ export function GetVerified({ identity, onMarkBackedUp }: Props) {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           This will send your details to their app for confirmation.
         </p>
+
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 24 }}>
+          After receiving your credentials, you can publish them to the Nostr network so other apps
+          can see your verification. This is optional — configure a relay in Settings → Power Mode.
+        </p>
       </div>
     </div>
   );
