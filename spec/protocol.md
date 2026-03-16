@@ -1906,6 +1906,21 @@ The corruption that was invisible becomes the evidence that catches itself. The 
 
 Cross-jurisdiction verification (§24.4) provides the escape valve: a person in a corrupt jurisdiction can get verified by a professional in a less corrupt one. The credential from the independent jurisdiction carries higher confidence, and the discrepancy (if any) between the two credentials surfaces the problem.
 
+#### The game theory inversion
+
+Currently, bribery is a Nash equilibrium in many developing countries — everyone does it because the cost of not doing it (waiting months, being denied) exceeds the cost of doing it (a small fee, no consequences). Signet breaks the equilibrium from both sides:
+
+- **The corrupt official** carries every bribed verification as a permanent liability. One anomaly detection flag and their entire history unravels — taking down every credential they ever signed. Their career, their professional registration, and their reputation are on the line forever.
+- **The person paying the bribe** has their entire identity infrastructure linked to that official. If the official falls, their credential's IQ contribution drops to near zero. Everything built on top — service access, family trust chains, children's verifications — crumbles. The bribe isn't a one-time transaction; it's a permanent bond to a ticking time bomb.
+
+The honest route becomes the rational economic choice, even in a corrupt environment. A slow, honest credential lasts forever. A fast, corrupt credential is a house of cards. Both sides of the bribe are incentivised to go straight — not through enforcement, but through structural incentives. The system doesn't need to catch everyone — it just needs to shift the equilibrium.
+
+#### Scale of the problem
+
+The UN estimates $1 trillion is paid in bribes annually and $2.6 trillion stolen through corruption — roughly 5% of global GDP (~$5.75 trillion in 2025). Even reducing document-related bribery by a fraction of a percent moves billions. Anti-corruption as a structural byproduct of transparent identity verification, at zero additional cost.
+
+Sources: [UN Secretary-General, Security Council (2018)](https://press.un.org/en/2018/sc13493.doc.htm), [World Economic Forum (2018)](https://www.weforum.org/stories/2018/12/the-global-economy-loses-3-6-trillion-to-corruption-each-year-says-u-n/), [World Bank](https://blogs.worldbank.org/en/governance/what-are-costs-corruption).
+
 ### 24.6 Document Type Registry
 
 The Merkle tree leaf keys and the document type strings used in nullifier computation are defined by the **Signet Document Registry**, which is maintained separately from this specification.
