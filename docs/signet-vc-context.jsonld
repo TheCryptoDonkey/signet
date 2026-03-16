@@ -1,0 +1,31 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "signet": "https://signet.trotters.cc/ns#",
+    "SignetCredential": "signet:SignetCredential",
+    "signetTier": {
+      "@id": "signet:tier",
+      "@type": "xsd:integer"
+    },
+    "signetIQ": {
+      "@id": "signet:iq",
+      "@type": "xsd:integer"
+    },
+    "signetScope": "signet:scope",
+    "entityType": "signet:entityType",
+    "verificationMethod": "signet:verificationMethod",
+    "profession": "signet:profession",
+    "jurisdiction": "signet:jurisdiction",
+    "ageRange": "signet:ageRange",
+    "nullifier": "signet:nullifier",
+    "merkleRoot": "signet:merkleRoot",
+    "documentExpiry": {
+      "@id": "signet:documentExpiry",
+      "@type": "xsd:dateTime"
+    },
+    "photoHash": "signet:photoHash",
+    "agentType": "signet:agentType",
+    "guardianPubkey": "signet:guardianPubkey",
+    "xsd": "http://www.w3.org/2001/XMLSchema#"
+  }
+}
