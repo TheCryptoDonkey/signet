@@ -1227,6 +1227,7 @@ A replaceable event published by an account owner to delegate authority to an ag
     ["p", "<agent_pubkey>"],              // the bot/agent being delegated
     ["entity-type", "<agent_type>"],      // personal_agent, free_personal_agent,
                                           // organised_agent, free_organised_agent
+    ["agent-type", "<type>"],             // optional: "ai", "human", or "device"
     ["expires", "<unix_timestamp>"],      // optional: delegation expiry
     ["algo", "secp256k1"],               // cryptographic algorithm (§9.5)
     ["L", "signet"],
@@ -1244,6 +1245,18 @@ A replaceable event published by an account owner to delegate authority to an ag
 - A Juridical Persona may delegate → `free_organised_agent`
 
 Any other owner→agent type combination is invalid and MUST be rejected by clients and relays.
+
+**Agent type tag (optional):**
+
+The `["agent-type", "<type>"]` tag distinguishes what kind of agent is being delegated:
+
+| Value | Meaning | Example |
+|---|---|---|
+| `ai` | An AI/software agent acting on behalf of the owner | Personal AI assistant, DVM operator, moderation bot |
+| `human` | A human delegate (not an AI) | Guardian, employee, temporary access |
+| `device` | A physical device (robot, IoT, telepresence) | Humanoid robot, smart lock, drone |
+
+If omitted, clients SHOULD assume `human` for backwards compatibility. The tag is informational — it helps clients display appropriate trust context (e.g., "This is an AI agent operated by a verified person" vs "This is a human delegate").
 
 **Revocation:** Delegations are revoked using the existing kind 30475 revocation event, with the `["d", "<agent_pubkey>"]` tag pointing to the agent being revoked.
 
