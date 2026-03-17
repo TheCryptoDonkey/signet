@@ -14,50 +14,85 @@ export async function isBiometricAvailable(): Promise<boolean> {
   }
 }
 
-/** Set up biometric auth — creates a WebAuthn credential and stores the encryption key behind it */
+/** The PRF salt used with WebAuthn PRF extension — app-specific, constant */
+const PRF_SALT = new Uint8Array([
+  0x73, 0x69, 0x67, 0x6e, 0x65, 0x74, 0x2d, 0x70,  // "signet-p"
+  0x72, 0x66, 0x2d, 0x73, 0x61, 0x6c, 0x74, 0x2d,  // "rf-salt-"
+  0x76, 0x31, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // "v1" + padding
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // 32 bytes total
+]);
+
+/** Get the relying party ID for WebAuthn */
+function getRpId(): string {
+  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? window.location.hostname
+    : 'signet.trotters.cc';
+}
+
+/**
+ * Set up biometric auth — creates a WebAuthn credential.
+ * Tries PRF extension first (hardware-derived key). Falls back to credential-ID-based
+ * key derivation if PRF is unavailable (weaker but still biometric-gated).
+ */
 export async function setupBiometric(encryptionKey: string): Promise<boolean> {
   try {
     const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const credential = await navigator.credentials.create({
-      publicKey: {
-        challenge,
-        rp: {
-          name: 'My Signet',
-          id: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? window.location.hostname
-            : 'signet.trotters.cc',
-        },
-        user: {
-          id: crypto.getRandomValues(new Uint8Array(16)),
-          name: 'signet-user',
-          displayName: 'Signet User',
-        },
-        pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
-        authenticatorSelection: {
-          authenticatorAttachment: 'platform',
-          userVerification: 'required',
-          residentKey: 'preferred',
-        },
-        timeout: 60000,
+
+    // Request PRF extension during credential creation
+    const createOptions: PublicKeyCredentialCreationOptions & { extensions?: Record<string, unknown> } = {
+      challenge,
+      rp: { name: 'My Signet', id: getRpId() },
+      user: {
+        id: crypto.getRandomValues(new Uint8Array(16)),
+        name: 'signet-user',
+        displayName: 'Signet User',
       },
+      pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform',
+        userVerification: 'required',
+        residentKey: 'preferred',
+      },
+      extensions: { prf: {} },
+      timeout: 60000,
+    };
+
+    const credential = await navigator.credentials.create({
+      publicKey: createOptions,
     }) as PublicKeyCredential | null;
 
     if (!credential) return false;
 
-    // Store credential ID for later retrieval
     const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
     localStorage.setItem(CREDENTIAL_ID_KEY, credId);
 
-    // Since PRF extension isn't universally available, we store the encryption key
-    // encrypted with a key derived from the credential ID + a device salt.
-    // The biometric gate is the WebAuthn assertion — you can't get past it without the biometric.
+    // Check if PRF extension is supported by the authenticator
+    const extensions = (credential as PublicKeyCredential & { getClientExtensionResults(): Record<string, unknown> }).getClientExtensionResults();
+    const prfSupported = !!(extensions?.prf && (extensions.prf as Record<string, unknown>)?.enabled);
+
+    if (prfSupported) {
+      // PRF available: get hardware-derived key material via assertion
+      const prfKey = await getPRFKey(credId);
+      if (prfKey) {
+        const derivedKey = await deriveKeyFromPRF(prfKey);
+        const encrypted = await encryptWithKey(encryptionKey, derivedKey);
+        localStorage.setItem(ENCRYPTED_KEY_KEY, JSON.stringify({ encrypted, prf: true }));
+        localStorage.setItem(AUTH_METHOD_KEY, 'biometric');
+        return true;
+      }
+    }
+
+    // PRF not available: fall back to credential-ID-based derivation (weaker)
+    // The biometric assertion still gates access, but the key material is derived from
+    // the credential ID which is stored in localStorage. This is secure against live
+    // attacks (need biometric) but not against offline extraction of localStorage.
     const deviceSalt = crypto.getRandomValues(new Uint8Array(16));
     const derivedKey = await deriveKeyFromCredential(credId, deviceSalt);
     const encrypted = await encryptWithKey(encryptionKey, derivedKey);
 
     localStorage.setItem(
       ENCRYPTED_KEY_KEY,
-      JSON.stringify({ encrypted, salt: btoa(String.fromCharCode(...deviceSalt)) }),
+      JSON.stringify({ encrypted, salt: btoa(String.fromCharCode(...deviceSalt)), prf: false }),
     );
     localStorage.setItem(AUTH_METHOD_KEY, 'biometric');
 
@@ -65,6 +100,46 @@ export async function setupBiometric(encryptionKey: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Get PRF output from the authenticator via assertion */
+async function getPRFKey(credIdB64: string): Promise<ArrayBuffer | null> {
+  try {
+    const credIdBytes = Uint8Array.from(atob(credIdB64), c => c.charCodeAt(0));
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{ id: credIdBytes, type: 'public-key', transports: ['internal'] }],
+        userVerification: 'required',
+        extensions: { prf: { eval: { first: PRF_SALT } } } as Record<string, unknown>,
+        timeout: 60000,
+      },
+    }) as PublicKeyCredential | null;
+
+    if (!assertion) return null;
+
+    const extensions = (assertion as PublicKeyCredential & { getClientExtensionResults(): Record<string, unknown> }).getClientExtensionResults();
+    const prfResults = extensions?.prf as Record<string, unknown> | undefined;
+    const results = prfResults?.results as Record<string, ArrayBuffer> | undefined;
+
+    return results?.first ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Derive an AES-256-GCM key from PRF output (hardware-derived, high entropy) */
+async function deriveKeyFromPRF(prfOutput: ArrayBuffer): Promise<CryptoKey> {
+  const keyMaterial = await crypto.subtle.importKey('raw', prfOutput, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: PRF_SALT, info: new TextEncoder().encode('signet-encryption-key') },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
 }
 
 /** Set up PIN auth — derives encryption key from PIN via PBKDF2 */
@@ -86,29 +161,40 @@ export async function authenticateBiometric(): Promise<string | null> {
     const credIdB64 = localStorage.getItem(CREDENTIAL_ID_KEY);
     if (!credIdB64) return null;
 
-    const credIdBytes = Uint8Array.from(atob(credIdB64), c => c.charCodeAt(0));
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        allowCredentials: [{ id: credIdBytes, type: 'public-key', transports: ['internal'] }],
-        userVerification: 'required',
-        timeout: 60000,
-      },
-    }) as PublicKeyCredential | null;
-
-    if (!assertion) return null;
-
-    // Biometric passed — decrypt the stored encryption key
     const raw = localStorage.getItem(ENCRYPTED_KEY_KEY);
     if (!raw) return null;
     const stored = JSON.parse(raw) as Record<string, unknown>;
-    if (typeof stored.encrypted !== 'string' || typeof stored.salt !== 'string') return null;
+    if (typeof stored.encrypted !== 'string') return null;
 
-    const salt = Uint8Array.from(atob(stored.salt), c => c.charCodeAt(0));
-    const derivedKey = await deriveKeyFromCredential(credIdB64, salt);
-    return await decryptWithKey(stored.encrypted, derivedKey);
+    const usesPRF = stored.prf === true;
+
+    if (usesPRF) {
+      // PRF path: get hardware-derived key from authenticator
+      const prfKey = await getPRFKey(credIdB64);
+      if (!prfKey) return null;
+      const derivedKey = await deriveKeyFromPRF(prfKey);
+      return await decryptWithKey(stored.encrypted, derivedKey);
+    } else {
+      // Fallback path: biometric assertion + credential-ID-based key
+      const credIdBytes = Uint8Array.from(atob(credIdB64), c => c.charCodeAt(0));
+      const challenge = crypto.getRandomValues(new Uint8Array(32));
+
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          allowCredentials: [{ id: credIdBytes, type: 'public-key', transports: ['internal'] }],
+          userVerification: 'required',
+          timeout: 60000,
+        },
+      }) as PublicKeyCredential | null;
+
+      if (!assertion) return null;
+
+      if (typeof stored.salt !== 'string') return null;
+      const salt = Uint8Array.from(atob(stored.salt), c => c.charCodeAt(0));
+      const derivedKey = await deriveKeyFromCredential(credIdB64, salt);
+      return await decryptWithKey(stored.encrypted, derivedKey);
+    }
   } catch {
     return null;
   }

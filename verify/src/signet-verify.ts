@@ -2,10 +2,10 @@
  * Signet Verify — Website Age Verification SDK
  *
  * Usage:
- *   <script src="https://cdn.signet.trotters.cc/verify.js"></script>
+ *   <script src="https://cdn.signet.trotters.cc/signet-verify.js"></script>
  *   <script>
  *     const result = await Signet.verifyAge('18+');
- *     if (result.verified) { /* allow access */ }
+ *     if (result.verified) { // allow access }
  *   </script>
  */
 
@@ -95,10 +95,23 @@ function getTagValue(tags: string[][], key: string): string | undefined {
   return tag ? tag[1] : undefined;
 }
 
-// Verify a Schnorr signature on a Nostr event (simplified — uses SubtleCrypto)
-// TODO: KNOWN GAP — Full BIP-340 Schnorr signature verification is required before production use.
-// SubtleCrypto does not support secp256k1 Schnorr. The real fix is to bundle @noble/curves
-// into the SDK build. Until then, only the event ID hash and structural guards are enforced.
+// BIP-340 Schnorr signature verification via @noble/curves (bundled by esbuild)
+import { schnorr } from '@noble/curves/secp256k1';
+import { sha256 } from '@noble/hashes/sha256';
+import { bytesToHex } from '@noble/hashes/utils';
+
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return bytes;
+}
+
+/**
+ * Verify a Nostr event's Schnorr signature (BIP-340).
+ * Checks: structural validity, event ID hash, and cryptographic signature.
+ */
 async function verifyEventSignature(event: PresentationResponse['credential']): Promise<boolean> {
   // Structural validation: check field formats
   if (!event.id || !event.pubkey || !event.sig || !event.tags || event.kind !== 30470) {
@@ -111,7 +124,7 @@ async function verifyEventSignature(event: PresentationResponse['credential']): 
   // id must be exactly 64 hex chars (32-byte SHA-256 hash)
   if (!/^[0-9a-f]{64}$/i.test(event.id)) return false;
 
-  // Field-size bounds (MED-1)
+  // Field-size bounds
   if (event.tags.length > 100) return false;
   if (event.content.length > 65536) return false;
   if (event.tags.some(t => t.some(v => v.length > 1024))) return false;
@@ -122,16 +135,22 @@ async function verifyEventSignature(event: PresentationResponse['credential']): 
   if (!tagKeys.includes('age-range')) return false;
   if (!tagKeys.includes('entity-type')) return false;
 
-  // Verify event ID matches the hash of the serialized event
+  // Verify event ID matches the SHA-256 hash of the serialized event
   const serialized = JSON.stringify([0, event.pubkey, event.created_at, event.kind, event.tags, event.content]);
   const encoder = new TextEncoder();
-  const hash = await crypto.subtle.digest('SHA-256', encoder.encode(serialized));
-  const expectedId = Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, '0')).join('');
-  if (expectedId !== event.id) return false;
+  const hashBytes = sha256(encoder.encode(serialized));
+  const expectedId = bytesToHex(hashBytes);
+  if (expectedId !== event.id.toLowerCase()) return false;
 
-  // TODO: Add full BIP-340 Schnorr verification here once @noble/curves is bundled into the SDK.
-  // For now, the event ID hash check ensures content integrity; the signature itself is not verified.
-  return true;
+  // BIP-340 Schnorr signature verification
+  try {
+    const sigBytes = hexToBytes(event.sig);
+    const idBytes = hexToBytes(event.id);
+    const pubkeyBytes = hexToBytes(event.pubkey);
+    return schnorr.verify(sigBytes, idBytes, pubkeyBytes);
+  } catch {
+    return false;
+  }
 }
 
 // Check if the credential's age range satisfies the required range
