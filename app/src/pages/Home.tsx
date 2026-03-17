@@ -12,9 +12,10 @@ interface Props {
   onNavigateGetVerified: () => void;
   onNavigateDocuments: () => void;
   onSelectCredential: (cred: StoredCredential) => void;
+  onNavigateWebVerify: () => void;
 }
 
-export function Home({ identity, members, credentials, onSelectMember, onNavigateAdd, onNavigateGetVerified, onNavigateDocuments: _onNavigateDocuments, onSelectCredential: _onSelectCredential }: Props) {
+export function Home({ identity, members, credentials, onSelectMember, onNavigateAdd, onNavigateGetVerified, onNavigateDocuments: _onNavigateDocuments, onSelectCredential: _onSelectCredential, onNavigateWebVerify }: Props) {
   const [copied, setCopied] = useState(false);
   const activePubkey = getActivePubkey(identity);
   const npub = encodeNpub(activePubkey);
@@ -115,6 +116,20 @@ export function Home({ identity, members, credentials, onSelectMember, onNavigat
       >
         <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
           How verification works →
+        </div>
+      </div>
+
+      {/* Verify on a website */}
+      <div
+        className="card section"
+        style={{ border: '1px dashed var(--border)', background: 'none', cursor: 'pointer' }}
+        onClick={onNavigateWebVerify}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && onNavigateWebVerify()}
+      >
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          Verify on a website →
         </div>
       </div>
 

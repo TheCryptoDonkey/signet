@@ -24,10 +24,12 @@ import { ApproveVerification } from './pages/ApproveVerification';
 import { ApproveConnect } from './pages/ApproveConnect';
 import { AuthScreen } from './pages/AuthScreen';
 import { SetupAuth } from './pages/SetupAuth';
+import { WebVerify } from './pages/WebVerify';
 import { getActivePubkey, getActivePrivateKey, getActiveDisplayName } from './lib/signet';
 import { isAuthSetUp, generateEncryptionKey, clearAuthData } from './lib/auth';
 import type { VerifyRequest, VerifyResponse } from './lib/presentation';
 import { buildVerifyResponse, sendResponseViaBroadcast, parseVerifyRequest } from './lib/presentation';
+import { publishVerifyResponseToRelay } from './lib/relay-publish';
 import { parseNostrConnectURI } from './lib/nip46';
 import type { NostrConnectRequest } from './lib/nip46';
 
@@ -185,6 +187,10 @@ export function App() {
       const subjectPubkey = activePubkey ?? '';
       const response = buildVerifyResponse(pendingVerifyRequest.requestId, parsedEvent, subjectPubkey);
       sendResponseViaBroadcast(response);
+      // Cross-device flow: also publish to relay if request came with a relayUrl
+      if (pendingVerifyRequest.relayUrl) {
+        publishVerifyResponseToRelay(response, pendingVerifyRequest.relayUrl).catch(() => {});
+      }
     }
     setPendingVerifyRequest(null);
     setPage('home');
@@ -355,6 +361,21 @@ export function App() {
     );
   }
 
+  // Web Verify — scan or pick a QR from a website
+  if (page === 'web-verify') {
+    return (
+      <Layout activePage={page} onNavigate={setPage} onSettingsOpen={() => setPage('settings')} title="Verify on a website" showBack onBack={() => setPage('home')}>
+        <WebVerify
+          onVerifyRequest={(request) => {
+            setPendingVerifyRequest(request);
+            setPage('approve-verification');
+          }}
+          onBack={() => setPage('home')}
+        />
+      </Layout>
+    );
+  }
+
   // Approve Verification
   if (page === 'approve-verification' && pendingVerifyRequest) {
     const personaCred = credentials.find(c => c.keypairType === 'persona') ?? credentials[0] ?? null;
@@ -407,6 +428,7 @@ export function App() {
         onNavigateGetVerified={() => setPage('get-verified')}
         onNavigateDocuments={() => setPage('my-documents')}
         onSelectCredential={(cred) => { setSelectedCredential(cred); setPage('credential-detail'); }}
+        onNavigateWebVerify={() => setPage('web-verify')}
       />
     </Layout>
   );

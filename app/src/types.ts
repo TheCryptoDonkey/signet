@@ -111,4 +111,4 @@ export interface AppPreferences {
   powerMode?: boolean;
 }
 
-export type Page = 'home' | 'family' | 'add' | 'member-detail' | 'settings' | 'child-settings' | 'get-verified' | 'my-documents' | 'add-document' | 'verify-someone' | 'shamir' | 'identity-bridge' | 'import-nsec' | 'credential-detail' | 'approve-verification' | 'approve-connect';
+export type Page = 'home' | 'family' | 'add' | 'member-detail' | 'settings' | 'child-settings' | 'get-verified' | 'my-documents' | 'add-document' | 'verify-someone' | 'shamir' | 'identity-bridge' | 'import-nsec' | 'credential-detail' | 'approve-verification' | 'approve-connect' | 'web-verify';
