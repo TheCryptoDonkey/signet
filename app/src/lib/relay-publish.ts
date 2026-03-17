@@ -29,7 +29,7 @@ export async function publishVerifyResponseToRelay(
 ): Promise<boolean> {
   if (!relayUrl) return false;
   // Validate relay URL: must be wss:// for production or ws://localhost for dev
-  if (!/^wss:\/\//i.test(relayUrl) && !/^ws:\/\/(localhost|127\.0\.0\.1)/i.test(relayUrl)) {
+  if (!/^wss:\/\//i.test(relayUrl) && !/^ws:\/\/(localhost|127\.0\.0\.1|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/i.test(relayUrl)) {
     return false;
   }
 
@@ -69,7 +69,7 @@ export async function publishAuthResponseToRelay(
 ): Promise<boolean> {
   if (!relayUrl) return false;
   // Validate relay URL: must be wss:// for production or ws://localhost for dev
-  if (!/^wss:\/\//i.test(relayUrl) && !/^ws:\/\/(localhost|127\.0\.0\.1)/i.test(relayUrl)) {
+  if (!/^wss:\/\//i.test(relayUrl) && !/^ws:\/\/(localhost|127\.0\.0\.1|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/i.test(relayUrl)) {
     return false;
   }
 
