@@ -1,17 +1,17 @@
 # Child Safety Policy
 
-**Signet Protocol — Draft v0.1.0**
+**The Signet Protocol — v0.1.0**
 
 *Template — Seek qualified legal counsel for your jurisdiction before deployment.*
 
-**Effective Date:** [DATE]
-**Last Updated:** [DATE]
+**Effective Date:** March 2026
+**Last Updated:** March 2026
 
 ---
 
 ## 1. Purpose
 
-This Child Safety Policy ("Policy") sets out the commitment of [ORGANIZATION NAME] ("we," "us," or "our") to protecting children who interact with or are affected by the Signet Protocol (the "Protocol"). The Protocol's Tier 4 verification (Professional Verification — Adult + Child) specifically addresses child identity verification, and this Policy governs how that capability — and all child-related data — is handled.
+This Child Safety Policy ("Policy") sets out the commitment of the Signet Protocol ("we," "us," or "our") to protecting children who interact with or are affected by the Signet Protocol (the "Protocol"). The Protocol's Tier 4 verification (Professional Verification — Adult + Child) specifically addresses child identity verification, and this Policy governs how that capability — and all child-related data — is handled.
 
 The safety and privacy of children is our paramount concern. This Policy is designed to comply with all applicable child protection laws globally and to exceed minimum requirements where practicable.
 
@@ -41,6 +41,8 @@ This Policy applies to:
 
 **"Age Range Proof"** means a zero-knowledge proof (using Bulletproofs) that demonstrates a user's age falls within a specified range without revealing the exact date of birth.
 
+**"Signet IQ"** means the Protocol's continuous Identification Quotient score (0–200) reflecting the cumulative strength of a user's verification signals. For children, Signet IQ is computed from the guardian's own verification tier and Signet IQ, the child's own Tier 4 credential, and any peer vouches from verified accounts.
+
 ---
 
 ## 4. Regulatory Framework
@@ -56,7 +58,7 @@ This Policy is designed to comply with the following laws and frameworks:
 | **United Kingdom** | UK GDPR + Age Appropriate Design Code (AADC) | Best interests of the child; age-appropriate design; 15 standards of AADC |
 | **Australia** | Privacy Act 1988 + Online Safety Act 2021 | Reasonable steps to verify age; basic online safety expectations |
 | **South Korea** | PIPA + Act on Promotion of Information and Communications Network | Consent of legal representative for children under 14 |
-| **Brazil** | LGPD Article 14 | Best interests of the child; specific parental consent for children under 12; dual consent for 12-17 |
+| **Brazil** | LGPD Article 14 | Best interests of the child; specific parental consent for children under 12; dual consent for 12–17 |
 | **India** | DPDP Act 2023 | Verifiable consent of parent/guardian for children (under 18); prohibition on tracking, behavioural monitoring, and targeted advertising for children |
 | **China** | PIPL Article 28 + Provisions on Protecting Minors Online | Specific consent for under-14; heightened protections for all minors |
 | **Japan** | APPI + Basic Act on Cyber Security | Industry guidelines for children's data protection |
@@ -96,12 +98,37 @@ The Protocol supports the following standard age range proofs:
 
 ### 5.3 Proof Issuance for Children
 
-For children (under 18):
-1. The age range proof must be created as part of a Tier 4 verification.
-2. A licensed professional verifier must confirm the child's age against a valid identity document.
-3. The parent/guardian must be present (in person or through a legally equivalent process) and must provide verifiable consent.
-4. The professional issues two credentials: a Natural Person credential (keypair A) and a Persona credential (keypair B). Both carry the age-range proof and guardian tags (`["guardian", "<parent_pubkey>"]`). The child's real name is stored only as a private Merkle leaf — never published on-chain.
-5. The document-based nullifier (hash of document type, country, and number) is included only on the Natural Person credential, preventing duplicate identity creation.
+For children (under 18), the verification ceremony follows a user-led flow with professional confirmation:
+
+1. The parent/guardian and child attend a Tier 4 verification with a licensed professional (solicitor, notary, doctor, or equivalent).
+2. **The user (parent/guardian) enters all document details** in the My Signet app: document type, country of issue, document number, and the child's date of birth. The verifier inspects the physical documents to confirm the data entered is accurate — they do not type on behalf of the user.
+3. The Protocol computes the document-based nullifier locally on the user's device using the `signet-nullifier-v2` formula (SHA-256 of length-prefixed: docType, country, docNumber, "signet-nullifier-v2"). The nullifier is transmitted to the verifier; the raw document details are not.
+4. The verifier generates the Bulletproof age-range proof and issues two credentials simultaneously: a Natural Person credential (keypair A) and a Persona credential (keypair B). Both carry the age-range proof and guardian tags (`["guardian", "<parent_pubkey>"]`). The child's real name is stored only as a private Merkle leaf — never published on-chain.
+5. The Merkle tree for the child's Natural Person credential contains: date of birth (for the age-range proof), guardian relationship, document type, document number, and document expiry. The child's name is included as a private Merkle leaf and is **not** published to any relay. Nationality may be included for jurisdictional compliance.
+6. The document-based nullifier (hash of document type, country, and number using `signet-nullifier-v2`) is included only on the Natural Person credential, preventing duplicate identity creation.
+7. **Biometric account protection:** On the child's device, the My Signet app uses WebAuthn biometric unlock (face recognition or fingerprint) to protect access to the child's account. The biometric data never leaves the device — it is handled entirely by the device's secure enclave via the WebAuthn standard. No biometric templates are transmitted to any server or stored outside the device.
+
+### 5.4 Teachers as a Primary Child Verification Channel
+
+Teachers and school administrators are a recognised channel for Tier 4 child verification. School enrollment records — which establish the parent-child relationship and provide date of birth evidence — are accepted as supporting documentation alongside parental ID.
+
+A teacher who is a licensed professional (e.g., a qualified teacher in a jurisdiction that treats teaching as a regulated profession, or a school-affiliated notary) may perform Tier 4 verification using:
+- The parent/guardian's government-issued ID
+- The school enrollment record as child evidence (in addition to or in lieu of a birth certificate or passport)
+
+This pathway is especially important for home education communities and regions where access to solicitors or notaries is limited. The educator's professional body and their employing institution are the trust anchor. Fraudulent attestation by a teacher constitutes professional misconduct under applicable education law.
+
+### 5.5 SDK-Based Age Verification for Websites
+
+The Signet SDK allows websites and applications to verify a child's age range without receiving any personally identifiable information. The data flow is:
+
+```
+Website → SDK → My Signet app → ZK age-range proof → Website
+```
+
+The website requests proof of a specific age claim (e.g., "user is under 18" or "user is between 13 and 17"). The Signet SDK routes this request to the My Signet app on the user's device. The app generates the proof locally and returns only the cryptographic proof — no name, no date of birth, no document details, no nullifier. The website verifies the proof mathematically and learns only the age range claim.
+
+This means websites can comply with age verification requirements (COPPA, UK Online Safety Act, Australian under-16 regulations) without collecting or storing any personal data about children.
 
 ---
 
@@ -149,7 +176,7 @@ The Protocol supports the following parental consent mechanisms:
 
 Parents/guardians may withdraw consent at any time by:
 1. Publishing a revocation event (kind 30475) from the parent/guardian's Nostr key, revoking the consent event.
-2. Contacting [CONTACT EMAIL] to request revocation assistance.
+2. Contacting the Signet Protocol support team to request revocation assistance.
 3. Through any Nostr client implementing the Protocol's consent management features.
 
 Upon consent withdrawal:
@@ -173,20 +200,48 @@ The Protocol applies the strictest data minimisation principles for children's d
 | Age range proof (ZK proof) | Yes | Required for age verification |
 | Parental consent record | Yes | Required for legal compliance |
 | Credential metadata (tier, dates) | Yes | Required for credential functionality |
-| Child's name | **No** | Not required; not embedded in credential |
-| Child's date of birth | **No** | Replaced by ZK age range proof |
+| Child's name | **No (not on-chain)** | Stored only as a private Merkle leaf; never published |
+| Child's date of birth | **No (not on-chain)** | Replaced by ZK age range proof; stored only as a private Merkle leaf |
 | Child's photograph | **No** | Not required |
-| Child's government ID number | **No** | Not stored; only verified by professional verifier and discarded |
-| Nullifier hash (document hash) | Yes (NP credential only) | Required for duplicate prevention; cannot be reversed to document details |
+| Child's government ID number | **No (not on-chain)** | Stored only as a private Merkle leaf for selective disclosure; not stored by verifier after ceremony |
+| Nullifier hash (`signet-nullifier-v2`) | Yes (NP credential only) | Required for duplicate prevention; cannot be reversed to document details |
 | Guardian pubkey(s) | Yes (both credentials) | Required for guardian-child link |
-| Merkle root | Yes (NP credential only) | Required for selective disclosure of verified attributes |
+| Guardian relationship | Yes (private Merkle leaf, NP credential) | Establishes legal basis for guardian link |
+| Merkle root | Yes (NP credential only) | Commits to verified attributes without publishing them |
 | Entity type tag | Yes (both credentials) | Required to distinguish Natural Person from Persona |
 | Child's location | **No** | Not required |
-| Child's school or institution | **No** | Not required |
+| Child's school or institution | **No (not on-chain)** | May be referenced as supporting evidence but not published |
 | Behavioural data | **No** | Prohibited |
 | Usage tracking | **No** | Prohibited for children |
+| Biometric data | **No** | Device-local only via WebAuthn; no templates transmitted |
 
-### 7.3 Retention Limits
+### 7.3 Merkle Tree Attributes for Children
+
+The Natural Person credential for a child commits to a Merkle tree with the following leaves:
+
+| Leaf | Purpose | Disclosed on-chain? |
+|------|---------|---------------------|
+| `dateOfBirth:<ISO date>` | Source for ZK age-range proof | No — private |
+| `guardianRelationship:<type>` | Legal basis (e.g., "parent", "legal_guardian") | No — private |
+| `documentType:<type>` | Type of evidence presented | No — private |
+| `documentNumber:<number>` | For selective disclosure if required | No — private |
+| `documentExpiry:<date>` | Document validity check | No — private |
+| `name:<name>` | For selective disclosure if required | No — private |
+| `nationality:<code>` | Jurisdictional compliance | No — private |
+| `nullifier:<hash>` | Duplicate prevention | Yes (as top-level tag) |
+
+Only the Merkle root and the nullifier hash appear on-chain. Individual leaves are revealed only when the child's guardian explicitly exercises selective disclosure (e.g., to prove the child's nationality to a regulatory authority).
+
+### 7.4 Signet IQ for Children
+
+Children have Signet IQ scores computed from:
+- The Tier 4 credential itself (major contribution)
+- The guardian's own verification tier and Signet IQ (weighted contribution, reflecting the strength of the guardian relationship)
+- Peer vouches from other Tier 2+ accounts who know the family
+
+A child's Signet IQ is displayed to relying parties as an aggregate trust signal. It does not reveal the guardian's identity, the child's name, or any other personal attribute — it is computed from public credential events only. Social scoring of children based on their Signet IQ for purposes beyond age verification and access control is prohibited (see Section 8).
+
+### 7.5 Retention Limits
 
 Children's data is subject to the shortest permissible retention periods:
 - Active credentials: Until expiry, revocation, or the child reaching majority (whichever is earliest)
@@ -208,7 +263,7 @@ The following uses of the Protocol in relation to children are **strictly prohib
 4. **Data Monetisation:** Selling, licensing, or otherwise monetising children's credential data or age verification data.
 5. **Automated Decision-Making:** Using children's credential data for automated decisions that produce legal or similarly significant effects.
 6. **Surveillance:** Using the Protocol for ongoing surveillance of children's activities.
-7. **Social Scoring:** Using credential or Signet IQ data to create social scoring systems for children.
+7. **Social Scoring:** Using credential or Signet IQ data to create social scoring systems for children beyond age-appropriate access control.
 8. **Nudging:** Using design patterns that exploit children's vulnerabilities or manipulate their behaviour.
 9. **Unnecessary Data Collection:** Collecting more data from children than is strictly necessary for the credential verification.
 10. **Sharing Without Consent:** Sharing children's data with third parties without verifiable parental consent.
@@ -242,8 +297,8 @@ The following incidents involving children must be reported:
 ### 9.2 Reporting Procedures
 
 **Internal Reporting:**
-- All incidents are reported immediately to the designated Child Safety Officer at [CONTACT EMAIL].
-- The Child Safety Officer escalates to the DPO at [DPO EMAIL] and to senior management.
+- All incidents are reported immediately to the designated Child Safety Officer.
+- The Child Safety Officer escalates to the DPO and to senior management.
 
 **Regulatory Reporting:**
 - Relevant supervisory authorities are notified within the time frames required by applicable law (e.g., 72 hours under GDPR).
@@ -307,6 +362,8 @@ Following a child safety incident:
 - Parental access to review and delete child's data
 - No conditioning of a child's participation on unnecessary disclosure of information
 - Reasonable security measures for children's data
+
+**FTC March 2026 Position:** The FTC will not take enforcement action where personal data is collected solely for age verification purposes, provided the data is robustly deleted and clear notice is given. Signet exceeds this: no personal data is collected, stored, or transmitted during age verification — the ZKP proof contains zero PII.
 
 **State Laws:**
 - California Consumer Privacy Act (CCPA) — opt-in consent required for sale of data of consumers under 16
@@ -402,6 +459,7 @@ All Protocol features affecting children incorporate:
 - Zero-knowledge proofs to avoid exposing personal data
 - Cryptographic protections built into the credential structure
 - Default privacy-protective settings
+- User-enters-verifier-confirms ceremony flow — document data is entered by the user on their own device; the verifier confirms accuracy but never holds raw document details
 
 ### 11.2 Safety by Design
 
@@ -410,6 +468,7 @@ Protocol interfaces and implementations should:
 - Prevent accidental exposure of child identity information
 - Include safeguards against credential misuse
 - Provide clear, age-appropriate guidance
+- Use biometric device unlock (WebAuthn) to protect child accounts on device
 
 ### 11.3 Regular Review
 
@@ -432,6 +491,7 @@ Guardians may delegate specific permissions to trusted adults (step-parents, gra
 - Scope-limited: `full`, `activity-approval`, `content-management`, `contact-approval`
 - Revocable by the guardian at any time
 - Signed by the guardian's Nostr key
+- Tagged with `["agent-type", "guardian"]` to distinguish from other delegation event types
 
 **Layer 3 — Client level (app-specific):**
 Applications enforce permissions based on Layer 1 and Layer 2 data, including screen time limits, content filtering, activity approval workflows, and contact restrictions.
@@ -446,6 +506,7 @@ All professional verifiers authorised to perform Tier 4 (child) verifications mu
 - Complete child safety training before performing child verifications
 - Understand the child protection laws in their jurisdiction
 - Be aware of safeguarding indicators and reporting obligations
+- Understand the user-enters-verifier-confirms ceremony flow and not attempt to enter data on behalf of users
 - Refresh training annually
 
 ### 12.2 Personnel Training
@@ -461,17 +522,15 @@ All personnel involved in Protocol development, operations, or support must:
 
 ### 13.1 Designated Child Safety Officer
 
-[ORGANIZATION NAME] designates a Child Safety Officer responsible for:
+The Signet Protocol designates a Child Safety Officer responsible for:
 - Overseeing implementation of this Policy
 - Coordinating with the DPO on children's data protection matters
 - Managing child safety incident response
 - Engaging with child safety regulators and organisations
 
-**Contact:** [CONTACT EMAIL]
-
 ### 13.2 Record-Keeping
 
-[ORGANIZATION NAME] maintains records of:
+The Signet Protocol maintains records of:
 - Child safety impact assessments
 - Parental consent records
 - Child safety incidents and responses
@@ -480,7 +539,7 @@ All personnel involved in Protocol development, operations, or support must:
 
 ### 13.3 External Oversight
 
-[ORGANIZATION NAME] is committed to transparency and welcomes oversight from:
+The Signet Protocol is committed to transparency and welcomes oversight from:
 - Relevant regulatory authorities
 - Child safety organisations
 - Independent auditors
@@ -492,9 +551,8 @@ All personnel involved in Protocol development, operations, or support must:
 
 For questions, concerns, or reports related to child safety:
 
-**Child Safety Officer:** [CONTACT EMAIL]
-**Data Protection Officer:** [DPO EMAIL]
-**General Contact:** [ORGANIZATION NAME], [ADDRESS]
+**Child Safety Officer:** signet-safety@signetprotocol.org *(placeholder — update before deployment)*
+**Data Protection Officer:** signet-dpo@signetprotocol.org *(placeholder — update before deployment)*
 
 **Emergency Reporting (suspected child exploitation):**
 - UK: Internet Watch Foundation — [https://www.iwf.org.uk](https://www.iwf.org.uk)
@@ -504,7 +562,8 @@ For questions, concerns, or reports related to child safety:
 
 ---
 
-*This Child Safety Policy is provided as a template for the Signet Protocol. It does not constitute legal advice. [ORGANIZATION NAME] recommends seeking qualified legal counsel familiar with the applicable child protection laws in your jurisdiction before deployment.*
+*This Child Safety Policy is provided as a template for the Signet Protocol. It does not constitute legal advice. The Signet Protocol recommends seeking qualified legal counsel familiar with the applicable child protection laws in your jurisdiction before deployment.*
 
-*Signet Protocol — Draft v0.1.0*
+*The Signet Protocol — v0.1.0*
 *Document Version: 1.0*
+*March 2026*
