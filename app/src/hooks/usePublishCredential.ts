@@ -23,28 +23,25 @@ export function usePublishCredential(relayUrl?: string) {
       if (/^ws:\/\//i.test(relayUrl) && !/^ws:\/\/(localhost|127\.0\.0\.1)([:\/]|$)/i.test(relayUrl)) {
         throw new Error('Non-localhost relay must use wss://');
       }
+      let parsedEvent: Record<string, unknown>;
+      try {
+        const raw: unknown = JSON.parse(eventJson);
+        if (typeof raw !== 'object' || raw === null) throw new Error('Invalid event JSON');
+        parsedEvent = raw as Record<string, unknown>;
+      } catch {
+        throw new Error('Invalid event JSON');
+      }
+      const eventId = typeof parsedEvent.id === 'string' ? parsedEvent.id : null;
+
       const ws = new WebSocket(relayUrl);
       await new Promise<void>((resolve, reject) => {
         ws.onopen = () => {
-          let event: unknown;
-          try {
-            event = JSON.parse(eventJson);
-            if (typeof event !== 'object' || event === null) {
-              reject(new Error('Invalid event JSON'));
-              ws.close();
-              return;
-            }
-          } catch {
-            reject(new Error('Invalid event JSON'));
-            ws.close();
-            return;
-          }
-          ws.send(JSON.stringify(['EVENT', event]));
+          ws.send(JSON.stringify(['EVENT', parsedEvent]));
           // Wait briefly for OK response
           ws.onmessage = (msg) => {
             try {
               const data: unknown = JSON.parse(msg.data as string);
-              if (Array.isArray(data) && data[0] === 'OK') {
+              if (Array.isArray(data) && data[0] === 'OK' && (eventId === null || data[1] === eventId)) {
                 resolve();
               }
             } catch {

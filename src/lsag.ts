@@ -42,7 +42,9 @@ function validatePubkeyHex(pubkeyHex: string): void {
 
 function pubkeyToPoint(pubkeyHex: string): ProjectivePoint {
   validatePubkeyHex(pubkeyHex);
-  return Point.fromHex('02' + pubkeyHex);
+  const point = Point.fromHex('02' + pubkeyHex);
+  point.assertValidity();
+  return point;
 }
 
 /**
@@ -109,6 +111,8 @@ export function lsagSign(
   if (ring.length < 2) throw new SignetValidationError('Ring must have at least 2 members');
   if (ring.length > MAX_RING_SIZE) throw new SignetValidationError(`Ring size ${ring.length} exceeds maximum of ${MAX_RING_SIZE}`);
   if (signerIndex < 0 || signerIndex >= ring.length) throw new SignetValidationError('Signer index out of range');
+  const ringSet = new Set(ring);
+  if (ringSet.size !== ring.length) throw new SignetValidationError('Ring contains duplicate members');
 
   const n = ring.length;
   const pi = signerIndex;
@@ -169,6 +173,8 @@ export function lsagVerify(sig: LsagSignature): boolean {
     if (ring.length < 2) return false;
     if (ring.length > MAX_RING_SIZE) return false;
     if (responses.length !== ring.length) return false;
+    const ringSet = new Set(ring);
+    if (ringSet.size !== ring.length) return false;
 
     // Enforce compressed-point format (02/03 prefix + 32 bytes) to prevent
     // duplicate key images via uncompressed representation of the same point

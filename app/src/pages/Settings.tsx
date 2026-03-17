@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { SignetIdentity, AppPreferences, SecurityTier } from '../types';
 import { getActiveDisplayName, encodeNpub } from '../lib/signet';
 
@@ -26,6 +26,13 @@ interface Props {
 
 export function Settings({ identity, preferences, securityTier, onSetTheme, onSetSecurityTier, onDeleteIdentity, onOpenChildSettings, hasChildren, powerMode, onSetPowerMode, onNavigateShamir, onNavigateBridge, onSwitchPrimary }: Props) {
   const [showBackup, setShowBackup] = useState(false);
+
+  useEffect(() => {
+    if (!showBackup) return;
+    const timer = setTimeout(() => setShowBackup(false), 90000);
+    return () => clearTimeout(timer);
+  }, [showBackup]);
+
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [copied, setCopied] = useState(false);
   const [relayUrl, setRelayUrl] = useState('wss://relay.damus.io');

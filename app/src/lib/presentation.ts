@@ -73,6 +73,11 @@ export function parseVerifyRequest(data: string): VerifyRequest | null {
     const callbackUrl = rawCallbackUrl ? rawCallbackUrl.slice(0, 1024) : undefined;
     const relayUrl = rawRelayUrl ? rawRelayUrl.slice(0, 1024) : undefined;
 
+    // Validate callbackUrl scheme: must be https:// or http://localhost
+    if (rawCallbackUrl !== undefined && !/^https:\/\//i.test(rawCallbackUrl) && !/^http:\/\/(localhost|127\.0\.0\.1)([:\/]|$)/i.test(rawCallbackUrl)) {
+      return null;
+    }
+
     // Validate relayUrl starts with wss:// if present
     if (relayUrl !== undefined && !relayUrl.startsWith('wss://')) return null;
 

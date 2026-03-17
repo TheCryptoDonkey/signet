@@ -9,7 +9,19 @@ export function useIdentity(encryptionKey?: string | null) {
   const [loading, setLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
-    const all = await db.getAllIdentities();
+    const raw = await db.getAllIdentities();
+    let all = raw;
+    if (encryptionKey) {
+      all = await Promise.all(raw.map(async (identity) => {
+        if (!identity.encrypted) return identity;
+        try {
+          const decrypted = await db.loadIdentityDecrypted(identity.id, encryptionKey);
+          return decrypted || identity;
+        } catch {
+          return identity; // fallback if decryption fails
+        }
+      }));
+    }
     setIdentities(all);
     const prefs = await db.getPreferences();
     const active = prefs.activeAccountId
@@ -17,7 +29,7 @@ export function useIdentity(encryptionKey?: string | null) {
       : all[0];
     setActiveIdentity(active || null);
     setLoading(false);
-  }, []);
+  }, [encryptionKey]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 

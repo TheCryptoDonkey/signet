@@ -57,7 +57,7 @@ export function GetVerified({ identity, onMarkBackedUp }: Props) {
       if (
         typeof payload !== 'object' ||
         payload === null ||
-        (payload as Record<string, unknown>)['type'] !== 'signet-verifier' ||
+        (payload as Record<string, unknown>)['type'] !== 'signet-verifier-v1' ||
         typeof (payload as Record<string, unknown>)['pubkey'] !== 'string'
       ) {
         setScanError('Invalid verifier QR code. Ask your verifier to show their Signet QR.');
@@ -91,12 +91,17 @@ export function GetVerified({ identity, onMarkBackedUp }: Props) {
       const personaCred = p['persona'] as Partial<StoredCredential> | undefined;
 
       if (npCred && npCred.id && npCred.verifierPubkey) {
+        const idStr = String(npCred.id);
+        const vpStr = String(npCred.verifierPubkey);
+        if (!/^[0-9a-f]{64}$/i.test(idStr) || !/^[0-9a-f]{64}$/i.test(vpStr)) {
+          setCredScanError('Invalid credential data'); return;
+        }
         const cred: StoredCredential = {
-          id: String(npCred.id),
+          id: idStr,
           documentId: String(npCred.documentId ?? ''),
           keypairType: 'natural-person',
           event: String(npCred.event ?? ''),
-          verifierPubkey: String(npCred.verifierPubkey),
+          verifierPubkey: vpStr,
           verifiedAt: typeof npCred.verifiedAt === 'number' ? npCred.verifiedAt : Math.floor(Date.now() / 1000),
           verifierStatus: 'pending',
           ...(npCred.merkleLeaves !== undefined ? { merkleLeaves: npCred.merkleLeaves } : {}),
@@ -104,12 +109,17 @@ export function GetVerified({ identity, onMarkBackedUp }: Props) {
         await db.saveCredential(cred);
       }
       if (personaCred && personaCred.id && personaCred.verifierPubkey) {
+        const pIdStr = String(personaCred.id);
+        const pVpStr = String(personaCred.verifierPubkey);
+        if (!/^[0-9a-f]{64}$/i.test(pIdStr) || !/^[0-9a-f]{64}$/i.test(pVpStr)) {
+          setCredScanError('Invalid credential data'); return;
+        }
         const cred: StoredCredential = {
-          id: String(personaCred.id),
+          id: pIdStr,
           documentId: String(personaCred.documentId ?? ''),
           keypairType: 'persona',
           event: String(personaCred.event ?? ''),
-          verifierPubkey: String(personaCred.verifierPubkey),
+          verifierPubkey: pVpStr,
           verifiedAt: typeof personaCred.verifiedAt === 'number' ? personaCred.verifiedAt : Math.floor(Date.now() / 1000),
           verifierStatus: 'pending',
           ...(personaCred.merkleLeaves !== undefined ? { merkleLeaves: personaCred.merkleLeaves } : {}),

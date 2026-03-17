@@ -24,16 +24,21 @@ import { ApproveVerification } from './pages/ApproveVerification';
 import { AuthScreen } from './pages/AuthScreen';
 import { SetupAuth } from './pages/SetupAuth';
 import { getActivePubkey } from './lib/signet';
-import { isAuthSetUp, generateEncryptionKey } from './lib/auth';
+import { isAuthSetUp, generateEncryptionKey, clearAuthData } from './lib/auth';
 import type { VerifyRequest, VerifyResponse } from './lib/presentation';
-import { buildVerifyResponse, sendResponseViaBroadcast } from './lib/presentation';
+import { buildVerifyResponse, sendResponseViaBroadcast, parseVerifyRequest } from './lib/presentation';
 // getActiveDisplayName, getActivePrivateKey used by child components via props
 
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 export function App() {
-  const { identity, identities, loading: identityLoading, create, restore, importNsec, remove, markBackedUp, switchPrimary } = useIdentity();
-  const { members, addMember, removeMember } = useFamily(identity?.id);
+  // Auth state (must be declared before hooks that depend on encryptionKey)
+  const [encryptionKey, setEncryptionKey] = useState<string | null>(null);
+  const [pendingEncryptionKey, setPendingEncryptionKey] = useState<string | null>(null);
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { identity, identities, loading: identityLoading, create, restore, importNsec, remove, markBackedUp, switchPrimary } = useIdentity(encryptionKey);
+  const { members, addMember, removeMember } = useFamily(identity?.id, encryptionKey);
   const { preferences, loading: prefsLoading, setTheme, securityTier, wordCount, setSecurityTier } = usePreferences();
   const activePubkey = identity ? getActivePubkey(identity) : undefined;
   const { documents } = useDocuments(activePubkey);
@@ -44,11 +49,6 @@ export function App() {
   const [selectedCredential, setSelectedCredential] = useState<StoredCredential | null>(null);
   const [powerMode, setPowerMode] = useState(false);
   const [pendingVerifyRequest, setPendingVerifyRequest] = useState<VerifyRequest | null>(null);
-
-  // Auth state
-  const [encryptionKey, setEncryptionKey] = useState<string | null>(null);
-  const [pendingEncryptionKey, setPendingEncryptionKey] = useState<string | null>(null);
-  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Reset inactivity timer on user activity
   const resetInactivityTimer = useCallback(() => {
@@ -76,8 +76,14 @@ export function App() {
     events.forEach(ev => window.addEventListener(ev, handler, { passive: true }));
     resetInactivityTimer(); // start the timer immediately on unlock
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') setEncryptionKey(null);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       events.forEach(ev => window.removeEventListener(ev, handler));
+      document.removeEventListener('visibilitychange', handleVisibility);
       if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     };
   }, [encryptionKey, resetInactivityTimer]);
@@ -130,6 +136,11 @@ export function App() {
     const key = generateEncryptionKey();
     setPendingEncryptionKey(key);
   }, [importNsec]);
+
+  const handleDeleteIdentity = useCallback(async () => {
+    await remove();
+    clearAuthData();
+  }, [remove]);
 
   const handleApproveVerification = useCallback(() => {
     if (!pendingVerifyRequest) return;
@@ -186,20 +197,8 @@ export function App() {
   useEffect(() => {
     const channel = new BroadcastChannel('signet-verify-request');
     const handleMessage = (event: MessageEvent) => {
-      const data: unknown = event.data;
-      if (typeof data !== 'object' || data === null) return;
-      const obj = data as Record<string, unknown>;
-      if (obj.type !== 'signet-verify-request') return;
-      if (typeof obj.requestId !== 'string') return;
-      if (typeof obj.requiredAgeRange !== 'string') return;
-      const request: VerifyRequest = {
-        type: 'signet-verify-request',
-        requestId: obj.requestId as string,
-        requiredAgeRange: obj.requiredAgeRange as string,
-        callbackUrl: typeof obj.callbackUrl === 'string' ? obj.callbackUrl : undefined,
-        relayUrl: typeof obj.relayUrl === 'string' ? obj.relayUrl : undefined,
-        timestamp: typeof obj.timestamp === 'number' ? (obj.timestamp as number) : Math.floor(Date.now() / 1000),
-      };
+      const request = parseVerifyRequest(JSON.stringify(event.data));
+      if (!request) return;
       setPendingVerifyRequest(request);
       setPage('approve-verification');
     };
@@ -245,7 +244,7 @@ export function App() {
           securityTier={securityTier}
           onSetTheme={setTheme}
           onSetSecurityTier={setSecurityTier}
-          onDeleteIdentity={remove}
+          onDeleteIdentity={handleDeleteIdentity}
           onOpenChildSettings={() => setPage('child-settings')}
           hasChildren={childIdentities.length > 0}
           powerMode={powerMode}

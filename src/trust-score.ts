@@ -32,7 +32,7 @@ export function computeTrustScore(
     if (subject !== subjectPubkey) continue;
 
     const rawTier = parseInt(getTagValue(cred, 'tier') || '1', 10);
-    const tier = (rawTier >= 1 && rawTier <= 4 ? rawTier : 1) as SignetTier;
+    const tier = (!isNaN(rawTier) && rawTier >= 1 && rawTier <= 4 ? rawTier : 1) as SignetTier;
     if (tier > highestTier) highestTier = tier;
 
     const type = getTagValue(cred, 'type');
@@ -94,7 +94,7 @@ export function computeTrustScore(
       if (bridge.pubkey !== subjectPubkey) continue;
 
       const rawRingMinTier = parseInt(getTagValue(bridge, 'ring-min-tier') || '1', 10);
-      const ringMinTier = (rawRingMinTier >= 1 && rawRingMinTier <= 4 ? rawRingMinTier : 1) as SignetTier;
+      const ringMinTier = (!isNaN(rawRingMinTier) && rawRingMinTier >= 1 && rawRingMinTier <= 4 ? rawRingMinTier : 1) as SignetTier;
       const weight = TRUST_WEIGHTS.IDENTITY_BRIDGE * (ringMinTier / 4);
       rawScore += weight;
       signals.push({

@@ -11,8 +11,27 @@ export function AuthScreen({ onUnlock }: Props) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPinFallback, setShowPinFallback] = useState(method === 'pin');
-  const [attempts, setAttempts] = useState(0);
-  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [attempts, setAttempts] = useState(() => {
+    try { return parseInt(localStorage.getItem('signet-pin-attempts') || '0', 10) || 0; } catch { return 0; }
+  });
+  const [lockedUntil, setLockedUntil] = useState<number | null>(() => {
+    try { const v = localStorage.getItem('signet-pin-locked'); return v ? parseInt(v, 10) : null; } catch { return null; }
+  });
+
+  // Persist attempts and lockedUntil to localStorage
+  useEffect(() => {
+    try { localStorage.setItem('signet-pin-attempts', String(attempts)); } catch { /* ignore */ }
+  }, [attempts]);
+
+  useEffect(() => {
+    try {
+      if (lockedUntil !== null) {
+        localStorage.setItem('signet-pin-locked', String(lockedUntil));
+      } else {
+        localStorage.removeItem('signet-pin-locked');
+      }
+    } catch { /* ignore */ }
+  }, [lockedUntil]);
 
   // Auto-trigger biometric on mount
   useEffect(() => {

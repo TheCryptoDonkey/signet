@@ -80,6 +80,7 @@ export function Onboarding({ onCreate, onImport, onImportNsec }: Props) {
   const handleImportComplete = async () => {
     if (!displayName.trim()) return;
     await onImport(importWords.trim().toLowerCase(), displayName.trim(), primaryKeypair, isChild, guardianPubkey || undefined);
+    setImportWords('');
   };
 
   // --- Import nsec flow ---
@@ -103,6 +104,7 @@ export function Onboarding({ onCreate, onImport, onImportNsec }: Props) {
   const handleNsecComplete = async () => {
     if (!displayName.trim()) return;
     await onImportNsec(nsecInput.trim(), displayName.trim(), primaryKeypair);
+    setNsecInput('');
   };
 
   // --- Render ---
@@ -240,6 +242,9 @@ export function Onboarding({ onCreate, onImport, onImportNsec }: Props) {
             value={importWords}
             onChange={e => setImportWords(e.target.value)}
             style={{ resize: 'none' }}
+            autoComplete="off"
+            spellCheck={false}
+            autoCorrect="off"
             autoFocus
           />
           <button className="btn btn-primary" onClick={handleImportPhrase} style={{ marginTop: 16 }}>
@@ -321,6 +326,9 @@ export function Onboarding({ onCreate, onImport, onImportNsec }: Props) {
             value={nsecInput}
             onChange={e => setNsecInput(e.target.value)}
             style={{ resize: 'none', fontFamily: 'monospace', fontSize: '0.9rem' }}
+            autoComplete="off"
+            spellCheck={false}
+            autoCorrect="off"
             autoFocus
           />
           <button className="btn btn-primary" onClick={handleNsecSubmit} style={{ marginTop: 16 }}>

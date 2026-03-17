@@ -232,7 +232,7 @@ export function parseIdentityBridge(event: NostrEvent): ParsedIdentityBridge | n
     }
 
     const rawMinTier = parseInt(getTagValue(event, 'ring-min-tier') || '1', 10);
-    const ringMinTier = (rawMinTier >= 1 && rawMinTier <= 4 ? rawMinTier : 1) as SignetTier;
+    const ringMinTier = (!isNaN(rawMinTier) && rawMinTier >= 1 && rawMinTier <= 4 ? rawMinTier : 1) as SignetTier;
     const ringSize = parseInt(getTagValue(event, 'ring-size') || '0', 10);
     if (isNaN(ringSize) || ringSize < 0 || ringSize > 1000) return null;
 

@@ -217,6 +217,11 @@ async function checkVerifierStatus(
  * Shows a modal with QR code, waits for the user's app to respond.
  */
 export async function verifyAge(requiredAgeRange: string, options?: Partial<SignetVerifyOptions>): Promise<SignetVerifyResult> {
+  const VALID_AGE_RANGES = ['0-3', '4-7', '8-12', '13-17', '18+'];
+  if (!VALID_AGE_RANGES.includes(requiredAgeRange)) {
+    return { verified: false, ageRange: null, tier: null, entityType: null, credentialId: null, verifierPubkey: null, verifierConfirmed: null, verifierMethod: null, issuedAt: null, expiresAt: null, error: 'invalid-age-range' };
+  }
+
   const opts: SignetVerifyOptions = {
     requiredAgeRange,
     relayUrl: options?.relayUrl || 'wss://relay.damus.io',
@@ -226,6 +231,7 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
     acceptUnconfirmed: options?.acceptUnconfirmed || false,
     ...options,
   };
+  opts.timeout = Math.max(5000, Math.min(opts.timeout ?? 120000, 600000));
 
   const requestId = generateRequestId();
 
@@ -279,29 +285,34 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
       qrContainer.appendChild(qrPlaceholder);
     }
 
+    // Listen for response via BroadcastChannel (same-device, request-specific channel)
+    const channel = new BroadcastChannel('signet-verify-' + requestId);
+
     // Cancel handler — scoped to the dialog
     dialog.querySelector<HTMLButtonElement>('#signet-cancel')?.addEventListener('click', () => {
+      channel.close();
       dialog.close(); dialog.remove(); style.remove();
       resolve({ verified: false, ageRange: null, tier: null, entityType: null, credentialId: null, verifierPubkey: null, verifierConfirmed: null, verifierMethod: null, issuedAt: null, expiresAt: null, error: 'cancelled' });
     });
-
-    // Listen for response via BroadcastChannel (same-device, request-specific channel)
-    const channel = new BroadcastChannel('signet-verify-' + requestId);
     channel.onmessage = async (event) => {
-      const response = event.data as PresentationResponse;
+      const data: unknown = event.data;
+      if (typeof data !== 'object' || data === null) return;
+      const response = data as Partial<PresentationResponse>;
       if (response.type !== 'signet-verify-response' || response.requestId !== requestId) return;
+      if (!response.credential || typeof response.credential !== 'object' || !Array.isArray(response.credential.tags)) return;
+      const credential = response.credential as PresentationResponse['credential'];
 
       // Verify the credential
-      const valid = await verifyEventSignature(response.credential);
-      const ageRange = getTagValue(response.credential.tags, 'age-range');
-      const tier = getTagValue(response.credential.tags, 'tier');
-      const entityType = getTagValue(response.credential.tags, 'entity-type');
-      const expires = getTagValue(response.credential.tags, 'expires');
+      const valid = await verifyEventSignature(credential);
+      const ageRange = getTagValue(credential.tags, 'age-range');
+      const tier = getTagValue(credential.tags, 'tier');
+      const entityType = getTagValue(credential.tags, 'entity-type');
+      const expires = getTagValue(credential.tags, 'expires');
 
       const satisfied = ageRange ? ageRangeSatisfies(ageRange, opts.requiredAgeRange) : false;
 
       // Check verifier status against the verification bot
-      const verifierStatus = await checkVerifierStatus(response.credential.pubkey, opts.verifierCheckUrl);
+      const verifierStatus = await checkVerifierStatus(credential.pubkey, opts.verifierCheckUrl);
       const verifierConfirmed = verifierStatus?.confirmed ?? null;
       const verifierMethod = verifierStatus?.method ?? null;
 
@@ -317,21 +328,25 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
       const tierValue = tier ? parseInt(tier, 10) : null;
       const expiresValue = expires ? parseInt(expires, 10) : null;
 
+      const nowSec = Math.floor(Date.now() / 1000);
+      const notExpired = expiresValue === null || !isNaN(expiresValue) && expiresValue > nowSec;
+
       let error: string | undefined;
       if (!valid) error = 'invalid-credential';
+      else if (!notExpired) error = 'credential-expired';
       else if (!satisfied) error = 'age-range-not-met';
       else if (!verifierOk) error = verifierConfirmed === false ? 'verifier-not-confirmed' : 'verifier-check-unavailable';
 
       resolve({
-        verified: valid && satisfied && verifierOk,
+        verified: valid && notExpired && satisfied && verifierOk,
         ageRange: ageRange || null,
         tier: (tierValue !== null && !isNaN(tierValue)) ? tierValue : null,
         entityType: entityType || null,
-        credentialId: response.credential.id,
-        verifierPubkey: response.credential.pubkey,
+        credentialId: credential.id,
+        verifierPubkey: credential.pubkey,
         verifierConfirmed,
         verifierMethod,
-        issuedAt: response.credential.created_at,
+        issuedAt: credential.created_at,
         expiresAt: (expiresValue !== null && !isNaN(expiresValue)) ? expiresValue : null,
         error,
       });

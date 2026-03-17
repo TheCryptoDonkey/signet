@@ -5,7 +5,7 @@ Add privacy-preserving age verification to any website. One script tag, one func
 ## Quick Start
 
 ```html
-<script src="https://cdn.signet.trotters.cc/verify.js"></script>
+<script src="https://cdn.signet.trotters.cc/signet-verify.js"></script>
 <script>
   document.getElementById('verify-btn').addEventListener('click', async () => {
     const result = await Signet.verifyAge('18+');
