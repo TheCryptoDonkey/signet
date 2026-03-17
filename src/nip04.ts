@@ -53,7 +53,7 @@ export async function nip04Encrypt(
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(16));
   const key = await globalThis.crypto.subtle.importKey(
     'raw',
-    sharedX,
+    sharedX.buffer as ArrayBuffer,
     { name: 'AES-CBC' },
     false,
     ['encrypt'],
@@ -89,7 +89,7 @@ export async function nip04Decrypt(
   const iv = Uint8Array.from(atob(ivB64), (c) => c.charCodeAt(0));
   const key = await globalThis.crypto.subtle.importKey(
     'raw',
-    sharedX,
+    sharedX.buffer as ArrayBuffer,
     { name: 'AES-CBC' },
     false,
     ['decrypt'],
