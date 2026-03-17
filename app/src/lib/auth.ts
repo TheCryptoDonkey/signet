@@ -21,7 +21,12 @@ export async function setupBiometric(encryptionKey: string): Promise<boolean> {
     const credential = await navigator.credentials.create({
       publicKey: {
         challenge,
-        rp: { name: 'My Signet', id: window.location.hostname },
+        rp: {
+          name: 'My Signet',
+          id: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? window.location.hostname
+            : 'signet.trotters.cc',
+        },
         user: {
           id: crypto.getRandomValues(new Uint8Array(16)),
           name: 'signet-user',

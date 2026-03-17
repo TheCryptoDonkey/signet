@@ -145,19 +145,37 @@ export async function deleteIdentityRecord(pubkey: string): Promise<void> {
 
 // --- Family Members ---
 
-export async function getFamilyMembers(ownerPubkey: string): Promise<FamilyMember[]> {
+export async function getFamilyMembers(ownerPubkey: string, encryptionKey?: string): Promise<FamilyMember[]> {
   const db = await getDB();
-  return db.getAllFromIndex('family', 'ownerPubkey', ownerPubkey);
+  const members = await db.getAllFromIndex('family', 'ownerPubkey', ownerPubkey);
+  if (!encryptionKey) return members;
+  return Promise.all(members.map(async (m) => {
+    if (!m.sharedSecret) return m;
+    try {
+      return { ...m, sharedSecret: await decryptSecret(m.sharedSecret, encryptionKey) };
+    } catch {
+      return m; // fallback for pre-encryption records
+    }
+  }));
 }
 
-export async function getFamilyMember(pubkey: string): Promise<FamilyMember | undefined> {
+export async function getFamilyMember(pubkey: string, encryptionKey?: string): Promise<FamilyMember | undefined> {
   const db = await getDB();
-  return db.get('family', pubkey);
+  const m = await db.get('family', pubkey);
+  if (!m || !encryptionKey || !m.sharedSecret) return m;
+  try {
+    return { ...m, sharedSecret: await decryptSecret(m.sharedSecret, encryptionKey) };
+  } catch {
+    return m; // fallback for pre-encryption records
+  }
 }
 
-export async function saveFamilyMember(member: FamilyMember): Promise<void> {
+export async function saveFamilyMember(member: FamilyMember, encryptionKey?: string): Promise<void> {
+  const toStore = encryptionKey && member.sharedSecret
+    ? { ...member, sharedSecret: await encryptSecret(member.sharedSecret, encryptionKey) }
+    : member;
   const db = await getDB();
-  await db.put('family', member);
+  await db.put('family', toStore);
 }
 
 export async function deleteFamilyMember(pubkey: string): Promise<void> {

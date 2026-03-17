@@ -21,6 +21,15 @@ export function SetupAuth({ encryptionKey, onComplete }: Props) {
     void isBiometricAvailable().then(setBiometricAvailable);
   }, []);
 
+  useEffect(() => {
+    if (step !== 'biometric-pending') return;
+    const styleEl = document.createElement('style');
+    styleEl.id = 'signet-spin-keyframe';
+    styleEl.textContent = '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+    document.head.appendChild(styleEl);
+    return () => { styleEl.remove(); };
+  }, [step]);
+
   async function handleBiometricSetup() {
     setStep('biometric-pending');
     setLoading(true);
@@ -174,6 +183,9 @@ export function SetupAuth({ encryptionKey, onComplete }: Props) {
   if (step === 'biometric-pending') {
     return (
       <div style={fullScreenStyle}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+          <div style={{ width: 40, height: 40, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        </div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 56, marginBottom: 16, lineHeight: 1 }}>👆</div>
           <h1 style={{ marginBottom: 12 }}>Set up biometrics</h1>

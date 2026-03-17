@@ -223,20 +223,22 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
   const requestBase64 = btoa(requestPayload);
 
   return new Promise<SignetVerifyResult>((resolve) => {
-    // Create modal overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'signet-verify-overlay';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:999999;font-family:system-ui,-apple-system,sans-serif;';
+    // Inject ::backdrop style for the native <dialog> element
+    const style = document.createElement('style');
+    style.textContent = '#signet-verify-dialog::backdrop{background:rgba(0,0,0,0.7)}';
+    document.head.appendChild(style);
 
     const isDark = opts.theme === 'dark' || (opts.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     const bg = isDark ? '#1a1a2e' : '#ffffff';
     const fg = isDark ? '#e0e0e0' : '#1a1a2e';
     const muted = isDark ? '#888' : '#666';
 
-    const modal = document.createElement('div');
-    modal.style.cssText = `background:${bg};color:${fg};border-radius:16px;padding:32px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);`;
+    // Use <dialog> for native focus trap and top-layer placement
+    const dialog = document.createElement('dialog');
+    dialog.id = 'signet-verify-dialog';
+    dialog.style.cssText = `border:none;border-radius:16px;padding:32px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);background:${bg};color:${fg};font-family:system-ui,-apple-system,sans-serif;`;
 
-    modal.innerHTML = `
+    dialog.innerHTML = `
       <h2 style="margin:0 0 8px;font-size:1.3rem;">Verify your age with Signet</h2>
       <p style="margin:0 0 24px;color:${muted};font-size:0.9rem;">Scan this QR code with your Signet app to prove you are ${escapeHtml(requiredAgeRange)}. No personal data is shared.</p>
       <div id="signet-qr" style="display:flex;justify-content:center;margin-bottom:24px;"></div>
@@ -244,11 +246,11 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
       <button id="signet-cancel" style="background:none;border:1px solid ${muted};color:${fg};padding:10px 24px;border-radius:8px;cursor:pointer;font-size:0.9rem;">Cancel</button>
     `;
 
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
+    document.body.appendChild(dialog);
+    dialog.showModal();
 
     // Generate QR code (simple SVG-based, no dependency)
-    const qrContainer = document.getElementById('signet-qr');
+    const qrContainer = dialog.querySelector<HTMLElement>('#signet-qr');
     if (qrContainer) {
       // For MVP: show the request payload as text that can be copied
       // A proper QR library should be bundled for production
@@ -258,9 +260,9 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
       qrContainer.appendChild(qrPlaceholder);
     }
 
-    // Cancel handler
-    document.getElementById('signet-cancel')?.addEventListener('click', () => {
-      overlay.remove();
+    // Cancel handler — scoped to the dialog
+    dialog.querySelector<HTMLButtonElement>('#signet-cancel')?.addEventListener('click', () => {
+      dialog.close(); dialog.remove(); style.remove();
       resolve({ verified: false, ageRange: null, tier: null, entityType: null, credentialId: null, verifierPubkey: null, verifierConfirmed: null, verifierMethod: null, issuedAt: null, expiresAt: null, error: 'cancelled' });
     });
 
@@ -290,7 +292,7 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
       // 3. Verifier is confirmed (unless acceptUnconfirmed is true)
       const verifierOk = opts.acceptUnconfirmed || verifierConfirmed === true;
 
-      overlay.remove();
+      dialog.close(); dialog.remove(); style.remove();
       channel.close();
 
       const tierValue = tier ? parseInt(tier, 10) : null;
@@ -318,7 +320,7 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
 
     // Timeout
     setTimeout(() => {
-      overlay.remove();
+      dialog.close(); dialog.remove(); style.remove();
       channel.close();
       resolve({ verified: false, ageRange: null, tier: null, entityType: null, credentialId: null, verifierPubkey: null, verifierConfirmed: null, verifierMethod: null, issuedAt: null, expiresAt: null, error: 'timeout' });
     }, opts.timeout);
