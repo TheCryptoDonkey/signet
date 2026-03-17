@@ -3,10 +3,13 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { QRScanner } from '../components/QRScanner';
 import { useCamera } from '../hooks/useCamera';
 import type { VerifyRequest } from '../lib/presentation';
-import { parseVerifyRequest } from '../lib/presentation';
+import { routeQR } from '../lib/qr-router';
+import type { AuthRequest, LoginRequest } from '../lib/qr-router';
 
 interface Props {
   onVerifyRequest: (request: VerifyRequest) => void;
+  onAuthRequest: (request: AuthRequest) => void;
+  onLoginRequest: (request: LoginRequest) => void;
   onBack: () => void;
 }
 
@@ -16,7 +19,7 @@ async function decodeQRFromImage(file: File): Promise<string> {
   return result.decodedText;
 }
 
-export function WebVerify({ onVerifyRequest, onBack }: Props) {
+export function WebVerify({ onVerifyRequest, onAuthRequest, onLoginRequest, onBack }: Props) {
   const [scannerActive, setScannerActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [decoding, setDecoding] = useState(false);
@@ -25,14 +28,40 @@ export function WebVerify({ onVerifyRequest, onBack }: Props) {
 
   const handleQRData = useCallback((data: string) => {
     setScannerActive(false);
-    const request = parseVerifyRequest(data);
-    if (request) {
-      setError(null);
-      onVerifyRequest(request);
-    } else {
-      setError("This doesn't look like a Signet verification QR code.");
+    const action = routeQR(data);
+    switch (action.type) {
+      case 'verify':
+        setError(null);
+        onVerifyRequest(action.request);
+        break;
+      case 'auth':
+        setError(null);
+        onAuthRequest(action.request);
+        break;
+      case 'login':
+        setError(null);
+        onLoginRequest(action.request);
+        break;
+      case 'contact':
+        setError("This is a Nostr contact key, not a website verification. Use \"Add Family Member\" instead.");
+        break;
+      case 'nostr-connect':
+        // Treat a raw nostr+connect URI as an auth request using the URI as the origin
+        setError(null);
+        onAuthRequest({
+          type: 'signet-auth-request',
+          requestId: '',
+          challenge: '',
+          origin: action.uri,
+          relay: action.relay,
+          timestamp: Math.floor(Date.now() / 1000),
+        });
+        break;
+      case 'unknown':
+        setError("This QR code isn't recognised by Signet.");
+        break;
     }
-  }, [onVerifyRequest]);
+  }, [onVerifyRequest, onAuthRequest, onLoginRequest]);
 
   const handleScanCamera = useCallback(async () => {
     setError(null);
@@ -89,7 +118,7 @@ export function WebVerify({ onVerifyRequest, onBack }: Props) {
         <>
           <div className="section" style={{ marginBottom: 8 }}>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 24 }}>
-              Scan or select a QR code from a website that needs to verify your age.
+              Scan or select a QR code from a website to verify your age or log in with Signet.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

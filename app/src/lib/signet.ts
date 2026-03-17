@@ -20,6 +20,8 @@ import {
   shareToWords,
   mnemonicToEntropy,
   createTwoCredentialCeremony,
+  signEvent,
+  getPublicKey,
 } from 'signet-protocol';
 import type { SignetIdentity } from '../types';
 
@@ -155,4 +157,38 @@ export function getActiveDisplayName(identity: SignetIdentity): string {
   return identity.primaryKeypair === 'natural-person'
     ? identity.naturalPerson.displayName
     : identity.persona.displayName;
+}
+
+/**
+ * Sign an auth challenge string using the Nostr signEvent convention.
+ *
+ * The challenge is embedded in a Kind 27235 (NIP-98 style) event so that
+ * the signature is a standard Nostr event signature that any verifier can
+ * check using `verifyEvent`.
+ *
+ * Returns { pubkey, signature, eventId } where:
+ *   - pubkey    — x-only Schnorr pubkey (hex, 64 chars)
+ *   - signature — Schnorr signature over the event ID (hex, 128 chars)
+ *   - eventId   — the signed event ID (hex, 64 chars)
+ */
+export async function signAuthChallenge(
+  privateKey: string,
+  challenge: string,
+  origin: string,
+): Promise<{ pubkey: string; signature: string; eventId: string }> {
+  const pubkey = getPublicKey(privateKey);
+  const event = await signEvent(
+    {
+      pubkey,
+      kind: 27235,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ['challenge', challenge],
+        ['origin', origin],
+      ],
+      content: '',
+    },
+    privateKey,
+  );
+  return { pubkey, signature: event.sig, eventId: event.id };
 }

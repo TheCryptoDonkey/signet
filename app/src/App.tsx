@@ -22,16 +22,19 @@ import { IdentityBridge } from './pages/IdentityBridge';
 import { CredentialDetail } from './pages/CredentialDetail';
 import { ApproveVerification } from './pages/ApproveVerification';
 import { ApproveConnect } from './pages/ApproveConnect';
+import { ApproveAuth } from './pages/ApproveAuth';
 import { AuthScreen } from './pages/AuthScreen';
 import { SetupAuth } from './pages/SetupAuth';
 import { WebVerify } from './pages/WebVerify';
-import { getActivePubkey, getActivePrivateKey, getActiveDisplayName } from './lib/signet';
+import { getActivePubkey, getActivePrivateKey, getActiveDisplayName, signAuthChallenge } from './lib/signet';
 import { isAuthSetUp, generateEncryptionKey, clearAuthData } from './lib/auth';
 import type { VerifyRequest, VerifyResponse } from './lib/presentation';
 import { buildVerifyResponse, sendResponseViaBroadcast, parseVerifyRequest } from './lib/presentation';
-import { publishVerifyResponseToRelay } from './lib/relay-publish';
+import { publishVerifyResponseToRelay, publishAuthResponseToRelay } from './lib/relay-publish';
+import type { AuthResponse } from './lib/relay-publish';
 import { parseNostrConnectURI } from './lib/nip46';
 import type { NostrConnectRequest } from './lib/nip46';
+import type { AuthRequest, LoginRequest } from './lib/qr-router';
 
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -54,6 +57,7 @@ export function App() {
   const [powerMode, setPowerMode] = useState(false);
   const [pendingVerifyRequest, setPendingVerifyRequest] = useState<VerifyRequest | null>(null);
   const [pendingConnectRequest, setPendingConnectRequest] = useState<NostrConnectRequest | null>(null);
+  const [pendingAuthRequest, setPendingAuthRequest] = useState<AuthRequest | LoginRequest | null>(null);
 
   // Reset inactivity timer on user activity
   const resetInactivityTimer = useCallback(() => {
@@ -214,6 +218,68 @@ export function App() {
     setPage('home');
   }, []);
 
+  const handleApproveAuth = useCallback(async () => {
+    if (!pendingAuthRequest || !identity) return;
+    const privateKey = getActivePrivateKey(identity);
+    const pubkey = activePubkey ?? '';
+
+    // Sign the challenge (empty string for nostr+connect flows that have no challenge)
+    const challenge = pendingAuthRequest.challenge ?? '';
+    const { signature, eventId } = await signAuthChallenge(privateKey, challenge, pendingAuthRequest.origin);
+
+    // Find credential for login+verify flows
+    let credential: AuthResponse['credential'] | undefined;
+    if (pendingAuthRequest.type === 'signet-login-request') {
+      const personaCred = credentials.find(c => c.keypairType === 'persona') ?? credentials[0] ?? null;
+      if (personaCred) {
+        try {
+          const raw: unknown = JSON.parse(personaCred.event);
+          if (typeof raw === 'object' && raw !== null) {
+            const e = raw as Record<string, unknown>;
+            credential = {
+              id: typeof e.id === 'string' ? e.id : personaCred.id,
+              kind: typeof e.kind === 'number' ? e.kind : 30470,
+              pubkey: typeof e.pubkey === 'string' ? e.pubkey : '',
+              tags: Array.isArray(e.tags) ? (e.tags as string[][]) : [],
+              content: typeof e.content === 'string' ? e.content : '',
+              sig: typeof e.sig === 'string' ? e.sig : '',
+              created_at: typeof e.created_at === 'number' ? e.created_at : personaCred.verifiedAt,
+            };
+          }
+        } catch { /* use undefined */ }
+      }
+    }
+
+    const response: AuthResponse = {
+      type: 'signet-auth-response',
+      requestId: pendingAuthRequest.requestId,
+      pubkey,
+      signature,
+      ...(credential ? { credential } : {}),
+    };
+
+    // Same-device: BroadcastChannel
+    if (pendingAuthRequest.requestId) {
+      const channel = new BroadcastChannel('signet-auth-' + pendingAuthRequest.requestId);
+      channel.postMessage({ ...response, eventId });
+      channel.close();
+    }
+
+    // Cross-device: relay
+    const relayUrl = pendingAuthRequest.relay;
+    if (relayUrl) {
+      publishAuthResponseToRelay(response, relayUrl).catch(() => {});
+    }
+
+    setPendingAuthRequest(null);
+    setPage('home');
+  }, [pendingAuthRequest, identity, activePubkey, credentials]);
+
+  const handleDenyAuth = useCallback(() => {
+    setPendingAuthRequest(null);
+    setPage('home');
+  }, []);
+
   // Listen for same-device verification requests via BroadcastChannel
   useEffect(() => {
     const channel = new BroadcastChannel('signet-verify-request');
@@ -364,11 +430,19 @@ export function App() {
   // Web Verify — scan or pick a QR from a website
   if (page === 'web-verify') {
     return (
-      <Layout activePage={page} onNavigate={setPage} onSettingsOpen={() => setPage('settings')} title="Verify on a website" showBack onBack={() => setPage('home')}>
+      <Layout activePage={page} onNavigate={setPage} onSettingsOpen={() => setPage('settings')} title="Scan QR Code" showBack onBack={() => setPage('home')}>
         <WebVerify
           onVerifyRequest={(request) => {
             setPendingVerifyRequest(request);
             setPage('approve-verification');
+          }}
+          onAuthRequest={(request) => {
+            setPendingAuthRequest(request);
+            setPage('approve-auth');
+          }}
+          onLoginRequest={(request) => {
+            setPendingAuthRequest(request);
+            setPage('approve-auth');
           }}
           onBack={() => setPage('home')}
         />
@@ -387,6 +461,21 @@ export function App() {
           onApprove={handleApproveVerification}
           onDeny={handleDenyVerification}
           onNavigateGetVerified={() => { setPendingVerifyRequest(null); setPage('get-verified'); }}
+        />
+      </Layout>
+    );
+  }
+
+  // Approve Auth (signet-auth-request or signet-login-request)
+  if (page === 'approve-auth' && pendingAuthRequest) {
+    const personaCred = credentials.find(c => c.keypairType === 'persona') ?? credentials[0] ?? null;
+    return (
+      <Layout activePage={page} onNavigate={setPage} onSettingsOpen={() => setPage('settings')} title="Login Request" showBack onBack={handleDenyAuth}>
+        <ApproveAuth
+          request={pendingAuthRequest}
+          credential={personaCred}
+          onApprove={handleApproveAuth}
+          onDeny={handleDenyAuth}
         />
       </Layout>
     );
