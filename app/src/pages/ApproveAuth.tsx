@@ -43,9 +43,9 @@ export function ApproveAuth({ request, credential, onApprove, onDeny }: Props) {
     { label: 'Your age or documents', shared: false },
   ];
 
-  const title = login ? 'Login Request' : 'Login Request';
+  const title = login ? 'Login + Verification Request' : 'Login Request';
   const description = login
-    ? `${originDisplay} wants to log you in with your Signet identity and verify your age.`
+    ? `${originDisplay} wants to log you in AND verify your identity.`
     : `${originDisplay} wants to log you in with your Signet identity.`;
 
   if (needsCredential && !hasCredential) {
@@ -89,6 +89,17 @@ export function ApproveAuth({ request, credential, onApprove, onDeny }: Props) {
           {description}
         </p>
       </div>
+
+      {login && ageRange && (
+        <div className="card section" style={{ background: 'var(--warning-light, #fff8e1)', borderColor: 'var(--warning, #f9a825)' }}>
+          <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--warning, #f9a825)' }}>
+            This request includes identity verification
+          </div>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 0 }}>
+            In addition to logging you in, this website is requesting proof that you are {ageRange}. Both your public key and your age range will be shared.
+          </p>
+        </div>
+      )}
 
       <div className="card section">
         <div className="section-title">What will be shared</div>

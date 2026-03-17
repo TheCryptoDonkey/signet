@@ -113,9 +113,42 @@ export function routeQR(data: string): QRAction {
         return { type: 'unknown', raw };
       }
 
+      // Compact format: { t: 'sa', r: requestId, c: challenge, o: origin, l: relay, s: timestamp }
+      if (obj.t === 'sa') {
+        const expanded: Record<string, unknown> = {
+          type: 'signet-auth-request',
+          requestId: obj.r,
+          challenge: obj.c,
+          origin: obj.o,
+          relay: typeof obj.l === 'string' && obj.l.length > 0 ? obj.l : undefined,
+          timestamp: obj.s,
+        };
+        if (isValidAuthRequest(expanded)) {
+          return { type: 'auth', request: expanded as unknown as AuthRequest };
+        }
+        return { type: 'unknown', raw };
+      }
+
+      // Compact format: { t: 'sl', r, c, o, l, s, a: requiredAgeRange }
+      if (obj.t === 'sl') {
+        const expanded: Record<string, unknown> = {
+          type: 'signet-login-request',
+          requestId: obj.r,
+          challenge: obj.c,
+          origin: obj.o,
+          relay: typeof obj.l === 'string' && obj.l.length > 0 ? obj.l : undefined,
+          requiredAgeRange: obj.a,
+          timestamp: obj.s,
+        };
+        if (isValidLoginRequest(expanded)) {
+          return { type: 'login', request: expanded as unknown as LoginRequest };
+        }
+        return { type: 'unknown', raw };
+      }
+
       if (obj.type === 'signet-auth-request') {
         if (isValidAuthRequest(obj)) {
-          return { type: 'auth', request: obj };
+          return { type: 'auth', request: obj as unknown as AuthRequest };
         }
         return { type: 'unknown', raw };
       }
