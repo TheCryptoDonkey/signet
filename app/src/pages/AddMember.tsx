@@ -11,11 +11,12 @@ interface Props {
   onAddMember: (member: FamilyMember) => Promise<void>;
   onDone: () => void;
   wordCount?: number;
+  onNostrConnect?: (data: string) => void;
 }
 
 type Step = 'choose' | 'scan' | 'show-qr' | 'enter-id' | 'preview' | 'success';
 
-export function AddMember({ identity, onAddMember, onDone, wordCount }: Props) {
+export function AddMember({ identity, onAddMember, onDone, wordCount, onNostrConnect }: Props) {
   const { hasPermission, error: cameraError, requestPermission } = useCamera();
   const [step, setStep] = useState<Step>('choose');
   const [theirPubkey, setTheirPubkey] = useState('');
@@ -29,6 +30,11 @@ export function AddMember({ identity, onAddMember, onDone, wordCount }: Props) {
   );
 
   const handleScan = (data: string) => {
+    // Check for NIP-46 nostrconnect:// URI first
+    if (data.startsWith('nostrconnect://') && onNostrConnect) {
+      onNostrConnect(data);
+      return;
+    }
     try {
       const payload = parseQRPayload(data);
       if (!payload?.pubkey) throw new Error('Invalid QR code');

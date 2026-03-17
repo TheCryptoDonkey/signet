@@ -21,13 +21,15 @@ import { ShamirBackup } from './pages/ShamirBackup';
 import { IdentityBridge } from './pages/IdentityBridge';
 import { CredentialDetail } from './pages/CredentialDetail';
 import { ApproveVerification } from './pages/ApproveVerification';
+import { ApproveConnect } from './pages/ApproveConnect';
 import { AuthScreen } from './pages/AuthScreen';
 import { SetupAuth } from './pages/SetupAuth';
-import { getActivePubkey } from './lib/signet';
+import { getActivePubkey, getActivePrivateKey, getActiveDisplayName } from './lib/signet';
 import { isAuthSetUp, generateEncryptionKey, clearAuthData } from './lib/auth';
 import type { VerifyRequest, VerifyResponse } from './lib/presentation';
 import { buildVerifyResponse, sendResponseViaBroadcast, parseVerifyRequest } from './lib/presentation';
-// getActiveDisplayName, getActivePrivateKey used by child components via props
+import { parseNostrConnectURI } from './lib/nip46';
+import type { NostrConnectRequest } from './lib/nip46';
 
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -49,6 +51,7 @@ export function App() {
   const [selectedCredential, setSelectedCredential] = useState<StoredCredential | null>(null);
   const [powerMode, setPowerMode] = useState(false);
   const [pendingVerifyRequest, setPendingVerifyRequest] = useState<VerifyRequest | null>(null);
+  const [pendingConnectRequest, setPendingConnectRequest] = useState<NostrConnectRequest | null>(null);
 
   // Reset inactivity timer on user activity
   const resetInactivityTimer = useCallback(() => {
@@ -192,6 +195,19 @@ export function App() {
     setPage('home');
   }, []);
 
+  const handleNostrConnect = useCallback((data: string) => {
+    const request = parseNostrConnectURI(data);
+    if (request) {
+      setPendingConnectRequest(request);
+      setPage('approve-connect');
+    }
+  }, []);
+
+  const handleConnectDone = useCallback(() => {
+    setPendingConnectRequest(null);
+    setPage('home');
+  }, []);
+
   // Listen for same-device verification requests via BroadcastChannel
   useEffect(() => {
     const channel = new BroadcastChannel('signet-verify-request');
@@ -280,7 +296,7 @@ export function App() {
   if (page === 'add') {
     return (
       <Layout activePage={page} onNavigate={setPage} onSettingsOpen={() => setPage('settings')} title="Add Family Member" showBack onBack={() => setPage('home')}>
-        <AddMember identity={identity} onAddMember={addMember} onDone={handleAddDone} wordCount={wordCount} />
+        <AddMember identity={identity} onAddMember={addMember} onDone={handleAddDone} wordCount={wordCount} onNostrConnect={handleNostrConnect} />
       </Layout>
     );
   }
@@ -350,6 +366,21 @@ export function App() {
           onApprove={handleApproveVerification}
           onDeny={handleDenyVerification}
           onNavigateGetVerified={() => { setPendingVerifyRequest(null); setPage('get-verified'); }}
+        />
+      </Layout>
+    );
+  }
+
+  // Approve Connect (NIP-46)
+  if (page === 'approve-connect' && pendingConnectRequest && identity) {
+    return (
+      <Layout activePage={page} onNavigate={setPage} onSettingsOpen={() => setPage('settings')} title="Connect" showBack onBack={handleConnectDone}>
+        <ApproveConnect
+          request={pendingConnectRequest}
+          signerPrivateKey={getActivePrivateKey(identity)}
+          signerPubkey={getActivePubkey(identity)}
+          signerDisplayName={getActiveDisplayName(identity)}
+          onDone={handleConnectDone}
         />
       </Layout>
     );
