@@ -100,15 +100,14 @@ export function App() {
   }, [pendingEncryptionKey]);
 
   const handleCreate = useCallback(async (displayName: string, primaryKeypair: 'natural-person' | 'persona', isChild: boolean, guardianPubkey?: string) => {
-    await create(displayName, primaryKeypair, isChild, guardianPubkey);
-    // Generate an encryption key and prompt auth setup
     const key = generateEncryptionKey();
+    await create(displayName, primaryKeypair, isChild, guardianPubkey, key);
     setPendingEncryptionKey(key);
   }, [create]);
 
   const handleImport = useCallback(async (mnemonic: string, displayName: string, primaryKeypair: 'natural-person' | 'persona', isChild: boolean, guardianPubkey?: string) => {
-    await restore(mnemonic, displayName, primaryKeypair, isChild, guardianPubkey);
     const key = generateEncryptionKey();
+    await restore(mnemonic, displayName, primaryKeypair, isChild, guardianPubkey, key);
     setPendingEncryptionKey(key);
   }, [restore]);
 
@@ -132,8 +131,8 @@ export function App() {
   }, []);
 
   const handleImportNsec = useCallback(async (nsec: string, displayName: string, primaryKeypair: 'natural-person' | 'persona') => {
-    await importNsec(nsec, displayName, primaryKeypair);
     const key = generateEncryptionKey();
+    await importNsec(nsec, displayName, primaryKeypair, key);
     setPendingEncryptionKey(key);
   }, [importNsec]);
 

@@ -104,7 +104,7 @@ export function GetVerified({ identity, onMarkBackedUp }: Props) {
           verifierPubkey: vpStr,
           verifiedAt: typeof npCred.verifiedAt === 'number' ? npCred.verifiedAt : Math.floor(Date.now() / 1000),
           verifierStatus: 'pending',
-          ...(npCred.merkleLeaves !== undefined ? { merkleLeaves: npCred.merkleLeaves } : {}),
+          merkleLeaves: (typeof npCred.merkleLeaves === 'object' && npCred.merkleLeaves !== null && !Array.isArray(npCred.merkleLeaves)) ? npCred.merkleLeaves as Record<string, string> : undefined,
         };
         await db.saveCredential(cred);
       }
@@ -122,7 +122,7 @@ export function GetVerified({ identity, onMarkBackedUp }: Props) {
           verifierPubkey: pVpStr,
           verifiedAt: typeof personaCred.verifiedAt === 'number' ? personaCred.verifiedAt : Math.floor(Date.now() / 1000),
           verifierStatus: 'pending',
-          ...(personaCred.merkleLeaves !== undefined ? { merkleLeaves: personaCred.merkleLeaves } : {}),
+          merkleLeaves: (typeof personaCred.merkleLeaves === 'object' && personaCred.merkleLeaves !== null && !Array.isArray(personaCred.merkleLeaves)) ? personaCred.merkleLeaves as Record<string, string> : undefined,
         };
         await db.saveCredential(cred);
       }

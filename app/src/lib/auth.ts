@@ -239,6 +239,8 @@ export function clearAuthData(): void {
   localStorage.removeItem(CREDENTIAL_ID_KEY);
   localStorage.removeItem(ENCRYPTED_KEY_KEY);
   localStorage.removeItem(AUTH_METHOD_KEY);
+  localStorage.removeItem('signet-pin-attempts');
+  localStorage.removeItem('signet-pin-locked');
 }
 
 // --- Internal helpers ---

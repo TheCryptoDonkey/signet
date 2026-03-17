@@ -329,7 +329,7 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
       const expiresValue = expires ? parseInt(expires, 10) : null;
 
       const nowSec = Math.floor(Date.now() / 1000);
-      const notExpired = expiresValue === null || !isNaN(expiresValue) && expiresValue > nowSec;
+      const notExpired = expiresValue === null || (!isNaN(expiresValue) && expiresValue > nowSec);
 
       let error: string | undefined;
       if (!valid) error = 'invalid-credential';

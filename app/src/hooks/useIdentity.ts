@@ -37,11 +37,13 @@ export function useIdentity(encryptionKey?: string | null) {
     displayName: string,
     primaryKeypair: 'natural-person' | 'persona',
     isChild: boolean,
-    guardianPubkey?: string
+    guardianPubkey?: string,
+    overrideEncryptionKey?: string,
   ) => {
     const identity = createNewIdentity(displayName, primaryKeypair, isChild, guardianPubkey);
-    if (encryptionKey) {
-      await db.saveIdentityEncrypted(identity, encryptionKey);
+    const key = overrideEncryptionKey || encryptionKey;
+    if (key) {
+      await db.saveIdentityEncrypted(identity, key);
     } else {
       await db.saveIdentity(identity); // fallback for pre-auth state
     }
@@ -55,11 +57,13 @@ export function useIdentity(encryptionKey?: string | null) {
     displayName: string,
     primaryKeypair: 'natural-person' | 'persona',
     isChild: boolean,
-    guardianPubkey?: string
+    guardianPubkey?: string,
+    overrideEncryptionKey?: string,
   ) => {
     const identity = importFromMnemonic(mnemonic, displayName, primaryKeypair, isChild, guardianPubkey);
-    if (encryptionKey) {
-      await db.saveIdentityEncrypted(identity, encryptionKey);
+    const key = overrideEncryptionKey || encryptionKey;
+    if (key) {
+      await db.saveIdentityEncrypted(identity, key);
     } else {
       await db.saveIdentity(identity); // fallback for pre-auth state
     }
@@ -83,10 +87,12 @@ export function useIdentity(encryptionKey?: string | null) {
     nsec: string,
     displayName: string,
     primaryKeypair: 'natural-person' | 'persona',
+    overrideEncryptionKey?: string,
   ) => {
     const identity = importFromNsec(nsec, displayName, primaryKeypair);
-    if (encryptionKey) {
-      await db.saveIdentityEncrypted(identity, encryptionKey);
+    const key = overrideEncryptionKey || encryptionKey;
+    if (key) {
+      await db.saveIdentityEncrypted(identity, key);
     } else {
       await db.saveIdentity(identity); // fallback for pre-auth state
     }
@@ -98,12 +104,15 @@ export function useIdentity(encryptionKey?: string | null) {
   const markBackedUp = useCallback(async (pubkey?: string) => {
     const target = pubkey || activeIdentity?.id;
     if (!target) return;
-    const identity = await db.getIdentity(target);
+    const identity = encryptionKey
+      ? await db.loadIdentityDecrypted(target, encryptionKey)
+      : await db.getIdentity(target);
     if (!identity) return;
+    const updated = { ...identity, backedUp: true };
     if (encryptionKey) {
-      await db.saveIdentityEncrypted({ ...identity, backedUp: true }, encryptionKey);
+      await db.saveIdentityEncrypted(updated, encryptionKey);
     } else {
-      await db.saveIdentity({ ...identity, backedUp: true }); // fallback for pre-auth state
+      await db.saveIdentity(updated); // fallback for pre-auth state
     }
     await loadAll();
   }, [activeIdentity, loadAll, encryptionKey]);
