@@ -84,7 +84,7 @@ export function Home({ identity, members, credentials, onSelectMember, onNavigat
         <div className="card section" style={{ textAlign: 'center', padding: 32 }}>
           <h2 style={{ marginBottom: 8 }}>Add your first family member</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: '0.9rem' }}>
-            Once connected, you can verify it's really them — not a deepfake — with Signet Me.
+            Once connected, you can verify each other with Signet Me.
           </p>
           <button className="btn btn-primary" onClick={onNavigateAdd}>
             Add someone

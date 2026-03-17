@@ -474,8 +474,8 @@ The `id` field is the pubkey of whichever keypair is currently primary.
 
 **Step 1 — Welcome**
 ```
-Welcome to Signet
-Know it's really them. Not a deepfake.
+Signet
+Verified. Not identified.
 
 [Create My Signet]
 [I have my 12 backup words]
@@ -628,8 +628,8 @@ This card only appears after verifier activation (see §8). It is never visible 
 
 ```
 Add your first family member
-Once connected, you can verify it's really them
-— not a deepfake — with Signet Me.
+Once connected, you can verify each other
+with Signet Me.
 
 [Add someone]
 ```

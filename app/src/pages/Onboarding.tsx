@@ -112,9 +112,9 @@ export function Onboarding({ onCreate, onImport, onImportNsec }: Props) {
     return (
       <div className="page fade-in" role="main" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '80vh' }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <h1 style={{ marginBottom: 8 }}>Welcome to Signet</h1>
+          <h1 style={{ marginBottom: 8 }}>Signet</h1>
           <p style={{ color: 'var(--text-secondary)' }}>
-            Know it's really them. Not a deepfake.
+            Verified. Not identified.
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

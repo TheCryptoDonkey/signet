@@ -51,7 +51,7 @@ export function Family({ members, onSelectMember }: Props) {
       </div>
 
       <p style={{ textAlign: 'center', marginTop: 24, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-        "Signet Me" is how you know it's really them, not a deepfake.
+        Use "Signet Me" to verify each other in real time.
       </p>
     </div>
   );
