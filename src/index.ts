@@ -363,9 +363,9 @@ export {
   reconstructSecret,
   shareToWords,
   wordsToShare,
-} from './shamir.js';
+} from '@forgesworn/shamir-words';
 
-export type { ShamirShare } from './shamir.js';
+export type { ShamirShare } from '@forgesworn/shamir-words';
 
 // Connections (ECDH / QR Exchange)
 export {

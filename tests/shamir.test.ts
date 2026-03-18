@@ -1,13 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  gf256Add,
-  gf256Mul,
-  gf256Inv,
   splitSecret,
   reconstructSecret,
   shareToWords,
   wordsToShare,
-} from '../src/shamir.js';
+} from '@forgesworn/shamir-words';
 import { wordlist as BIP39_WORDLIST } from '@scure/bip39/wordlists/english.js';
 
 describe('shamir', () => {
@@ -25,45 +22,11 @@ describe('shamir', () => {
     0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00,
   ]);
 
-  describe('GF(256) arithmetic', () => {
-    it('addition is XOR', () => {
-      expect(gf256Add(0x57, 0x83)).toBe(0x57 ^ 0x83);
-      expect(gf256Add(0, 0xff)).toBe(0xff);
-      expect(gf256Add(0xff, 0xff)).toBe(0);
-    });
-
-    it('multiplication by 1 is identity', () => {
-      for (let i = 0; i < 256; i++) {
-        expect(gf256Mul(i, 1)).toBe(i);
-      }
-    });
-
-    it('multiplication by 0 is 0', () => {
-      for (let i = 0; i < 256; i++) {
-        expect(gf256Mul(i, 0)).toBe(0);
-        expect(gf256Mul(0, i)).toBe(0);
-      }
-    });
-
-    it('multiplication is commutative', () => {
-      expect(gf256Mul(0x57, 0x83)).toBe(gf256Mul(0x83, 0x57));
-    });
-
-    it('inverse is correct: a * inv(a) = 1', () => {
-      for (let i = 1; i < 256; i++) {
-        expect(gf256Mul(i, gf256Inv(i))).toBe(1);
-      }
-    });
-
-    it('inverse of zero throws', () => {
-      expect(() => gf256Inv(0)).toThrow('No inverse for zero');
-    });
-  });
-
   describe('split and reconstruct', () => {
     it('reconstructs a 16-byte secret with 2-of-3', () => {
       const shares = splitSecret(secret16, 2, 3);
       expect(shares).toHaveLength(3);
+      expect(shares[0].threshold).toBe(2);
       const recovered = reconstructSecret(shares, 2);
       expect(recovered).toEqual(secret16);
     });
@@ -77,32 +40,17 @@ describe('shamir', () => {
 
     it('any 2 of 3 shares reconstruct (all 3 combinations)', () => {
       const shares = splitSecret(secret16, 2, 3);
-
-      // Combination: shares[0], shares[1]
       expect(reconstructSecret([shares[0], shares[1]], 2)).toEqual(secret16);
-      // Combination: shares[0], shares[2]
       expect(reconstructSecret([shares[0], shares[2]], 2)).toEqual(secret16);
-      // Combination: shares[1], shares[2]
       expect(reconstructSecret([shares[1], shares[2]], 2)).toEqual(secret16);
     });
 
     it('any 3 of 5 shares reconstruct (several combinations)', () => {
       const shares = splitSecret(secret16, 3, 5);
-
-      // Test several combinations of 3 shares
       const combos = [
-        [0, 1, 2],
-        [0, 1, 3],
-        [0, 1, 4],
-        [0, 2, 3],
-        [0, 2, 4],
-        [0, 3, 4],
-        [1, 2, 3],
-        [1, 2, 4],
-        [1, 3, 4],
-        [2, 3, 4],
+        [0, 1, 2], [0, 1, 3], [0, 1, 4], [0, 2, 3], [0, 2, 4],
+        [0, 3, 4], [1, 2, 3], [1, 2, 4], [1, 3, 4], [2, 3, 4],
       ];
-
       for (const [a, b, c] of combos) {
         const subset = [shares[a], shares[b], shares[c]];
         const recovered = reconstructSecret(subset, 3);
@@ -112,20 +60,9 @@ describe('shamir', () => {
 
     it('fewer shares than threshold gives wrong result', () => {
       const shares = splitSecret(secret16, 2, 3);
-      // Using only 1 share with threshold=1 is not meaningful,
-      // but we can check that 1 share does not equal the secret
-      // (the share data at x != 0 should differ from the secret at x = 0)
       const singleShareData = shares[0].data;
       const matches = secret16.every((b, i) => b === singleShareData[i]);
       expect(matches).toBe(false);
-    });
-
-    it('works with 16-byte secrets (128-bit)', () => {
-      const secret = new Uint8Array(16);
-      secret.fill(0x42);
-      const shares = splitSecret(secret, 2, 3);
-      const recovered = reconstructSecret(shares, 2);
-      expect(recovered).toEqual(secret);
     });
 
     it('works with 32-byte secrets (256-bit)', () => {
@@ -136,7 +73,6 @@ describe('shamir', () => {
 
     it('shares are different from each other', () => {
       const shares = splitSecret(secret16, 2, 3);
-      // Each pair of shares should differ
       for (let i = 0; i < shares.length; i++) {
         for (let j = i + 1; j < shares.length; j++) {
           const same = shares[i].data.every(
@@ -184,26 +120,9 @@ describe('shamir', () => {
       );
     });
 
-    it('throws when a share has ID 0', () => {
-      const shares = splitSecret(secret16, 2, 3);
-      const zeroIdShare = { id: 0, data: shares[0].data };
-      expect(() => reconstructSecret([zeroIdShare, shares[1]], 2)).toThrow(
-        'Invalid share ID: 0 is not a valid x-coordinate',
-      );
-    });
-
-    it('throws when share ID exceeds 255', () => {
-      const shares = splitSecret(secret16, 2, 3);
-      const badShare = { id: 256, data: shares[0].data };
-      expect(() => reconstructSecret([badShare, shares[1]], 2)).toThrow(
-        'must be in [1, 255]',
-      );
-    });
-
     it('throws when shares have inconsistent data lengths', () => {
       const shares16 = splitSecret(secret16, 2, 3);
       const shares32 = splitSecret(secret32, 2, 3);
-      // Mix shares from different secret lengths
       expect(() => reconstructSecret([shares16[0], shares32[1]], 2)).toThrow(
         'Inconsistent share lengths',
       );
@@ -227,6 +146,7 @@ describe('shamir', () => {
         const words = shareToWords(share);
         const recovered = wordsToShare(words);
         expect(recovered.id).toBe(share.id);
+        expect(recovered.threshold).toBe(share.threshold);
         expect(recovered.data).toEqual(share.data);
       }
     });
@@ -253,19 +173,18 @@ describe('shamir', () => {
       expect(recovered).toEqual(secret16);
     });
 
-    it('wordsToShare rejects share with id 0', () => {
-      // Construct a word list that would decode to id=0 as first byte
-      // Use shareToWords on a valid share, then test the validation
-      const share = splitSecret(secret16, 2, 3)[0];
-      const words = shareToWords(share);
-      // Valid words should decode fine
-      expect(() => wordsToShare(words)).not.toThrow();
+    it('wordsToShare detects corrupted words via checksum', () => {
+      const shares = splitSecret(secret16, 2, 3);
+      const words = shareToWords(shares[0]);
+      const middleIdx = Math.floor(words.length / 2);
+      const original = words[middleIdx];
+      const replacement = original === 'abandon' ? 'ability' : 'abandon';
+      const corrupted = [...words];
+      corrupted[middleIdx] = replacement;
+      expect(() => wordsToShare(corrupted)).toThrow('Checksum mismatch');
     });
 
     it('roundtrips large secrets (48 bytes) without bit overflow', () => {
-      // This specifically tests the 32-bit accumulator overflow fix:
-      // 48-byte secret + 1 ID byte = 49 bytes → 36 BIP-39 words
-      // (using 48 bytes because 49 bytes * 8 = 392 bits divides cleanly into words)
       const largeSecret = new Uint8Array(48);
       for (let i = 0; i < 48; i++) largeSecret[i] = (i * 7 + 13) & 0xff;
 
@@ -277,7 +196,6 @@ describe('shamir', () => {
         expect(recovered.data).toEqual(share.data);
       }
 
-      // Full pipeline with large secret
       const wordShares = shares.map(shareToWords);
       const recoveredShares = wordShares.map(wordsToShare);
       const recovered = reconstructSecret(recoveredShares.slice(0, 3), 3);
