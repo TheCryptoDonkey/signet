@@ -12,10 +12,42 @@ import {
   MAX_RING_SIZE,
 } from '@forgesworn/ring-sig';
 
+const SIGNET_LSAG_DOMAIN = 'signet-lsag-v1';
+
 export { type LsagSignature, MAX_RING_SIZE };
 
-// Re-export directly — the package handles domain separation internally.
+// Key image functions do not involve challenge hashes — safe to re-export directly.
 export const computeKeyImage = _computeKeyImage;
 export const hasDuplicateKeyImage = _hasDuplicateKeyImage;
-export const lsagSign = _lsagSign;
-export const lsagVerify = _lsagVerify;
+
+/**
+ * Sign with LSAG using Signet's domain separator.
+ *
+ * @param message - The message to sign (typically `electionId:SHA-256(encryptedVote)`)
+ * @param ring - Array of x-only public keys (hex) forming the anonymity set
+ * @param signerIndex - Index of the actual signer in the ring
+ * @param privateKey - Signer's private key (hex)
+ * @param electionId - Election identifier for key image linkability
+ * @returns A linkable ring signature with Signet domain
+ */
+export function lsagSign(
+  message: string,
+  ring: string[],
+  signerIndex: number,
+  privateKey: string,
+  electionId: string,
+): LsagSignature {
+  const sig = _lsagSign(message, ring, signerIndex, privateKey, electionId, SIGNET_LSAG_DOMAIN);
+  sig.domain = SIGNET_LSAG_DOMAIN;
+  return sig;
+}
+
+/**
+ * Verify an LSAG signature.
+ *
+ * @param sig - The LSAG signature to verify
+ * @returns true if the signature is valid
+ */
+export function lsagVerify(sig: LsagSignature): boolean {
+  return _lsagVerify(sig);
+}

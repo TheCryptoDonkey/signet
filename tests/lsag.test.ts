@@ -43,7 +43,7 @@ describe('LSAG', () => {
   });
 
   describe('lsagSign', () => {
-    it('produces a valid signature structure', () => {
+    it('produces a valid signature structure with Signet domain', () => {
       const sig = lsagSign('test message', ring, 0, signer.privateKey, electionId);
       expect(sig.keyImage).toMatch(/^[0-9a-f]{66}$/);
       expect(sig.c0).toMatch(/^[0-9a-f]{64}$/);
@@ -51,6 +51,7 @@ describe('LSAG', () => {
       expect(sig.ring).toEqual(ring);
       expect(sig.message).toBe('test message');
       expect(sig.electionId).toBe(electionId);
+      expect(sig.domain).toBe('signet-lsag-v1');
     });
 
     it('rejects ring size < 2', () => {
