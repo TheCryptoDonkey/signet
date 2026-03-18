@@ -51,13 +51,13 @@ function isValidVerifyRequest(obj: Record<string, unknown>): obj is Record<strin
   if (!VALID_AGE_RANGES.includes(obj.requiredAgeRange)) return false;
   const ts = typeof obj.timestamp === 'number' ? obj.timestamp : Math.floor(Date.now() / 1000);
   if (Math.abs(Date.now() / 1000 - ts) > 300) return false;
-  // Validate optional URL fields
+  // Validate optional URL fields (with length bounds)
   if (obj.callbackUrl !== undefined) {
-    if (typeof obj.callbackUrl !== 'string') return false;
+    if (typeof obj.callbackUrl !== 'string' || obj.callbackUrl.length > 1024) return false;
     if (!/^https:\/\//i.test(obj.callbackUrl) && !/^http:\/\/(localhost|127\.0\.0\.1)([:\/]|$)/i.test(obj.callbackUrl)) return false;
   }
   if (obj.relayUrl !== undefined) {
-    if (typeof obj.relayUrl !== 'string') return false;
+    if (typeof obj.relayUrl !== 'string' || obj.relayUrl.length > 1024) return false;
     if (!obj.relayUrl.startsWith('wss://')) return false;
   }
   return true;
