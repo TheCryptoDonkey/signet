@@ -112,18 +112,10 @@ These conventions were established during the security hardening review (2026-03
 ## Gotchas
 
 - **canary-kit dependency** — `canary-kit` is published on npm as `^0.9.0` (published 2026-03-16). The `package.json` now references the npm version. Used in `src/signet-words.ts`.
-- **npm publication** — `signet-protocol` is not yet published to npm. Fathom currently uses a `file:` reference. canary-kit is now on npm — signet-protocol can be published.
+- **npm publication** — `signet-protocol` is published to npm via semantic-release on push to main.
 - **App typecheck uses its own tsconfig** — running `tsc --noEmit` from the project root only checks `src/`. The apps have their own tsconfigs and must be checked separately from their directories.
 - **`@noble/hashes` deprecation warnings** — `sha256`, `ProjectivePoint`, etc. show as deprecated in diagnostics. These are re-export deprecations, not functional deprecations. The functions work correctly. Ignore these warnings.
 - **CSP in dev mode** — The `script-src 'self'` CSP in `app/index.html` may log violations during Vite dev server (HMR uses inline scripts). This is expected in dev; the CSP protects production builds.
-
-## Security Review Process
-
-Use the `ralph-loop` plugin for iterative security reviews:
-
-```bash
-/ralph-loop "Security review of src/. For each issue: fix it, add tests, run the suite. Re-review changed files. Output <promise>CLEAN</promise> when re-review finds zero new issues." --completion-promise "CLEAN" --max-iterations 10
-```
 
 ## Subagent Model Selection
 
