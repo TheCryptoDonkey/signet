@@ -407,6 +407,28 @@ export type GuardianDelegationScope =
   | 'content-management'
   | 'contact-approval';
 
+// --- Cold-Call Verification ---
+
+/** A single institutional verification pubkey */
+export interface InstitutionPubkey {
+  id: string;
+  pubkey: string;         // 64-char hex, secp256k1 x-only
+  label: string;
+  created: string;        // ISO 8601
+}
+
+/** .well-known/signet.json response */
+export interface InstitutionKeys {
+  version: number;
+  name: string;
+  pubkeys: InstitutionPubkey[];
+  relay?: string;
+  policy?: {
+    rotation?: string;
+    contact?: string;
+  };
+}
+
 // --- Kind 30476: Identity Bridge ---
 
 export interface ParsedIdentityBridge {

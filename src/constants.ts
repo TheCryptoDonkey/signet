@@ -112,6 +112,25 @@ export const ENTITY_LABELS: Record<string, string> = {
  * Tagged on events so future parsers can distinguish pre- and post-quantum events. */
 export const DEFAULT_CRYPTO_ALGORITHM = 'secp256k1' as const;
 
+/** Cold-call verification constants */
+export const COLD_CALL_CONTEXT = 'signet:cold-call';
+export const COLD_CALL_EPOCH_SECONDS = 30;
+export const COLD_CALL_TOLERANCE = 1;           // ±1 epoch
+export const WELL_KNOWN_PATH = '/.well-known/signet.json';
+export const WELL_KNOWN_MAX_SIZE = 10240;       // 10 KB
+export const WELL_KNOWN_MAX_PUBKEYS = 20;
+export const WELL_KNOWN_MAX_CACHE_HOURS = 24;
+export const SESSION_CODE_EXPIRY_SECONDS = 300; // 5 minutes
+
+/** NATO phonetic alphabet for session codes */
+export const NATO_ALPHABET = [
+  'ALFA', 'BRAVO', 'CHARLIE', 'DELTA', 'ECHO', 'FOXTROT',
+  'GOLF', 'HOTEL', 'INDIA', 'JULIET', 'KILO', 'LIMA',
+  'MIKE', 'NOVEMBER', 'OSCAR', 'PAPA', 'QUEBEC', 'ROMEO',
+  'SIERRA', 'TANGO', 'UNIFORM', 'VICTOR', 'WHISKEY',
+  'XRAY', 'YANKEE', 'ZULU',
+] as const;
+
 /** Signal ordering (protocol-mandated) */
 export const SIGNAL_PRIORITY = [
   'professional-verification',
