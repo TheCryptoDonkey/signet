@@ -9,7 +9,8 @@ import {
   isCredentialExpired,
   parseCredential,
   getTagValue,
-  SIGNET_KINDS,
+  ATTESTATION_KIND,
+  ATTESTATION_TYPES,
 } from '../src/index.js';
 import { TIER3_OPTS } from './fixtures.js';
 
@@ -19,12 +20,13 @@ describe('credentials', () => {
       const kp = generateKeyPair();
       const cred = await createSelfDeclaredCredential(kp.privateKey);
 
-      expect(cred.kind).toBe(SIGNET_KINDS.CREDENTIAL);
+      expect(cred.kind).toBe(ATTESTATION_KIND);
       expect(cred.pubkey).toBe(kp.publicKey);
       expect(getTagValue(cred, 'tier')).toBe('1');
-      expect(getTagValue(cred, 'type')).toBe('self');
+      expect(getTagValue(cred, 'type')).toBe(ATTESTATION_TYPES.CREDENTIAL);
+      expect(getTagValue(cred, 'verification-type')).toBe('self');
       expect(getTagValue(cred, 'scope')).toBe('adult');
-      expect(getTagValue(cred, 'd')).toBe(kp.publicKey); // self-issued
+      expect(getTagValue(cred, 'd')).toBe(`credential:${kp.publicKey}`); // self-issued
     });
 
     it('passes verification', async () => {
@@ -44,10 +46,11 @@ describe('credentials', () => {
       const subject = generateKeyPair();
       const cred = await createPeerVouchedCredential(issuer.privateKey, subject.publicKey);
 
-      expect(cred.kind).toBe(SIGNET_KINDS.CREDENTIAL);
+      expect(cred.kind).toBe(ATTESTATION_KIND);
       expect(getTagValue(cred, 'tier')).toBe('2');
-      expect(getTagValue(cred, 'type')).toBe('peer');
-      expect(getTagValue(cred, 'd')).toBe(subject.publicKey);
+      expect(getTagValue(cred, 'type')).toBe(ATTESTATION_TYPES.CREDENTIAL);
+      expect(getTagValue(cred, 'verification-type')).toBe('peer');
+      expect(getTagValue(cred, 'd')).toBe(`credential:${subject.publicKey}`);
     });
 
     it('passes verification', async () => {
@@ -68,7 +71,8 @@ describe('credentials', () => {
       const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS);
 
       expect(getTagValue(cred, 'tier')).toBe('3');
-      expect(getTagValue(cred, 'type')).toBe('professional');
+      expect(getTagValue(cred, 'type')).toBe(ATTESTATION_TYPES.CREDENTIAL);
+      expect(getTagValue(cred, 'verification-type')).toBe('professional');
       expect(getTagValue(cred, 'scope')).toBe('adult');
       expect(getTagValue(cred, 'profession')).toBe('solicitor');
       expect(getTagValue(cred, 'jurisdiction')).toBe('UK');
@@ -97,7 +101,8 @@ describe('credentials', () => {
       });
 
       expect(getTagValue(cred, 'tier')).toBe('4');
-      expect(getTagValue(cred, 'type')).toBe('professional');
+      expect(getTagValue(cred, 'type')).toBe(ATTESTATION_TYPES.CREDENTIAL);
+      expect(getTagValue(cred, 'verification-type')).toBe('professional');
       expect(getTagValue(cred, 'scope')).toBe('adult+child');
       expect(getTagValue(cred, 'age-range')).toBe('8-12');
       expect(getTagValue(cred, 'profession')).toBe('notary');

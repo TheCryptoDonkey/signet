@@ -10,7 +10,8 @@ import {
   createProfessionalCredential,
   verifyEvent,
   getTagValue,
-  SIGNET_KINDS,
+  ATTESTATION_KIND,
+  ATTESTATION_TYPES,
 } from '../src/index.js';
 import type { NostrEvent } from '../src/types.js';
 import { TIER3_OPTS } from './fixtures.js';
@@ -28,9 +29,10 @@ describe('challenges', () => {
       evidence: 'Issued 200 verifications in one week',
     });
 
-    expect(challenge.kind).toBe(SIGNET_KINDS.CHALLENGE);
+    expect(challenge.kind).toBe(ATTESTATION_KIND);
     expect(challenge.pubkey).toBe(reporter.publicKey);
-    expect(getTagValue(challenge, 'd')).toBe(verifier.publicKey);
+    expect(getTagValue(challenge, 'type')).toBe(ATTESTATION_TYPES.CHALLENGE);
+    expect(getTagValue(challenge, 'd')).toBe(`challenge:${verifier.publicKey}`);
     expect(getTagValue(challenge, 'reason')).toBe('anomalous-volume');
     expect(getTagValue(challenge, 'evidence-type')).toBe('issuance-data');
     expect(getTagValue(challenge, 'reporter-tier')).toBe('3');
@@ -79,8 +81,9 @@ describe('revocations', () => {
       summary: 'Confirmed fraudulent: licence revoked by SRA',
     });
 
-    expect(revocation.kind).toBe(SIGNET_KINDS.REVOCATION);
-    expect(getTagValue(revocation, 'd')).toBe(verifier.publicKey);
+    expect(revocation.kind).toBe(ATTESTATION_KIND);
+    expect(getTagValue(revocation, 'type')).toBe(ATTESTATION_TYPES.REVOCATION);
+    expect(getTagValue(revocation, 'd')).toBe(`revocation:${verifier.publicKey}`);
     expect(getTagValue(revocation, 'challenge')).toBe('challenge123');
     expect(getTagValue(revocation, 'confirmations')).toBe('7');
     expect(getTagValue(revocation, 'bond-action')).toBe('slashed');

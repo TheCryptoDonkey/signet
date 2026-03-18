@@ -8,7 +8,8 @@ import {
   getVouchers,
   verifyEvent,
   getTagValue,
-  SIGNET_KINDS,
+  ATTESTATION_KIND,
+  ATTESTATION_TYPES,
 } from '../src/index.js';
 
 describe('vouches', () => {
@@ -24,9 +25,10 @@ describe('vouches', () => {
       voucherScore: 87,
     });
 
-    expect(vouch.kind).toBe(SIGNET_KINDS.VOUCH);
+    expect(vouch.kind).toBe(ATTESTATION_KIND);
     expect(vouch.pubkey).toBe(voucher.publicKey);
-    expect(getTagValue(vouch, 'd')).toBe(subject.publicKey);
+    expect(getTagValue(vouch, 'type')).toBe(ATTESTATION_TYPES.VOUCH);
+    expect(getTagValue(vouch, 'd')).toBe(`vouch:${subject.publicKey}`);
     expect(getTagValue(vouch, 'method')).toBe('in-person');
     expect(getTagValue(vouch, 'context')).toBe('bitcoin-meetup');
     expect(getTagValue(vouch, 'voucher-tier')).toBe('3');

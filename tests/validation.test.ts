@@ -12,7 +12,8 @@ import {
   validateEvent,
   validateCredential,
   validateVouch,
-  SIGNET_KINDS,
+  ATTESTATION_KIND,
+  ATTESTATION_TYPES,
 } from '../src/index.js';
 import { validateFieldSizeBounds } from '../src/validation.js';
 
@@ -109,14 +110,14 @@ describe('validation', () => {
   });
 
   describe('credential tier validation', () => {
-    it('rejects Tier 1 with wrong type', async () => {
+    it('rejects Tier 1 with wrong verification-type', async () => {
       const kp = generateKeyPair();
       const cred = await createSelfDeclaredCredential(kp.privateKey);
-      // Tamper: change type to professional
+      // Tamper: change verification-type to professional
       const tampered = {
         ...cred,
         tags: cred.tags.map((t) =>
-          t[0] === 'type' ? ['type', 'professional'] : t
+          t[0] === 'verification-type' ? ['verification-type', 'professional'] : t
         ),
       };
       const result = validateCredential(tampered);

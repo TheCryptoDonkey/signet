@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SIGNET_KINDS, ENTITY_LABELS } from '../src/constants.js';
+import { VOTING_KINDS, ENTITY_LABELS } from '../src/constants.js';
 import type {
   ElectionScale,
   ReVotePolicy,
@@ -21,25 +21,25 @@ import { generateKeyPair } from '../src/crypto.js';
 describe('voting extension', () => {
   describe('event kind constants', () => {
     it('ELECTION is 30482', () => {
-      expect(SIGNET_KINDS.ELECTION).toBe(30482);
+      expect(VOTING_KINDS.ELECTION).toBe(30482);
     });
 
     it('BALLOT is 30483', () => {
-      expect(SIGNET_KINDS.BALLOT).toBe(30483);
+      expect(VOTING_KINDS.BALLOT).toBe(30483);
     });
 
     it('ELECTION_RESULT is 30484', () => {
-      expect(SIGNET_KINDS.ELECTION_RESULT).toBe(30484);
+      expect(VOTING_KINDS.ELECTION_RESULT).toBe(30484);
     });
 
-    it('all kind numbers are unique', () => {
-      const values = Object.values(SIGNET_KINDS);
+    it('all voting kind numbers are unique', () => {
+      const values = Object.values(VOTING_KINDS);
       const unique = new Set(values);
       expect(unique.size).toBe(values.length);
     });
 
-    it('has 11 total event kinds (30470-30484, gap at 30478-30481)', () => {
-      expect(Object.keys(SIGNET_KINDS)).toHaveLength(11);
+    it('has 3 voting event kinds (30482-30484)', () => {
+      expect(Object.keys(VOTING_KINDS)).toHaveLength(3);
     });
   });
 
@@ -182,7 +182,7 @@ describe('voting protocol', () => {
       const params = makeElectionParams({ tallyPubkeys: [tally.publicKey] });
       const event = await createElection(authority.privateKey, params);
 
-      expect(event.kind).toBe(SIGNET_KINDS.ELECTION);
+      expect(event.kind).toBe(VOTING_KINDS.ELECTION);
       expect(event.id).toBeDefined();
       expect(event.sig).toBeDefined();
       expect(event.pubkey).toBe(authority.publicKey);
@@ -302,7 +302,7 @@ describe('voting protocol', () => {
         voter1.privateKey, election, 'Option A', eligibleRing,
       );
 
-      expect(event.kind).toBe(SIGNET_KINDS.BALLOT);
+      expect(event.kind).toBe(VOTING_KINDS.BALLOT);
       expect(event.pubkey).toBe(ephemeralPubkey);
 
       // Key image tag should be present
@@ -430,7 +430,7 @@ describe('voting protocol', () => {
         election, tally.privateKey, eligibleRing,
       );
 
-      expect(result.kind).toBe(SIGNET_KINDS.ELECTION_RESULT);
+      expect(result.kind).toBe(VOTING_KINDS.ELECTION_RESULT);
 
       // Check result tags
       const resultTags = result.tags.filter((t) => t[0] === 'result');
@@ -513,7 +513,7 @@ describe('voting protocol', () => {
 describe('security hardening', () => {
   it('verifyBallot handles malformed ring-sig JSON gracefully', () => {
     const ballot = {
-      kind: SIGNET_KINDS.BALLOT, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
+      kind: VOTING_KINDS.BALLOT, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
       created_at: Math.floor(Date.now() / 1000),
       content: '',
       tags: [
@@ -522,7 +522,7 @@ describe('security hardening', () => {
       ],
     } as any;
     const election = {
-      kind: SIGNET_KINDS.ELECTION, id: 'abc', sig: 'z', pubkey: 'b'.repeat(64),
+      kind: VOTING_KINDS.ELECTION, id: 'abc', sig: 'z', pubkey: 'b'.repeat(64),
       created_at: 0, content: '',
       tags: [
         ['L', 'signet'], ['d', 'eid'], ['title', 'T'], ['scale', 'organisational'],
@@ -537,7 +537,7 @@ describe('security hardening', () => {
 
   it('verifyBallot handles structurally invalid ring-sig', () => {
     const ballot = {
-      kind: SIGNET_KINDS.BALLOT, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
+      kind: VOTING_KINDS.BALLOT, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
       created_at: Math.floor(Date.now() / 1000),
       content: '',
       tags: [
@@ -546,7 +546,7 @@ describe('security hardening', () => {
       ],
     } as any;
     const election = {
-      kind: SIGNET_KINDS.ELECTION, id: 'abc', sig: 'z', pubkey: 'b'.repeat(64),
+      kind: VOTING_KINDS.ELECTION, id: 'abc', sig: 'z', pubkey: 'b'.repeat(64),
       created_at: 0, content: '',
       tags: [
         ['L', 'signet'], ['d', 'eid'], ['title', 'T'], ['scale', 'organisational'],
@@ -562,7 +562,7 @@ describe('security hardening', () => {
   it('validateElection enforces field-size bounds', () => {
     const oversizedContent = 'x'.repeat(70000);
     const event = {
-      kind: SIGNET_KINDS.ELECTION, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
+      kind: VOTING_KINDS.ELECTION, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
       created_at: 0, content: oversizedContent,
       tags: [['L', 'signet']],
     } as any;
@@ -573,7 +573,7 @@ describe('security hardening', () => {
 
   it('validateBallot enforces field-size bounds', () => {
     const event = {
-      kind: SIGNET_KINDS.BALLOT, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
+      kind: VOTING_KINDS.BALLOT, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
       created_at: 0, content: '',
       tags: Array.from({ length: 110 }, (_, i) => ['tag' + i, 'v']),
     } as any;
@@ -584,7 +584,7 @@ describe('security hardening', () => {
 
   it('parseElection returns null when opens/closes contain non-numeric strings', () => {
     const event = {
-      kind: SIGNET_KINDS.ELECTION, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
+      kind: VOTING_KINDS.ELECTION, id: 'x', sig: 'y', pubkey: 'a'.repeat(64),
       created_at: 0, content: '',
       tags: [
         ['L', 'signet'], ['d', 'eid'], ['title', 'T'], ['scale', 'organisational'],

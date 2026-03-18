@@ -134,8 +134,11 @@ export function validateVouch(event: NostrEvent): ValidationResult {
     errors.push('Missing signet protocol label');
   }
 
-  const subject = getTagValue(event, 'd');
-  if (!subject) errors.push('Missing "d" tag (subject pubkey)');
+  const dTag = getTagValue(event, 'd');
+  if (!dTag) errors.push('Missing "d" tag (subject pubkey)');
+
+  // Strip 'vouch:' prefix from d-tag to get subject pubkey
+  const subject = dTag && dTag.startsWith('vouch:') ? dTag.slice('vouch:'.length) : dTag;
 
   const method = getTagValue(event, 'method');
   if (!method || !['in-person', 'online'].includes(method)) {

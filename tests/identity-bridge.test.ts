@@ -11,7 +11,8 @@ import {
   computeTrustScore,
   createProfessionalCredential,
   MIN_BRIDGE_RING_SIZE,
-  SIGNET_KINDS,
+  ATTESTATION_KIND,
+  ATTESTATION_TYPES,
 } from '../src/index.js';
 import { generateKeypairs } from './fixtures.js';
 
@@ -96,7 +97,7 @@ describe('createIdentityBridge', () => {
       3
     );
 
-    expect(event.kind).toBe(SIGNET_KINDS.IDENTITY_BRIDGE);
+    expect(event.kind).toBe(ATTESTATION_KIND);
     expect(event.pubkey).toBe(anon.publicKey);
 
     const valid = await verifyIdentityBridge(event);

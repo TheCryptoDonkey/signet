@@ -22,7 +22,9 @@ import {
   createGuardianDelegation,
   selectDecoyRing,
   DEFAULT_CRYPTO_ALGORITHM,
-  SIGNET_KINDS,
+  ATTESTATION_KIND,
+  ATTESTATION_TYPES,
+  APP_DATA_KIND,
 } from '../src/index.js';
 import type { CryptoAlgorithm, NostrEvent } from '../src/index.js';
 import { TIER3_OPTS, generateKeypairs } from './fixtures.js';
@@ -242,13 +244,14 @@ describe('quantum readiness — algo tag', () => {
       const legacyEvent: NostrEvent = {
         id: 'legacy-id',
         sig: 'legacy-sig',
-        kind: SIGNET_KINDS.CREDENTIAL,
+        kind: ATTESTATION_KIND,
         pubkey: 'aabbccdd',
         created_at: Math.floor(Date.now() / 1000),
         tags: [
-          ['d', 'subject-pubkey'],
+          ['d', 'credential:subject-pubkey'],
           ['tier', '1'],
-          ['type', 'self'],
+          ['type', 'credential'],
+          ['verification-type', 'self'],
           ['scope', 'adult'],
           ['method', 'self-declaration'],
           ['expires', String(Math.floor(Date.now() / 1000) + 86400)],
@@ -268,12 +271,13 @@ describe('quantum readiness — algo tag', () => {
       const legacyVouch: NostrEvent = {
         id: 'legacy-vouch-id',
         sig: 'legacy-sig',
-        kind: SIGNET_KINDS.VOUCH,
+        kind: ATTESTATION_KIND,
         pubkey: 'aabbccdd',
         created_at: Math.floor(Date.now() / 1000),
         tags: [
-          ['d', 'subject-pubkey'],
+          ['d', 'vouch:subject-pubkey'],
           ['p', 'subject-pubkey'],
+          ['type', 'vouch'],
           ['method', 'in-person'],
           ['voucher-tier', '3'],
           ['voucher-score', '120'],
@@ -294,13 +298,14 @@ describe('quantum readiness — algo tag', () => {
       const futureEvent: NostrEvent = {
         id: 'future-id',
         sig: 'future-sig',
-        kind: SIGNET_KINDS.CREDENTIAL,
+        kind: ATTESTATION_KIND,
         pubkey: 'aabbccdd',
         created_at: Math.floor(Date.now() / 1000),
         tags: [
-          ['d', 'subject-pubkey'],
+          ['d', 'credential:subject-pubkey'],
           ['tier', '3'],
-          ['type', 'professional'],
+          ['type', 'credential'],
+          ['verification-type', 'professional'],
           ['scope', 'adult'],
           ['method', 'in-person-id'],
           ['expires', String(Math.floor(Date.now() / 1000) + 86400)],
@@ -320,12 +325,13 @@ describe('quantum readiness — algo tag', () => {
       const futureVouch: NostrEvent = {
         id: 'future-vouch-id',
         sig: 'future-sig',
-        kind: SIGNET_KINDS.VOUCH,
+        kind: ATTESTATION_KIND,
         pubkey: 'aabbccdd',
         created_at: Math.floor(Date.now() / 1000),
         tags: [
-          ['d', 'subject-pubkey'],
+          ['d', 'vouch:subject-pubkey'],
           ['p', 'subject-pubkey'],
+          ['type', 'vouch'],
           ['method', 'in-person'],
           ['voucher-tier', '3'],
           ['voucher-score', '120'],
@@ -345,17 +351,15 @@ describe('quantum readiness — algo tag', () => {
       const futurePolicy: NostrEvent = {
         id: 'future-policy-id',
         sig: 'future-sig',
-        kind: SIGNET_KINDS.POLICY,
+        kind: APP_DATA_KIND,
         pubkey: 'aabbccdd',
         created_at: Math.floor(Date.now() / 1000),
         tags: [
-          ['d', 'test-community'],
+          ['d', 'signet:policy:test-community'],
           ['adult-min-tier', '2'],
           ['child-min-tier', '4'],
           ['enforcement', 'client'],
           ['algo', 'slh-dsa-128s'],
-          ['L', 'signet'],
-          ['l', 'policy', 'signet'],
         ],
         content: '',
       };

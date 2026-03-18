@@ -9,7 +9,8 @@ import {
   createRevocation,
   verifyEvent,
   getTagValue,
-  SIGNET_KINDS,
+  ATTESTATION_KIND,
+  ATTESTATION_TYPES,
 } from '../src/index.js';
 
 describe('verifiers', () => {
@@ -23,7 +24,8 @@ describe('verifiers', () => {
       statement: 'Available for Signet verification',
     });
 
-    expect(cred.kind).toBe(SIGNET_KINDS.VERIFIER);
+    expect(cred.kind).toBe(ATTESTATION_KIND);
+    expect(getTagValue(cred, 'type')).toBe(ATTESTATION_TYPES.VERIFIER);
     expect(cred.pubkey).toBe(verifier.publicKey);
     expect(getTagValue(cred, 'profession')).toBe('solicitor');
     expect(getTagValue(cred, 'jurisdiction')).toBe('UK');
