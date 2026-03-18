@@ -7,7 +7,7 @@ A JSON-LD context definition and mapping specification for expressing Signet Kin
 DID method.
 
 The JSON-LD context is located at `docs/signet-vc-context.jsonld` and is intended
-to be hosted at `https://signet.trotters.cc/ns/v1` when the protocol goes live.
+to be hosted at `https://signet.forgesworn.dev/ns/v1` when the protocol goes live.
 
 ---
 
@@ -98,7 +98,7 @@ A complete Signet Kind 30470 event wrapped as a W3C Verifiable Credential
 {
   "@context": [
     "https://www.w3.org/ns/credentials/v2",
-    "https://signet.trotters.cc/ns/v1"
+    "https://signet.forgesworn.dev/ns/v1"
   ],
   "type": ["VerifiableCredential", "SignetCredential"],
   "issuer": "did:nostr:abc123def456abc123def456abc123def456abc123def456abc123def456abc1",
@@ -195,7 +195,7 @@ EU eIDAS 2.0 compliance.
 
 ## Status
 
-Draft. The context URL `https://signet.trotters.cc/ns/v1` is a placeholder.
+Draft. The context URL `https://signet.forgesworn.dev/ns/v1` is a placeholder.
 It must be hosted at a stable URL before this bridge can be used in production.
 The JSON-LD context file is `docs/signet-vc-context.jsonld` in this repository.
 
@@ -214,4 +214,4 @@ cryptosuite.
 - [Nostr DID Method Specification](https://nostrcg.github.io/did-nostr/)
 - [SchnorrSecp256k1Signature2019 — DIF](https://identity.foundation/SchnorrSecp256k1Signature2019/)
 - [Signet Protocol Specification](../spec/protocol.md) — Kind 30470, §20.7 nullifiers, §20.3 Merkle trees
-- [Competitive Research Note 2026-03-16](plans/2026-03-16-competitive-research.md) — did:nostr bridge analysis
+
