@@ -24,7 +24,7 @@ This repo contains:
 - **Crypto stack**: Schnorr (secp256k1 base) + Bulletproofs (age range proofs) + future ZK layer
 - **No central authority**: professional bodies (Law Society, medical boards, notary commissions) are the trust anchors
 - **"Signet me"**: Time-based word verification (configurable 1-16 words, default 3) powered by canary-kit's CANARY-DERIVE
-- **BIP-39 / NIP-06**: Identity derived from 12-word mnemonic, Shamir backup supported via `@scure/bip39`
+- **nsec-tree identity model**: Master secret from BIP-39 mnemonic (`fromMnemonic()`) or existing nsec (`fromNsec()`). Two required personas (natural-person, persona) with optional extras. Linkage proofs (blind/full) via BIP-340 Schnorr. Shamir backup via `@forgesworn/shamir-words`.
 
 ## Relationship to Fathom
 
@@ -100,7 +100,8 @@ These conventions were established during the security hardening review (2026-03
 
 - **canary-kit dependency** — `canary-kit` is published on npm as `^0.9.0` (published 2026-03-16). The `package.json` now references the npm version. Used in `src/signet-words.ts`.
 - **npm publication** — `signet-protocol` is published to npm via semantic-release on push to main.
-- **`@noble/hashes` deprecation warnings** — `sha256`, `ProjectivePoint`, etc. show as deprecated in diagnostics. These are re-export deprecations, not functional deprecations. The functions work correctly. Ignore these warnings.
+- **`@noble/hashes` v2 import paths** — v2 requires `.js` suffix on subpath imports (e.g. `@noble/hashes/sha2.js`, `@noble/hashes/utils.js`, `@noble/curves/secp256k1.js`). The old `sha256` subpath is now `sha2` (but the `sha256` named export still exists within it). `randomPrivateKey` was renamed to `randomSecretKey`. Several functions now require `Uint8Array` instead of hex strings.
+- **nsec-tree dependency** — `nsec-tree` is published on npm as `^1.2.0`. Provides identity derivation, personas, linkage proofs. Requires Node `>=22`.
 
 ## Subagent Model Selection
 

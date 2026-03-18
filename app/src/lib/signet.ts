@@ -4,7 +4,9 @@ import {
   generateMnemonic as _generateMnemonic,
   validateMnemonic as _validateMnemonic,
   BIP39_WORDLIST,
-  deriveChildAccount,
+  createSignetIdentity,
+  createSignetIdentityFromNsec,
+  encodeNpub,
   decodeNsec,
   computeSharedSecret,
   createQRPayload,
@@ -12,7 +14,6 @@ import {
   parseQRPayload,
   getSignetDisplay,
   verifySignetWords,
-  encodeNpub,
   createVouch,
   computeBadge,
   buildBadgeFilters,
@@ -23,6 +24,7 @@ import {
   signEvent,
   getPublicKey,
 } from 'signet-protocol';
+import { bytesToHex } from '@noble/hashes/utils.js';
 import type { SignetIdentity } from '../types';
 
 // Wrap @scure/bip39 functions that require a wordlist parameter
@@ -85,24 +87,29 @@ function buildIdentity(
   isChild: boolean,
   guardianPubkey?: string
 ): SignetIdentity {
-  // Natural Person keypair at account index 0 (m/44'/1237'/0'/0/0)
-  const np = deriveChildAccount(mnemonic, 0);
-  // Persona keypair at account index 1 (m/44'/1237'/1'/0/0)
-  const persona = deriveChildAccount(mnemonic, 1);
+  const signet = createSignetIdentity(mnemonic);
+  const npId = signet.naturalPerson.identity;
+  const pId = signet.persona.identity;
 
-  const primaryPub = primaryKeypair === 'natural-person' ? np.publicKey : persona.publicKey;
+  const npPub = bytesToHex(npId.publicKey);
+  const npPriv = bytesToHex(npId.privateKey);
+  const pPub = bytesToHex(pId.publicKey);
+  const pPriv = bytesToHex(pId.privateKey);
+  const primaryPub = primaryKeypair === 'natural-person' ? npPub : pPub;
+
+  signet.root.destroy();
 
   return {
     id: primaryPub,
     mnemonic,
     naturalPerson: {
-      publicKey: np.publicKey,
-      privateKey: np.privateKey,
+      publicKey: npPub,
+      privateKey: npPriv,
       displayName: primaryKeypair === 'natural-person' ? displayName : '',
     },
     persona: {
-      publicKey: persona.publicKey,
-      privateKey: persona.privateKey,
+      publicKey: pPub,
+      privateKey: pPriv,
       displayName: primaryKeypair === 'persona' ? displayName : '',
     },
     primaryKeypair,
@@ -113,24 +120,37 @@ function buildIdentity(
   };
 }
 
-/** Import an identity from an nsec (single-keypair, no mnemonic) */
+/** Import an identity from an nsec (derives both personas via nsec-tree) */
 export function importFromNsec(
   nsec: string,
   displayName: string,
   primaryKeypair: 'natural-person' | 'persona',
 ): SignetIdentity {
-  const { privateKey, publicKey } = decodeNsec(nsec);
-  const emptyKeypair = { publicKey: '', privateKey: '', displayName: '' };
+  const signet = createSignetIdentityFromNsec(nsec);
+  const npId = signet.naturalPerson.identity;
+  const pId = signet.persona.identity;
+
+  const npPub = bytesToHex(npId.publicKey);
+  const npPriv = bytesToHex(npId.privateKey);
+  const pPub = bytesToHex(pId.publicKey);
+  const pPriv = bytesToHex(pId.privateKey);
+  const primaryPub = primaryKeypair === 'natural-person' ? npPub : pPub;
+
+  signet.root.destroy();
 
   return {
-    id: publicKey,
-    mnemonic: '', // nsec import has no mnemonic — Shamir/backup unavailable
-    naturalPerson: primaryKeypair === 'natural-person'
-      ? { publicKey, privateKey, displayName }
-      : emptyKeypair,
-    persona: primaryKeypair === 'persona'
-      ? { publicKey, privateKey, displayName }
-      : emptyKeypair,
+    id: primaryPub,
+    mnemonic: '', // nsec import has no mnemonic
+    naturalPerson: {
+      publicKey: npPub,
+      privateKey: npPriv,
+      displayName: primaryKeypair === 'natural-person' ? displayName : '',
+    },
+    persona: {
+      publicKey: pPub,
+      privateKey: pPriv,
+      displayName: primaryKeypair === 'persona' ? displayName : '',
+    },
     primaryKeypair,
     isChild: false,
     createdAt: Math.floor(Date.now() / 1000),

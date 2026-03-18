@@ -7,8 +7,9 @@ import {
   generateMnemonic,
   validateMnemonic,
   mnemonicToEntropy,
-  createIdentityFromMnemonic,
-  deriveChildAccount,
+  entropyToMnemonic,
+  createSignetIdentity,
+  deriveAdditionalPersona,
   splitSecret,
   reconstructSecret,
   shareToWords,
@@ -23,6 +24,7 @@ import {
   formatSignetWords,
   getSignetDisplay,
 } from '../src/index.js';
+import { bytesToHex } from '@noble/hashes/utils.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Step 1: Alice creates her identity
@@ -33,16 +35,24 @@ console.log('  STEP 1: Profile Creation');
 console.log('═══════════════════════════════════════════════════\n');
 
 const aliceMnemonic = generateMnemonic();
-const alice = createIdentityFromMnemonic(aliceMnemonic);
+const aliceIdentity = createSignetIdentity(aliceMnemonic);
+const alice = {
+  privateKey: bytesToHex(aliceIdentity.naturalPerson.identity.privateKey),
+  publicKey: bytesToHex(aliceIdentity.naturalPerson.identity.publicKey),
+};
 
 console.log('Alice creates a new Signet identity:\n');
 console.log(`  Mnemonic:    ${aliceMnemonic}`);
 console.log(`  Public Key:  ${alice.publicKey.slice(0, 16)}...`);
 console.log(`  Valid:        ${validateMnemonic(aliceMnemonic)}`);
 
-// Alice also creates an account for her child
-const aliceChild = deriveChildAccount(aliceMnemonic, 1);
-console.log(`\n  Child's Key: ${aliceChild.publicKey.slice(0, 16)}... (account index 1)`);
+// Alice also derives a child persona
+const aliceChildPersona = deriveAdditionalPersona(aliceIdentity.root, 'child', 0);
+const aliceChild = {
+  publicKey: bytesToHex(aliceChildPersona.identity.publicKey),
+};
+console.log(`\n  Child's Key: ${aliceChild.publicKey.slice(0, 16)}... (persona: child)`);
+aliceIdentity.root.destroy();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Step 2: Alice backs up her seed using Shamir's Secret Sharing
@@ -66,7 +76,7 @@ const reconstructed = reconstructSecret(
   [wordsToShare(shareToWords(shares[0])), wordsToShare(shareToWords(shares[2]))],
   2
 );
-const reconstructedMnemonic = (await import('../src/mnemonic.js')).entropyToMnemonic(reconstructed);
+const reconstructedMnemonic = entropyToMnemonic(reconstructed);
 console.log(`\n  Reconstructed from shares 1 + 3: ${reconstructedMnemonic === aliceMnemonic ? 'SUCCESS ✓' : 'FAILED ✗'}`);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -78,8 +88,16 @@ console.log('  STEP 3: Bob Creates His Identity');
 console.log('═══════════════════════════════════════════════════\n');
 
 const bobMnemonic = generateMnemonic();
-const bob = createIdentityFromMnemonic(bobMnemonic);
-const bobChild = deriveChildAccount(bobMnemonic, 1);
+const bobIdentity = createSignetIdentity(bobMnemonic);
+const bob = {
+  privateKey: bytesToHex(bobIdentity.naturalPerson.identity.privateKey),
+  publicKey: bytesToHex(bobIdentity.naturalPerson.identity.publicKey),
+};
+const bobChildPersona = deriveAdditionalPersona(bobIdentity.root, 'child', 0);
+const bobChild = {
+  publicKey: bytesToHex(bobChildPersona.identity.publicKey),
+};
+bobIdentity.root.destroy();
 
 console.log(`Bob's identity:`);
 console.log(`  Public Key:  ${bob.publicKey.slice(0, 16)}...`);
@@ -203,7 +221,12 @@ console.log('══════════════════════�
 
 // The bank has a Nostr keypair too
 const bankMnemonic = generateMnemonic();
-const bank = createIdentityFromMnemonic(bankMnemonic);
+const bankIdentity = createSignetIdentity(bankMnemonic);
+const bank = {
+  privateKey: bytesToHex(bankIdentity.naturalPerson.identity.privateKey),
+  publicKey: bytesToHex(bankIdentity.naturalPerson.identity.publicKey),
+};
+bankIdentity.root.destroy();
 
 // Alice visits the bank and scans their QR code
 const bankQR = createQRPayload(bank.publicKey, { name: 'High Street Bank' });
