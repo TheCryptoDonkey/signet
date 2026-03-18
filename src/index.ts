@@ -325,9 +325,6 @@ export {
 
 export type { ValidationResult } from './validation.js';
 
-// NIP-04 Encryption
-export { nip04Encrypt, nip04Decrypt } from './nip04.js';
-
 // Errors
 export {
   SignetError,

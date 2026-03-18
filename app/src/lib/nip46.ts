@@ -5,8 +5,32 @@
  * The app listens for requests, prompts the user, signs with their key.
  */
 
-import { nip04Encrypt, signEvent, RelayClient } from 'signet-protocol';
+import { signEvent, RelayClient } from 'signet-protocol';
 import type { UnsignedEvent } from 'signet-protocol';
+import { secp256k1 } from '@noble/curves/secp256k1';
+import { hexToBytes } from '@noble/hashes/utils';
+
+/**
+ * NIP-04 encrypt — local copy for NIP-46 compatibility.
+ * TODO: Replace with NIP-44 when NIP-46 spec finalises NIP-44 support.
+ */
+async function nip04Encrypt(privateKey: string, theirPubkey: string, plaintext: string): Promise<string> {
+  const theirPoint = secp256k1.ProjectivePoint.fromHex('02' + theirPubkey);
+  const scalar = BigInt('0x' + privateKey) % secp256k1.CURVE.n;
+  const shared = theirPoint.multiply(scalar);
+  const xHex = shared.toAffine().x.toString(16).padStart(64, '0');
+  const sharedX = hexToBytes(xHex);
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(16));
+  const key = await globalThis.crypto.subtle.importKey('raw',
+    sharedX.buffer.slice(sharedX.byteOffset, sharedX.byteOffset + sharedX.byteLength) as ArrayBuffer,
+    { name: 'AES-CBC' }, false, ['encrypt']);
+  const encoded = new TextEncoder().encode(plaintext);
+  const ciphertext = await globalThis.crypto.subtle.encrypt({ name: 'AES-CBC', iv }, key, encoded);
+  const ctBytes = new Uint8Array(ciphertext);
+  let ctBinary = '';
+  for (let i = 0; i < ctBytes.length; i++) ctBinary += String.fromCharCode(ctBytes[i]);
+  return btoa(ctBinary) + '?iv=' + btoa(String.fromCharCode(...iv));
+}
 
 export interface NIP46Request {
   id: string;
