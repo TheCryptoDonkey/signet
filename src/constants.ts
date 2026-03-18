@@ -17,13 +17,6 @@ export const ATTESTATION_TYPES = {
   DELEGATION: 'delegation',
 } as const;
 
-/** Voting kinds (moved to separate NIP, kept until Plan 4 extracts them) */
-export const VOTING_KINDS = {
-  ELECTION: 30482,
-  BALLOT: 30483,
-  ELECTION_RESULT: 30484,
-} as const;
-
 /** @deprecated — use ATTESTATION_KIND + ATTESTATION_TYPES instead */
 export const SIGNET_KINDS = {
   CREDENTIAL: ATTESTATION_KIND,
@@ -34,7 +27,6 @@ export const SIGNET_KINDS = {
   REVOCATION: ATTESTATION_KIND,
   IDENTITY_BRIDGE: ATTESTATION_KIND,
   DELEGATION: ATTESTATION_KIND,
-  ...VOTING_KINDS,
 } as const;
 
 /** Protocol namespace label */

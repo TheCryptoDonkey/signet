@@ -41,14 +41,6 @@ export type {
   GuardianDelegationParams,
   GuardianDelegationScope,
   SimpleEntityType,
-  ElectionScale,
-  ReVotePolicy,
-  ElectionParams,
-  ParsedElection,
-  BallotParams,
-  ParsedBallot,
-  ElectionResultParams,
-  ParsedElectionResult,
 } from './types.js';
 
 // Entity display labels (value export from types)
@@ -59,7 +51,6 @@ export {
   ATTESTATION_KIND,
   APP_DATA_KIND,
   ATTESTATION_TYPES,
-  VOTING_KINDS,
   SIGNET_KINDS,
   SIGNET_LABEL,
   DEFAULT_VOUCH_THRESHOLD,
@@ -200,20 +191,6 @@ export {
 } from './lsag.js';
 
 export type { LsagSignature } from './lsag.js';
-
-// Voting (kinds 30482-30484)
-export {
-  createElection,
-  parseElection,
-  castBallot,
-  verifyBallot,
-  tallyElection,
-  encryptBallotContent,
-  decryptBallotContent,
-  validateElection,
-  validateBallot,
-  validateElectionResult,
-} from './voting.js';
 
 // Identity Bridge (attestation type: identity-bridge)
 export {
@@ -356,7 +333,6 @@ export {
   SignetError,
   SignetValidationError,
   SignetCryptoError,
-  SignetVotingError,
 } from './errors.js';
 
 // BIP-39 Wordlist
