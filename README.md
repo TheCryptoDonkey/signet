@@ -86,7 +86,6 @@ Kind numbers are placeholders pending NIP allocation.
 
 This repo includes:
 - `src/` — TypeScript protocol library (`signet-protocol` on npm)
-- `app/` — My Signet app (React + Vite) — one app for everyone, power features behind progressive disclosure
 
 [Fathom](https://github.com/decented/decented) is the first external reference implementation, a sovereign learning and family management app on Nostr.
 

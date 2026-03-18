@@ -8,10 +8,8 @@ This repo contains:
 - `spec/protocol.md` — the full protocol specification
 - `spec/voting.md` — voting extension specification (linkable ring signatures, elections)
 - `src/` — TypeScript protocol library (npm publishable)
-- `app/` — My Signet app (React + Vite, production-ready, one app for everyone)
 - `examples/` — example event payloads and flows
 - `legal/` — legal documents in multiple languages
-- `docs/plans/` — design and implementation plans
 - `docs/signet-in-5-minutes.md` — one-page developer overview
 - `docs/implementation-levels.md` — three-level integration guide for client developers
 
@@ -36,7 +34,7 @@ Fathom (https://github.com/decented/decented) is the first reference implementat
 
 ### After ANY code change, you MUST:
 
-1. **Run the full test suite** — `node node_modules/vitest/vitest.mjs run` (protocol) and app tests if applicable
+1. **Run the full test suite** — `node node_modules/vitest/vitest.mjs run`
 2. **Run typecheck** — `node node_modules/typescript/bin/tsc --noEmit`
 3. **If a bug is found and fixed**, update `spec/protocol.md` with any clarifications needed so the spec is sufficient to rebuild from scratch without hitting the same bug
 4. **Commit** the code changes, test fixes, and any spec updates together
@@ -64,11 +62,10 @@ The spec (`spec/protocol.md`) is the source of truth. If implementation reveals 
 Signet/
 ├── src/          — Protocol library (TypeScript, no framework dependencies)
 ├── tests/        — Protocol tests (vitest)
-├── app/          — My Signet app (React + Vite + TypeScript)
 ├── spec/         — Protocol specification
 ├── examples/     — Example flows
 ├── legal/        — Legal documents (multi-language)
-├── docs/plans/   — Design and implementation plans
+├── docs/         — Developer documentation
 ├── dist/         — Compiled protocol library output
 └── .github/      — CI workflows
 ```
@@ -81,17 +78,7 @@ node node_modules/vitest/vitest.mjs run                        # run all protoco
 node node_modules/vitest/vitest.mjs run tests/voting.test.ts   # run a single test file
 node node_modules/typescript/bin/tsc --noEmit                   # typecheck protocol
 npm run build                                                   # compile to dist/
-
-# App — My Signet (from app/ directory)
-npm run dev                                     # start dev server (port 5174)
-npm run build                                   # production build
-npm run typecheck                               # typecheck app
 ```
-
-## Port Allocation
-
-- **5174** — My Signet app (HTTPS, self-signed cert)
-- Avoid: 3000, 5173, 7777, 7778, 8787 (in use by other services)
 
 ## Security Conventions
 
@@ -113,9 +100,7 @@ These conventions were established during the security hardening review (2026-03
 
 - **canary-kit dependency** — `canary-kit` is published on npm as `^0.9.0` (published 2026-03-16). The `package.json` now references the npm version. Used in `src/signet-words.ts`.
 - **npm publication** — `signet-protocol` is published to npm via semantic-release on push to main.
-- **App typecheck uses its own tsconfig** — running `tsc --noEmit` from the project root only checks `src/`. The apps have their own tsconfigs and must be checked separately from their directories.
 - **`@noble/hashes` deprecation warnings** — `sha256`, `ProjectivePoint`, etc. show as deprecated in diagnostics. These are re-export deprecations, not functional deprecations. The functions work correctly. Ignore these warnings.
-- **CSP in dev mode** — The `script-src 'self'` CSP in `app/index.html` may log violations during Vite dev server (HMR uses inline scripts). This is expected in dev; the CSP protects production builds.
 
 ## Subagent Model Selection
 
