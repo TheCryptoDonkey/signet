@@ -45,12 +45,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/TheCryptoDonkey/signet.git"
+    "url": "https://github.com/forgesworn/signet-protocol.git"
   },
   "dependencies": {
     "@forgesworn/range-proof": "^1.0.0",
     "@forgesworn/ring-sig": "^1.0.0",
-    "@forgesworn/shamir-words": "^0.0.0-development",
+    "@forgesworn/shamir-words": "^1.0.0",
     "@noble/curves": "^1.8.1",
     "@noble/hashes": "^1.7.1",
     "@scure/bip32": "^2.0.1",
