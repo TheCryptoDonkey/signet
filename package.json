@@ -35,7 +35,7 @@
     "privacy",
     "decentralised-identity",
     "ring-signatures",
-    "bulletproofs",
+    "pedersen-range-proofs",
     "secp256k1"
   ],
   "sideEffects": false,
@@ -51,6 +51,9 @@
     "@noble/curves": "^1.8.1",
     "@noble/hashes": "^1.7.1",
     "@scure/bip39": "^2.0.1",
+    "jurisdiction-kit": "file:../jurisdiction-kit",
+    "secp256k1-range-proof": "file:../secp256k1-range-proof",
+    "secp256k1-ring-sig": "file:../secp256k1-ring-sig",
     "spoken-token": "^1.0.3"
   },
   "devDependencies": {

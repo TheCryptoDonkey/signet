@@ -65,7 +65,7 @@ export interface TranslationStrings {
   msg_ring_signature_invalid: string;
   msg_age_proof_valid: string;
   msg_age_proof_invalid: string;
-  msg_signet_iq: string;
+  msg_signet_score: string;
 
   // --- Legal Terms ---
   legal_privacy_policy: string;
@@ -89,12 +89,12 @@ export interface TranslationStrings {
   entity_natural_person: string;
   entity_persona: string;
   entity_personal_agent: string;
-  entity_free_personal_agent: string;
+  entity_unlinked_personal_agent: string;
   entity_juridical_person: string;
   entity_juridical_persona: string;
   entity_organised_agent: string;
-  entity_free_organised_agent: string;
-  entity_free_agent: string;
+  entity_unlinked_organised_agent: string;
+  entity_unlinked_agent: string;
 
   // --- Error Messages ---
   error_invalid_jurisdiction: string;
@@ -157,7 +157,7 @@ const en: TranslationStrings = {
   msg_ring_signature_invalid: 'Ring signature verification failed.',
   msg_age_proof_valid: 'Age range proof verified — age is within the declared range.',
   msg_age_proof_invalid: 'Age range proof verification failed.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
 
   legal_privacy_policy: 'Privacy Policy',
   legal_terms_of_service: 'Terms of Service',
@@ -178,12 +178,12 @@ const en: TranslationStrings = {
   entity_natural_person: 'Person',
   entity_persona: 'Alias',
   entity_personal_agent: 'Personal Agent',
-  entity_free_personal_agent: 'Free Personal Agent',
+  entity_unlinked_personal_agent: 'Unlinked Personal Agent',
   entity_juridical_person: 'Organisation',
   entity_juridical_persona: 'Org Alias',
   entity_organised_agent: 'Organised Agent',
-  entity_free_organised_agent: 'Free Org Agent',
-  entity_free_agent: 'Free Agent',
+  entity_unlinked_organised_agent: 'Unlinked Org Agent',
+  entity_unlinked_agent: 'Unlinked Agent',
 
   error_invalid_jurisdiction: 'The specified jurisdiction is not recognised.',
   error_profession_not_regulated: 'This profession is not regulated in the specified jurisdiction.',
@@ -245,7 +245,7 @@ const es: TranslationStrings = {
   msg_ring_signature_invalid: 'La verificación de la firma de anillo falló.',
   msg_age_proof_valid: 'Prueba de rango de edad verificada — la edad está dentro del rango declarado.',
   msg_age_proof_invalid: 'La verificación de la prueba de rango de edad falló.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
 
   legal_privacy_policy: 'Política de Privacidad',
   legal_terms_of_service: 'Términos de Servicio',
@@ -266,12 +266,12 @@ const es: TranslationStrings = {
   entity_natural_person: 'Persona',
   entity_persona: 'Alias',
   entity_personal_agent: 'Agente Personal',
-  entity_free_personal_agent: 'Agente Personal Libre',
+  entity_unlinked_personal_agent: 'Agente Personal Libre',
   entity_juridical_person: 'Organización',
   entity_juridical_persona: 'Alias de Organización',
   entity_organised_agent: 'Agente Organizado',
-  entity_free_organised_agent: 'Agente de Org Libre',
-  entity_free_agent: 'Agente Libre',
+  entity_unlinked_organised_agent: 'Agente de Org Libre',
+  entity_unlinked_agent: 'Agente Libre',
 
   error_invalid_jurisdiction: 'La jurisdicción especificada no es reconocida.',
   error_profession_not_regulated: 'Esta profesión no está regulada en la jurisdicción especificada.',
@@ -333,7 +333,7 @@ const fr: TranslationStrings = {
   msg_ring_signature_invalid: 'La vérification de la signature en anneau a échoué.',
   msg_age_proof_valid: 'Preuve de tranche d\'âge vérifiée — l\'âge est dans la tranche déclarée.',
   msg_age_proof_invalid: 'La vérification de la preuve de tranche d\'âge a échoué.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
 
   legal_privacy_policy: 'Politique de Confidentialité',
   legal_terms_of_service: 'Conditions d\'Utilisation',
@@ -354,12 +354,12 @@ const fr: TranslationStrings = {
   entity_natural_person: 'Personne',
   entity_persona: 'Alias',
   entity_personal_agent: 'Agent Personnel',
-  entity_free_personal_agent: 'Agent Personnel Libre',
+  entity_unlinked_personal_agent: 'Agent Personnel Libre',
   entity_juridical_person: 'Organisation',
   entity_juridical_persona: 'Alias d\'Organisation',
   entity_organised_agent: 'Agent Organisé',
-  entity_free_organised_agent: 'Agent d\'Org Libre',
-  entity_free_agent: 'Agent Libre',
+  entity_unlinked_organised_agent: 'Agent d\'Org Libre',
+  entity_unlinked_agent: 'Agent Libre',
 
   error_invalid_jurisdiction: 'La juridiction spécifiée n\'est pas reconnue.',
   error_profession_not_regulated: 'Cette profession n\'est pas réglementée dans la juridiction spécifiée.',
@@ -421,7 +421,7 @@ const de: TranslationStrings = {
   msg_ring_signature_invalid: 'Verifizierung der Ringsignatur fehlgeschlagen.',
   msg_age_proof_valid: 'Altersbereichsnachweis verifiziert — das Alter liegt im angegebenen Bereich.',
   msg_age_proof_invalid: 'Verifizierung des Altersbereichsnachweises fehlgeschlagen.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
 
   legal_privacy_policy: 'Datenschutzerklärung',
   legal_terms_of_service: 'Nutzungsbedingungen',
@@ -442,12 +442,12 @@ const de: TranslationStrings = {
   entity_natural_person: 'Person',
   entity_persona: 'Alias',
   entity_personal_agent: 'Persönlicher Agent',
-  entity_free_personal_agent: 'Freier Persönlicher Agent',
+  entity_unlinked_personal_agent: 'Freier Persönlicher Agent',
   entity_juridical_person: 'Organisation',
   entity_juridical_persona: 'Org-Alias',
   entity_organised_agent: 'Organisierter Agent',
-  entity_free_organised_agent: 'Freier Org-Agent',
-  entity_free_agent: 'Freier Agent',
+  entity_unlinked_organised_agent: 'Freier Org-Agent',
+  entity_unlinked_agent: 'Freier Agent',
 
   error_invalid_jurisdiction: 'Die angegebene Gerichtsbarkeit wird nicht anerkannt.',
   error_profession_not_regulated: 'Dieser Beruf ist in der angegebenen Gerichtsbarkeit nicht reguliert.',
@@ -509,7 +509,7 @@ const pt: TranslationStrings = {
   msg_ring_signature_invalid: 'Falha na verificação da assinatura em anel.',
   msg_age_proof_valid: 'Prova de faixa etária verificada — a idade está dentro da faixa declarada.',
   msg_age_proof_invalid: 'Falha na verificação da prova de faixa etária.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
 
   legal_privacy_policy: 'Política de Privacidade',
   legal_terms_of_service: 'Termos de Serviço',
@@ -530,12 +530,12 @@ const pt: TranslationStrings = {
   entity_natural_person: 'Pessoa',
   entity_persona: 'Alias',
   entity_personal_agent: 'Agente Pessoal',
-  entity_free_personal_agent: 'Agente Pessoal Livre',
+  entity_unlinked_personal_agent: 'Agente Pessoal Livre',
   entity_juridical_person: 'Organização',
   entity_juridical_persona: 'Alias de Organização',
   entity_organised_agent: 'Agente Organizado',
-  entity_free_organised_agent: 'Agente de Org Livre',
-  entity_free_agent: 'Agente Livre',
+  entity_unlinked_organised_agent: 'Agente de Org Livre',
+  entity_unlinked_agent: 'Agente Livre',
 
   error_invalid_jurisdiction: 'A jurisdição especificada não é reconhecida.',
   error_profession_not_regulated: 'Esta profissão não é regulamentada na jurisdição especificada.',
@@ -597,7 +597,7 @@ const ja: TranslationStrings = {
   msg_ring_signature_invalid: 'リング署名の検証に失敗しました。',
   msg_age_proof_valid: '年齢範囲証明が検証されました — 年齢は申告された範囲内です。',
   msg_age_proof_invalid: '年齢範囲証明の検証に失敗しました。',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
 
   legal_privacy_policy: 'プライバシーポリシー',
   legal_terms_of_service: '利用規約',
@@ -618,12 +618,12 @@ const ja: TranslationStrings = {
   entity_natural_person: '個人',
   entity_persona: 'エイリアス',
   entity_personal_agent: '個人エージェント',
-  entity_free_personal_agent: 'フリー個人エージェント',
+  entity_unlinked_personal_agent: 'フリー個人エージェント',
   entity_juridical_person: '組織',
   entity_juridical_persona: '組織エイリアス',
   entity_organised_agent: '組織エージェント',
-  entity_free_organised_agent: 'フリー組織エージェント',
-  entity_free_agent: 'フリーエージェント',
+  entity_unlinked_organised_agent: 'フリー組織エージェント',
+  entity_unlinked_agent: 'フリーエージェント',
 
   error_invalid_jurisdiction: '指定された管轄区域は認識されていません。',
   error_profession_not_regulated: 'この職業は指定された管轄区域で規制されていません。',
@@ -685,7 +685,7 @@ const ko: TranslationStrings = {
   msg_ring_signature_invalid: '링 서명 검증에 실패했습니다.',
   msg_age_proof_valid: '연령 범위 증명이 검증되었습니다 — 연령이 선언된 범위 내에 있습니다.',
   msg_age_proof_invalid: '연령 범위 증명 검증에 실패했습니다.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
 
   legal_privacy_policy: '개인정보 보호정책',
   legal_terms_of_service: '이용약관',
@@ -706,12 +706,12 @@ const ko: TranslationStrings = {
   entity_natural_person: '개인',
   entity_persona: '별칭',
   entity_personal_agent: '개인 에이전트',
-  entity_free_personal_agent: '자유 개인 에이전트',
+  entity_unlinked_personal_agent: '자유 개인 에이전트',
   entity_juridical_person: '조직',
   entity_juridical_persona: '조직 별칭',
   entity_organised_agent: '조직 에이전트',
-  entity_free_organised_agent: '자유 조직 에이전트',
-  entity_free_agent: '자유 에이전트',
+  entity_unlinked_organised_agent: '자유 조직 에이전트',
+  entity_unlinked_agent: '자유 에이전트',
 
   error_invalid_jurisdiction: '지정된 관할권이 인식되지 않습니다.',
   error_profession_not_regulated: '이 직업은 지정된 관할권에서 규제되지 않습니다.',
@@ -773,7 +773,7 @@ const zh: TranslationStrings = {
   msg_ring_signature_invalid: '环签名验证失败。',
   msg_age_proof_valid: '年龄范围证明已验证 — 年龄在声明的范围内。',
   msg_age_proof_invalid: '年龄范围证明验证失败。',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
 
   legal_privacy_policy: '隐私政策',
   legal_terms_of_service: '服务条款',
@@ -794,12 +794,12 @@ const zh: TranslationStrings = {
   entity_natural_person: '个人',
   entity_persona: '别名',
   entity_personal_agent: '个人代理',
-  entity_free_personal_agent: '自由个人代理',
+  entity_unlinked_personal_agent: '自由个人代理',
   entity_juridical_person: '组织',
   entity_juridical_persona: '组织别名',
   entity_organised_agent: '组织代理',
-  entity_free_organised_agent: '自由组织代理',
-  entity_free_agent: '自由代理',
+  entity_unlinked_organised_agent: '自由组织代理',
+  entity_unlinked_agent: '自由代理',
 
   error_invalid_jurisdiction: '指定的司法管辖区未被识别。',
   error_profession_not_regulated: '该职业在指定的司法管辖区不受监管。',
@@ -861,7 +861,7 @@ const ar: TranslationStrings = {
   msg_ring_signature_invalid: 'فشل التحقق من توقيع الحلقة.',
   msg_age_proof_valid: 'تم التحقق من إثبات نطاق العمر — العمر ضمن النطاق المعلن.',
   msg_age_proof_invalid: 'فشل التحقق من إثبات نطاق العمر.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
 
   legal_privacy_policy: 'سياسة الخصوصية',
   legal_terms_of_service: 'شروط الخدمة',
@@ -882,12 +882,12 @@ const ar: TranslationStrings = {
   entity_natural_person: 'شخص',
   entity_persona: 'اسم مستعار',
   entity_personal_agent: 'وكيل شخصي',
-  entity_free_personal_agent: 'وكيل شخصي حر',
+  entity_unlinked_personal_agent: 'وكيل شخصي حر',
   entity_juridical_person: 'مؤسسة',
   entity_juridical_persona: 'اسم مستعار للمؤسسة',
   entity_organised_agent: 'وكيل منظم',
-  entity_free_organised_agent: 'وكيل مؤسسة حر',
-  entity_free_agent: 'وكيل حر',
+  entity_unlinked_organised_agent: 'وكيل مؤسسة حر',
+  entity_unlinked_agent: 'وكيل حر',
 
   error_invalid_jurisdiction: 'الولاية القضائية المحددة غير معترف بها.',
   error_profession_not_regulated: 'هذه المهنة غير منظمة في الولاية القضائية المحددة.',
@@ -949,7 +949,7 @@ const hi: TranslationStrings = {
   msg_ring_signature_invalid: 'रिंग हस्ताक्षर सत्यापन विफल।',
   msg_age_proof_valid: 'आयु सीमा प्रमाण सत्यापित — आयु घोषित सीमा के भीतर है।',
   msg_age_proof_invalid: 'आयु सीमा प्रमाण सत्यापन विफल।',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
 
   legal_privacy_policy: 'गोपनीयता नीति',
   legal_terms_of_service: 'सेवा की शर्तें',
@@ -970,12 +970,12 @@ const hi: TranslationStrings = {
   entity_natural_person: 'व्यक्ति',
   entity_persona: 'उपनाम',
   entity_personal_agent: 'व्यक्तिगत एजेंट',
-  entity_free_personal_agent: 'मुक्त व्यक्तिगत एजेंट',
+  entity_unlinked_personal_agent: 'मुक्त व्यक्तिगत एजेंट',
   entity_juridical_person: 'संगठन',
   entity_juridical_persona: 'संगठन उपनाम',
   entity_organised_agent: 'संगठित एजेंट',
-  entity_free_organised_agent: 'मुक्त संगठन एजेंट',
-  entity_free_agent: 'मुक्त एजेंट',
+  entity_unlinked_organised_agent: 'मुक्त संगठन एजेंट',
+  entity_unlinked_agent: 'मुक्त एजेंट',
 
   error_invalid_jurisdiction: 'निर्दिष्ट अधिकार क्षेत्र मान्यता प्राप्त नहीं है।',
   error_profession_not_regulated: 'यह पेशा निर्दिष्ट अधिकार क्षेत्र में विनियमित नहीं है।',
@@ -1015,7 +1015,7 @@ const it: TranslationStrings = {
   msg_ring_signature_invalid: 'Verifica della firma ad anello fallita.',
   msg_age_proof_valid: 'Prova della fascia d\'età verificata — l\'età rientra nell\'intervallo dichiarato.',
   msg_age_proof_invalid: 'Verifica della prova della fascia d\'età fallita.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
   legal_privacy_policy: 'Informativa sulla Privacy', legal_terms_of_service: 'Termini di Servizio',
   legal_data_processing: 'Accordo sul Trattamento dei Dati', legal_consent: 'Consenso',
   legal_right_to_erasure: 'Diritto alla Cancellazione', legal_data_portability: 'Portabilità dei Dati',
@@ -1027,12 +1027,12 @@ const it: TranslationStrings = {
   entity_natural_person: 'Persona',
   entity_persona: 'Alias',
   entity_personal_agent: 'Agente Personale',
-  entity_free_personal_agent: 'Agente Personale Libero',
+  entity_unlinked_personal_agent: 'Agente Personale Libero',
   entity_juridical_person: 'Organizzazione',
   entity_juridical_persona: 'Alias di Organizzazione',
   entity_organised_agent: 'Agente Organizzato',
-  entity_free_organised_agent: 'Agente di Org Libero',
-  entity_free_agent: 'Agente Libero',
+  entity_unlinked_organised_agent: 'Agente di Org Libero',
+  entity_unlinked_agent: 'Agente Libero',
 
   error_invalid_jurisdiction: 'La giurisdizione specificata non è riconosciuta.',
   error_profession_not_regulated: 'Questa professione non è regolamentata nella giurisdizione specificata.',
@@ -1072,7 +1072,7 @@ const nl: TranslationStrings = {
   msg_ring_signature_invalid: 'Verificatie van ringhandtekening mislukt.',
   msg_age_proof_valid: 'Leeftijdsbereikbewijs geverifieerd — leeftijd valt binnen het aangegeven bereik.',
   msg_age_proof_invalid: 'Verificatie van leeftijdsbereikbewijs mislukt.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
   legal_privacy_policy: 'Privacybeleid', legal_terms_of_service: 'Servicevoorwaarden',
   legal_data_processing: 'Verwerkersovereenkomst', legal_consent: 'Toestemming',
   legal_right_to_erasure: 'Recht op Wissing', legal_data_portability: 'Gegevensoverdraagbaarheid',
@@ -1085,12 +1085,12 @@ const nl: TranslationStrings = {
   entity_natural_person: 'Persoon',
   entity_persona: 'Alias',
   entity_personal_agent: 'Persoonlijke Agent',
-  entity_free_personal_agent: 'Vrije Persoonlijke Agent',
+  entity_unlinked_personal_agent: 'Vrije Persoonlijke Agent',
   entity_juridical_person: 'Organisatie',
   entity_juridical_persona: 'Org Alias',
   entity_organised_agent: 'Georganiseerde Agent',
-  entity_free_organised_agent: 'Vrije Org Agent',
-  entity_free_agent: 'Vrije Agent',
+  entity_unlinked_organised_agent: 'Vrije Org Agent',
+  entity_unlinked_agent: 'Vrije Agent',
 
   error_invalid_jurisdiction: 'Het opgegeven rechtsgebied wordt niet herkend.',
   error_profession_not_regulated: 'Dit beroep is niet gereguleerd in het opgegeven rechtsgebied.',
@@ -1130,7 +1130,7 @@ const tr: TranslationStrings = {
   msg_ring_signature_invalid: 'Halka imzası doğrulaması başarısız oldu.',
   msg_age_proof_valid: 'Yaş aralığı kanıtı doğrulandı — yaş beyan edilen aralık içindedir.',
   msg_age_proof_invalid: 'Yaş aralığı kanıtı doğrulaması başarısız oldu.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
   legal_privacy_policy: 'Gizlilik Politikası', legal_terms_of_service: 'Hizmet Şartları',
   legal_data_processing: 'Veri İşleme Sözleşmesi', legal_consent: 'Onay',
   legal_right_to_erasure: 'Silme Hakkı', legal_data_portability: 'Veri Taşınabilirliği',
@@ -1143,12 +1143,12 @@ const tr: TranslationStrings = {
   entity_natural_person: 'Kişi',
   entity_persona: 'Takma Ad',
   entity_personal_agent: 'Kişisel Ajan',
-  entity_free_personal_agent: 'Serbest Kişisel Ajan',
+  entity_unlinked_personal_agent: 'Serbest Kişisel Ajan',
   entity_juridical_person: 'Kuruluş',
   entity_juridical_persona: 'Kuruluş Takma Adı',
   entity_organised_agent: 'Organize Ajan',
-  entity_free_organised_agent: 'Serbest Org Ajanı',
-  entity_free_agent: 'Serbest Ajan',
+  entity_unlinked_organised_agent: 'Serbest Org Ajanı',
+  entity_unlinked_agent: 'Serbest Ajan',
 
   error_invalid_jurisdiction: 'Belirtilen yargı alanı tanınmamaktadır.',
   error_profession_not_regulated: 'Bu meslek belirtilen yargı alanında düzenlenmemiştir.',
@@ -1188,7 +1188,7 @@ const id_lang: TranslationStrings = {
   msg_ring_signature_invalid: 'Verifikasi tanda tangan cincin gagal.',
   msg_age_proof_valid: 'Bukti rentang usia terverifikasi — usia berada dalam rentang yang dinyatakan.',
   msg_age_proof_invalid: 'Verifikasi bukti rentang usia gagal.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
   legal_privacy_policy: 'Kebijakan Privasi', legal_terms_of_service: 'Ketentuan Layanan',
   legal_data_processing: 'Perjanjian Pemrosesan Data', legal_consent: 'Persetujuan',
   legal_right_to_erasure: 'Hak Penghapusan', legal_data_portability: 'Portabilitas Data',
@@ -1201,12 +1201,12 @@ const id_lang: TranslationStrings = {
   entity_natural_person: 'Orang',
   entity_persona: 'Alias',
   entity_personal_agent: 'Agen Pribadi',
-  entity_free_personal_agent: 'Agen Pribadi Bebas',
+  entity_unlinked_personal_agent: 'Agen Pribadi Bebas',
   entity_juridical_person: 'Organisasi',
   entity_juridical_persona: 'Alias Organisasi',
   entity_organised_agent: 'Agen Terorganisir',
-  entity_free_organised_agent: 'Agen Org Bebas',
-  entity_free_agent: 'Agen Bebas',
+  entity_unlinked_organised_agent: 'Agen Org Bebas',
+  entity_unlinked_agent: 'Agen Bebas',
 
   error_invalid_jurisdiction: 'Yurisdiksi yang ditentukan tidak diakui.',
   error_profession_not_regulated: 'Profesi ini tidak diatur dalam yurisdiksi yang ditentukan.',
@@ -1246,7 +1246,7 @@ const sw: TranslationStrings = {
   msg_ring_signature_invalid: 'Uthibitishaji wa saini ya pete umeshindwa.',
   msg_age_proof_valid: 'Uthibitisho wa umri umethibitishwa — umri uko ndani ya masafa yaliyotangazwa.',
   msg_age_proof_invalid: 'Uthibitishaji wa uthibitisho wa umri umeshindwa.',
-  msg_signet_iq: 'Signet IQ',
+  msg_signet_score: 'Signet Score',
   legal_privacy_policy: 'Sera ya Faragha', legal_terms_of_service: 'Masharti ya Huduma',
   legal_data_processing: 'Mkataba wa Usindikaji wa Data', legal_consent: 'Ridhaa',
   legal_right_to_erasure: 'Haki ya Kufutwa', legal_data_portability: 'Ubebaji wa Data',
@@ -1259,12 +1259,12 @@ const sw: TranslationStrings = {
   entity_natural_person: 'Mtu',
   entity_persona: 'Jina Bandia',
   entity_personal_agent: 'Wakala Binafsi',
-  entity_free_personal_agent: 'Wakala Binafsi Huru',
+  entity_unlinked_personal_agent: 'Wakala Binafsi Huru',
   entity_juridical_person: 'Shirika',
   entity_juridical_persona: 'Jina Bandia la Shirika',
   entity_organised_agent: 'Wakala Rasmi',
-  entity_free_organised_agent: 'Wakala wa Shirika Huru',
-  entity_free_agent: 'Wakala Huru',
+  entity_unlinked_organised_agent: 'Wakala wa Shirika Huru',
+  entity_unlinked_agent: 'Wakala Huru',
 
   error_invalid_jurisdiction: 'Mamlaka iliyoainishwa haitambuliwi.',
   error_profession_not_regulated: 'Taaluma hii haidhibitiwi katika mamlaka iliyoainishwa.',
@@ -1334,9 +1334,9 @@ export function getLanguageNativeName(code: LanguageCode): string {
   return names[code] ?? code;
 }
 
-/** Format a Signet IQ display in the current language */
+/** Format a Signet Score display in the current language */
 export function formatLocalizedTrustScore(score: number, lang?: LanguageCode): string {
-  const label = t('msg_signet_iq', lang);
+  const label = t('msg_signet_score', lang);
   return `${label}: ${score}/200`;
 }
 

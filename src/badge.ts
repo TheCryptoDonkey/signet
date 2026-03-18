@@ -2,7 +2,7 @@
 // Minimal drop-in module for Nostr clients to display Signet trust badges.
 // Requires only 2 event kinds (30470 credential, 30471 vouch) and Schnorr verification.
 
-import { SIGNET_KINDS, TRUST_WEIGHTS, MAX_TRUST_SCORE } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, TRUST_WEIGHTS, MAX_TRUST_SCORE } from './constants.js';
 import { verifyEvent } from './crypto.js';
 import { getTagValue } from './validation.js';
 import type { NostrEvent, SignetTier } from './types.js';
@@ -16,7 +16,7 @@ export interface BadgeInfo {
   tier: SignetTier;
   /** Human-readable tier label */
   tierLabel: string;
-  /** Signet IQ (0-200) */
+  /** Signet Score (0-200) */
   score: number;
   /** Whether the user has any valid credentials */
   isVerified: boolean;
@@ -68,10 +68,12 @@ export async function computeBadge(
   let credentialCount = 0;
   let hasAnyCredential = false;
 
-  // Process credentials (kind 30470)
+  // Process credentials
   for (const event of events) {
-    if (event.kind !== SIGNET_KINDS.CREDENTIAL) continue;
-    const subject = getTagValue(event, 'd');
+    if (event.kind !== ATTESTATION_KIND) continue;
+    if (getTagValue(event, 'type') !== ATTESTATION_TYPES.CREDENTIAL) continue;
+    const dTag = getTagValue(event, 'd') || '';
+    const subject = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
     if (subject !== pubkey) continue;
 
     // Check expiry — NaN must be treated as expired (not perpetually valid)
@@ -91,19 +93,21 @@ export async function computeBadge(
     const tier = (rawTier >= 1 && rawTier <= 4 ? rawTier : 1) as SignetTier;
     if (tier > highestTier) highestTier = tier;
 
-    const type = getTagValue(event, 'type');
-    if (type === 'professional') {
+    const verificationType = getTagValue(event, 'verification-type');
+    if (verificationType === 'professional') {
       rawScore += TRUST_WEIGHTS.PROFESSIONAL_VERIFICATION;
     }
   }
 
-  // Process vouches (kind 30471)
+  // Process vouches
   const vouchersSeen = new Set<string>();
   let vouchCount = 0;
 
   for (const event of events) {
-    if (event.kind !== SIGNET_KINDS.VOUCH) continue;
-    const subject = getTagValue(event, 'd');
+    if (event.kind !== ATTESTATION_KIND) continue;
+    if (getTagValue(event, 'type') !== ATTESTATION_TYPES.VOUCH) continue;
+    const dTag = getTagValue(event, 'd') || '';
+    const subject = dTag.startsWith('vouch:') ? dTag.slice('vouch:'.length) : dTag;
     if (subject !== pubkey) continue;
 
     // One vouch per voucher
@@ -170,10 +174,14 @@ export function meetsMinimumTier(badge: BadgeInfo, minTier: SignetTier): boolean
  */
 export function filterEventsForPubkey(pubkey: string, events: NostrEvent[]): NostrEvent[] {
   return events.filter(event => {
-    if (event.kind !== SIGNET_KINDS.CREDENTIAL && event.kind !== SIGNET_KINDS.VOUCH) {
+    if (event.kind !== ATTESTATION_KIND) return false;
+    const eventType = getTagValue(event, 'type');
+    if (eventType !== ATTESTATION_TYPES.CREDENTIAL && eventType !== ATTESTATION_TYPES.VOUCH) {
       return false;
     }
-    const subject = getTagValue(event, 'd');
+    const dTag = getTagValue(event, 'd') || '';
+    // Strip type prefix from d-tag to get subject
+    const subject = dTag.includes(':') ? dTag.slice(dTag.indexOf(':') + 1) : dTag;
     return subject === pubkey;
   });
 }
@@ -183,10 +191,12 @@ export function filterEventsForPubkey(pubkey: string, events: NostrEvent[]): Nos
  * Returns filters suitable for use with REQ messages.
  */
 export function buildBadgeFilters(pubkeys: string[]): Array<{ kinds: number[]; '#d': string[] }> {
+  // With the generic attestation kind, d-tags are now prefixed with the type
+  const dTags = pubkeys.flatMap(pk => [`credential:${pk}`, `vouch:${pk}`]);
   return [
     {
-      kinds: [SIGNET_KINDS.CREDENTIAL, SIGNET_KINDS.VOUCH],
-      '#d': pubkeys,
+      kinds: [ATTESTATION_KIND],
+      '#d': dTags,
     },
   ];
 }

@@ -1,7 +1,7 @@
 // Kind 30470 — Verification Credential
 // Create, sign, verify, and parse Signet credentials for all 4 tiers
 
-import { SIGNET_KINDS, SIGNET_LABEL, DEFAULT_CREDENTIAL_EXPIRY_SECONDS, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, DEFAULT_CREDENTIAL_EXPIRY_SECONDS, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, verifyEvent, getPublicKey, hash } from './crypto.js';
 import { validateCredential, getTagValue, getTagValues } from './validation.js';
 import { ringSign, ringVerify, type RingSignature } from './ring-signature.js';
@@ -31,13 +31,15 @@ export function buildCredentialEvent(
   params: CredentialParams
 ): UnsignedEvent {
   const tags: string[][] = [
-    ['d', params.subjectPubkey],
+    ['d', `credential:${params.subjectPubkey}`],
     ['p', params.subjectPubkey],
+    ['type', ATTESTATION_TYPES.CREDENTIAL],
     ['tier', String(params.tier)],
-    ['type', params.type],
+    ['verification-type', params.type],
     ['scope', params.scope],
     ['method', params.method],
     ['expires', String(params.expiresAt)],
+    ['summary', `${params.type} verification (tier ${params.tier}) for ${params.subjectPubkey.slice(0, 8)}...`],
     ['algo', DEFAULT_CRYPTO_ALGORITHM],
     ['L', SIGNET_LABEL],
     ['l', 'verification', SIGNET_LABEL],
@@ -57,7 +59,7 @@ export function buildCredentialEvent(
   if (params.supersedes) tags.push(['supersedes', params.supersedes]);
 
   return {
-    kind: SIGNET_KINDS.CREDENTIAL,
+    kind: ATTESTATION_KIND,
     pubkey: verifierPubkey,
     created_at: Math.floor(Date.now() / 1000),
     tags,
@@ -187,7 +189,8 @@ export function isCredentialExpired(event: NostrEvent): boolean {
 
 /** Parse a credential event into a structured object */
 export function parseCredential(event: NostrEvent): ParsedCredential | null {
-  if (event.kind !== SIGNET_KINDS.CREDENTIAL) return null;
+  if (event.kind !== ATTESTATION_KIND) return null;
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.CREDENTIAL) return null;
 
   const tier = getTagValue(event, 'tier');
   if (!tier) return null;
@@ -195,10 +198,14 @@ export function parseCredential(event: NostrEvent): ParsedCredential | null {
   const guardianValues = getTagValues(event, 'guardian');
   const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
 
+  // Strip 'credential:' prefix from d-tag to get subject pubkey
+  const dTag = getTagValue(event, 'd') || '';
+  const subjectPubkey = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
+
   return {
-    subjectPubkey: getTagValue(event, 'd') || '',
+    subjectPubkey,
     tier: (() => { const t = parseInt(tier, 10); return (t >= 1 && t <= 4 ? t : 1) as SignetTier; })(),
-    type: (getTagValue(event, 'type') || 'self') as VerificationType,
+    type: (getTagValue(event, 'verification-type') || 'self') as VerificationType,
     scope: (getTagValue(event, 'scope') || 'adult') as VerificationScope,
     method: (getTagValue(event, 'method') || 'self-declaration') as VerificationMethod,
     profession: getTagValue(event, 'profession'),
@@ -256,7 +263,7 @@ export async function createRingProtectedCredential(
   const content: RingProtectedContent = { ringSignature: ringSig };
 
   const event: UnsignedEvent = {
-    kind: SIGNET_KINDS.CREDENTIAL,
+    kind: ATTESTATION_KIND,
     pubkey,
     created_at: timestamp,
     tags: buildCredentialEvent(pubkey, {
@@ -315,7 +322,7 @@ export async function createRingProtectedChildCredential(
   };
 
   const event: UnsignedEvent = {
-    kind: SIGNET_KINDS.CREDENTIAL,
+    kind: ATTESTATION_KIND,
     pubkey,
     created_at: timestamp,
     tags: buildCredentialEvent(pubkey, {
@@ -358,7 +365,8 @@ export function verifyRingProtectedContent(event: NostrEvent): {
     const raw = JSON.parse(event.content);
     if (!raw || typeof raw !== 'object') return result;
     const content = raw as RingProtectedContent;
-    const subjectPubkey = getTagValue(event, 'd') || '';
+    const dTag = getTagValue(event, 'd') || '';
+    const subjectPubkey = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
 
     if (content.ringSignature) {
       result.hasRingSignature = true;
@@ -820,11 +828,13 @@ export async function createGuardianDelegation(
   const guardianPubkey = getPublicKey(guardianPrivateKey);
 
   const tags: string[][] = [
-    ['d', `guardian-delegation:${params.childPubkey}:${params.delegatePubkey}`],
+    ['d', `delegation:${params.childPubkey}:${params.delegatePubkey}`],
     ['p', params.delegatePubkey],
+    ['type', ATTESTATION_TYPES.DELEGATION],
     ['delegation-type', 'guardian-delegate'],
     ['child', params.childPubkey],
     ['scope', params.scope],
+    ['summary', `Guardian delegation for ${params.childPubkey.slice(0, 8)}... to ${params.delegatePubkey.slice(0, 8)}...`],
     ['algo', DEFAULT_CRYPTO_ALGORITHM],
     ['L', SIGNET_LABEL],
     ['l', 'delegation', SIGNET_LABEL],
@@ -835,7 +845,7 @@ export async function createGuardianDelegation(
   }
 
   const event: UnsignedEvent = {
-    kind: SIGNET_KINDS.DELEGATION,
+    kind: ATTESTATION_KIND,
     pubkey: guardianPubkey,
     created_at: Math.floor(Date.now() / 1000),
     tags,

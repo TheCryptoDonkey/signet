@@ -2,7 +2,7 @@
 // Statistical analysis of verifier issuance patterns
 // Layer 3 of the anti-corruption framework
 
-import { SIGNET_KINDS } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES } from './constants.js';
 import { getTagValue } from './validation.js';
 import type { NostrEvent } from './types.js';
 
@@ -63,7 +63,7 @@ export function detectAnomalies(
 
   // Get this verifier's issued credentials
   const issued = allCredentials.filter(
-    (e) => e.kind === SIGNET_KINDS.CREDENTIAL && e.pubkey === verifierPubkey
+    (e) => e.kind === ATTESTATION_KIND && getTagValue(e, 'type') === ATTESTATION_TYPES.CREDENTIAL && e.pubkey === verifierPubkey
   );
 
   if (issued.length === 0) return flags;
@@ -126,11 +126,11 @@ function analyzeVolume(
 
   // Compare to network average
   const allVerifiers = new Set(
-    allCredentials.filter((e) => e.kind === SIGNET_KINDS.CREDENTIAL).map((e) => e.pubkey)
+    allCredentials.filter((e) => e.kind === ATTESTATION_KIND && getTagValue(e, 'type') === ATTESTATION_TYPES.CREDENTIAL).map((e) => e.pubkey)
   );
   if (allVerifiers.size > 1) {
     const totalCredentials = allCredentials.filter(
-      (e) => e.kind === SIGNET_KINDS.CREDENTIAL && e.created_at > now - oneWeek
+      (e) => e.kind === ATTESTATION_KIND && getTagValue(e, 'type') === ATTESTATION_TYPES.CREDENTIAL && e.created_at > now - oneWeek
     ).length;
     const networkAvg = totalCredentials / allVerifiers.size;
 
@@ -290,7 +290,7 @@ export function scanForAnomalies(
   // Get unique verifier pubkeys from credentials
   const verifiers = new Set(
     allCredentials
-      .filter((e) => e.kind === SIGNET_KINDS.CREDENTIAL)
+      .filter((e) => e.kind === ATTESTATION_KIND && getTagValue(e, 'type') === ATTESTATION_TYPES.CREDENTIAL)
       .map((e) => e.pubkey)
   );
 

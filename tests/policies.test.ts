@@ -7,7 +7,7 @@ import {
   PolicyChecker,
   verifyEvent,
   getTagValue,
-  SIGNET_KINDS,
+  APP_DATA_KIND,
 } from '../src/index.js';
 
 describe('policies', () => {
@@ -25,7 +25,7 @@ describe('policies', () => {
       description: 'Safe space for children',
     });
 
-    expect(policy.kind).toBe(SIGNET_KINDS.POLICY);
+    expect(policy.kind).toBe(APP_DATA_KIND);
     expect(getTagValue(policy, 'adult-min-tier')).toBe('3');
     expect(getTagValue(policy, 'child-min-tier')).toBe('4');
     expect(getTagValue(policy, 'enforcement')).toBe('both');

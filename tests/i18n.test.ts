@@ -156,28 +156,28 @@ describe('i18n', () => {
   });
 
   describe('formatLocalizedTrustScore', () => {
-    it('formats Signet IQ in English', () => {
-      expect(formatLocalizedTrustScore(85)).toBe('Signet IQ: 85/200');
+    it('formats Signet Score in English', () => {
+      expect(formatLocalizedTrustScore(85)).toBe('Signet Score: 85/200');
     });
 
-    it('formats Signet IQ in Spanish', () => {
-      expect(formatLocalizedTrustScore(72, 'es')).toBe('Signet IQ: 72/200');
+    it('formats Signet Score in Spanish', () => {
+      expect(formatLocalizedTrustScore(72, 'es')).toBe('Signet Score: 72/200');
     });
 
-    it('formats Signet IQ in Japanese', () => {
-      expect(formatLocalizedTrustScore(90, 'ja')).toBe('Signet IQ: 90/200');
+    it('formats Signet Score in Japanese', () => {
+      expect(formatLocalizedTrustScore(90, 'ja')).toBe('Signet Score: 90/200');
     });
 
-    it('formats Signet IQ in German', () => {
-      expect(formatLocalizedTrustScore(50, 'de')).toBe('Signet IQ: 50/200');
+    it('formats Signet Score in German', () => {
+      expect(formatLocalizedTrustScore(50, 'de')).toBe('Signet Score: 50/200');
     });
 
-    it('formats Signet IQ with zero', () => {
-      expect(formatLocalizedTrustScore(0)).toBe('Signet IQ: 0/200');
+    it('formats Signet Score with zero', () => {
+      expect(formatLocalizedTrustScore(0)).toBe('Signet Score: 0/200');
     });
 
-    it('formats Signet IQ with max value', () => {
-      expect(formatLocalizedTrustScore(200)).toBe('Signet IQ: 200/200');
+    it('formats Signet Score with max value', () => {
+      expect(formatLocalizedTrustScore(200)).toBe('Signet Score: 200/200');
     });
   });
 
@@ -205,12 +205,12 @@ describe('i18n', () => {
       'entity_natural_person',
       'entity_persona',
       'entity_personal_agent',
-      'entity_free_personal_agent',
+      'entity_unlinked_personal_agent',
       'entity_juridical_person',
       'entity_juridical_persona',
       'entity_organised_agent',
-      'entity_free_organised_agent',
-      'entity_free_agent',
+      'entity_unlinked_organised_agent',
+      'entity_unlinked_agent',
     ];
 
     it('all 9 entity type keys present in all 15 languages', () => {
@@ -229,12 +229,12 @@ describe('i18n', () => {
       expect(t('entity_natural_person', 'en')).toBe(ENTITY_LABELS.natural_person);
       expect(t('entity_persona', 'en')).toBe(ENTITY_LABELS.persona);
       expect(t('entity_personal_agent', 'en')).toBe(ENTITY_LABELS.personal_agent);
-      expect(t('entity_free_personal_agent', 'en')).toBe(ENTITY_LABELS.free_personal_agent);
+      expect(t('entity_unlinked_personal_agent', 'en')).toBe(ENTITY_LABELS.unlinked_personal_agent);
       expect(t('entity_juridical_person', 'en')).toBe(ENTITY_LABELS.juridical_person);
       expect(t('entity_juridical_persona', 'en')).toBe(ENTITY_LABELS.juridical_persona);
       expect(t('entity_organised_agent', 'en')).toBe(ENTITY_LABELS.organised_agent);
-      expect(t('entity_free_organised_agent', 'en')).toBe(ENTITY_LABELS.free_organised_agent);
-      expect(t('entity_free_agent', 'en')).toBe(ENTITY_LABELS.free_agent);
+      expect(t('entity_unlinked_organised_agent', 'en')).toBe(ENTITY_LABELS.unlinked_organised_agent);
+      expect(t('entity_unlinked_agent', 'en')).toBe(ENTITY_LABELS.unlinked_agent);
     });
   });
 

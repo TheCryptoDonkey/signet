@@ -27,7 +27,8 @@ describe('ring-protected credentials', () => {
     );
 
     expect(getTagValue(cred, 'tier')).toBe('3');
-    expect(getTagValue(cred, 'type')).toBe('professional');
+    expect(getTagValue(cred, 'type')).toBe('credential');
+    expect(getTagValue(cred, 'verification-type')).toBe('professional');
 
     // Verify the event signature
     const eventResult = await verifyCredential(cred);
@@ -105,7 +106,7 @@ describe('credential renewal', () => {
 
     const renewed = await renewCredential(verifier.privateKey, original);
 
-    expect(getTagValue(renewed, 'd')).toBe(subject.publicKey);
+    expect(getTagValue(renewed, 'd')).toBe(`credential:${subject.publicKey}`);
     expect(getTagValue(renewed, 'tier')).toBe('3');
     expect(getTagValue(renewed, 'profession')).toBe('solicitor');
 

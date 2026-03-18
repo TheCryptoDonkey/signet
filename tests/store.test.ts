@@ -8,7 +8,9 @@ import {
   createVouch,
   createPolicy,
   createVerifierCredential,
-  SIGNET_KINDS,
+  ATTESTATION_KIND,
+  ATTESTATION_TYPES,
+  getTagValue,
 } from '../src/index.js';
 import { TIER3_OPTS } from './fixtures.js';
 
@@ -72,10 +74,14 @@ describe('SignetStore', () => {
     store.add(cred);
     store.add(vouch);
 
-    const creds = store.query({ kinds: [SIGNET_KINDS.CREDENTIAL] });
+    // Both credential and vouch share kind ATTESTATION_KIND now — filter by type tag
+    const allAttestations = store.query({ kinds: [ATTESTATION_KIND] });
+    expect(allAttestations).toHaveLength(2);
+
+    const creds = allAttestations.filter(e => getTagValue(e, 'type') === ATTESTATION_TYPES.CREDENTIAL);
     expect(creds).toHaveLength(1);
 
-    const vouches = store.query({ kinds: [SIGNET_KINDS.VOUCH] });
+    const vouches = allAttestations.filter(e => getTagValue(e, 'type') === ATTESTATION_TYPES.VOUCH);
     expect(vouches).toHaveLength(1);
   });
 

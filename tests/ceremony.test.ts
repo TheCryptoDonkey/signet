@@ -16,7 +16,8 @@ import {
   verifyMerkleProof,
   getTagValue,
   getTagValues,
-  SIGNET_KINDS,
+  ATTESTATION_KIND,
+  ATTESTATION_TYPES,
 } from '../src/index.js';
 
 describe('Two-Credential Ceremony', () => {
@@ -340,7 +341,8 @@ describe('Guardian Delegation', () => {
       scope: 'full',
     });
 
-    expect(delegation.kind).toBe(SIGNET_KINDS.DELEGATION);
+    expect(delegation.kind).toBe(ATTESTATION_KIND);
+    expect(getTagValue(delegation, 'type')).toBe(ATTESTATION_TYPES.DELEGATION);
     expect(delegation.pubkey).toBe(guardian.publicKey);
   });
 

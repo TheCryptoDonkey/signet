@@ -1,7 +1,7 @@
 // Kind 30474 — Verifier Challenge
 // Kind 30475 — Verifier Revocation
 
-import { SIGNET_KINDS, SIGNET_LABEL, DEFAULT_REVOCATION_THRESHOLD, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, DEFAULT_REVOCATION_THRESHOLD, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
 import { getTagValue } from './validation.js';
 import type {
@@ -26,15 +26,17 @@ export function buildChallengeEvent(
   params: ChallengeParams
 ): UnsignedEvent {
   return {
-    kind: SIGNET_KINDS.CHALLENGE,
+    kind: ATTESTATION_KIND,
     pubkey: reporterPubkey,
     created_at: Math.floor(Date.now() / 1000),
     tags: [
-      ['d', params.verifierPubkey],
+      ['d', `challenge:${params.verifierPubkey}`],
       ['p', params.verifierPubkey],
+      ['type', ATTESTATION_TYPES.CHALLENGE],
       ['reason', params.reason],
       ['evidence-type', params.evidenceType],
       ['reporter-tier', String(params.reporterTier)],
+      ['summary', `Challenge against verifier ${params.verifierPubkey.slice(0, 8)}... (${params.reason})`],
       ['algo', DEFAULT_CRYPTO_ALGORITHM],
       ['L', SIGNET_LABEL],
       ['l', 'challenge', SIGNET_LABEL],
@@ -55,12 +57,17 @@ export async function createChallenge(
 
 /** Parse a challenge event */
 export function parseChallenge(event: NostrEvent): ParsedChallenge | null {
-  if (event.kind !== SIGNET_KINDS.CHALLENGE) return null;
+  if (event.kind !== ATTESTATION_KIND) return null;
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.CHALLENGE) return null;
 
   const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
 
+  // Strip 'challenge:' prefix from d-tag to get verifier pubkey
+  const dTag = getTagValue(event, 'd') || '';
+  const verifierPubkey = dTag.startsWith('challenge:') ? dTag.slice('challenge:'.length) : dTag;
+
   return {
-    verifierPubkey: getTagValue(event, 'd') || '',
+    verifierPubkey,
     reason: (getTagValue(event, 'reason') || 'other') as ChallengeReason,
     evidenceType: getTagValue(event, 'evidence-type') || '',
     reporterTier: (() => { const t = parseInt(getTagValue(event, 'reporter-tier') || '1', 10); return (t >= 1 && t <= 4 ? t : 1) as SignetTier; })(),
@@ -76,17 +83,19 @@ export function buildRevocationEvent(
   params: RevocationParams
 ): UnsignedEvent {
   return {
-    kind: SIGNET_KINDS.REVOCATION,
+    kind: ATTESTATION_KIND,
     pubkey: authorityPubkey,
     created_at: Math.floor(Date.now() / 1000),
     tags: [
-      ['d', params.verifierPubkey],
+      ['d', `revocation:${params.verifierPubkey}`],
       ['p', params.verifierPubkey],
+      ['type', ATTESTATION_TYPES.REVOCATION],
       ['challenge', params.challengeEventId],
       ['confirmations', String(params.confirmations)],
       ['bond-action', params.bondAction],
       ['scope', params.scope],
       ['effective', String(params.effectiveAt)],
+      ['summary', `Revocation of verifier ${params.verifierPubkey.slice(0, 8)}...`],
       ['algo', DEFAULT_CRYPTO_ALGORITHM],
       ['L', SIGNET_LABEL],
       ['l', 'revocation', SIGNET_LABEL],
@@ -107,12 +116,17 @@ export async function createRevocation(
 
 /** Parse a revocation event */
 export function parseRevocation(event: NostrEvent): ParsedRevocation | null {
-  if (event.kind !== SIGNET_KINDS.REVOCATION) return null;
+  if (event.kind !== ATTESTATION_KIND) return null;
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.REVOCATION) return null;
 
   const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
 
+  // Strip 'revocation:' prefix from d-tag to get verifier pubkey
+  const dTag = getTagValue(event, 'd') || '';
+  const verifierPubkey = dTag.startsWith('revocation:') ? dTag.slice('revocation:'.length) : dTag;
+
   return {
-    verifierPubkey: getTagValue(event, 'd') || '',
+    verifierPubkey,
     challengeEventId: getTagValue(event, 'challenge') || '',
     confirmations: (() => { const c = parseInt(getTagValue(event, 'confirmations') || '0', 10); return isNaN(c) || c < 0 ? 0 : c; })(),
     bondAction: (getTagValue(event, 'bond-action') || 'held') as BondAction,
@@ -131,11 +145,13 @@ export function countChallengeConfirmations(
   // Build a set of Tier 3+ pubkeys
   const tier3Plus = new Set<string>();
   for (const cred of credentialEvents) {
-    if (cred.kind !== SIGNET_KINDS.CREDENTIAL) continue;
+    if (cred.kind !== ATTESTATION_KIND) continue;
+    if (getTagValue(cred, 'type') !== ATTESTATION_TYPES.CREDENTIAL) continue;
     const tier = getTagValue(cred, 'tier');
     const tierNum = tier ? parseInt(tier, 10) : NaN;
     if (!isNaN(tierNum) && tierNum >= 3) {
-      const subject = getTagValue(cred, 'd');
+      const dTag = getTagValue(cred, 'd') || '';
+      const subject = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
       if (subject) tier3Plus.add(subject);
     }
   }

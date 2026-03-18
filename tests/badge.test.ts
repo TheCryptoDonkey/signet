@@ -5,7 +5,7 @@ import {
   createPeerVouchedCredential,
   createProfessionalCredential,
   createVouch,
-  SIGNET_KINDS,
+  ATTESTATION_KIND,
 } from '../src/index.js';
 import {
   computeBadge,
@@ -222,9 +222,9 @@ describe('badge display (Level 1)', () => {
       const filters = buildBadgeFilters([kp.publicKey]);
 
       expect(filters).toHaveLength(1);
-      expect(filters[0].kinds).toContain(SIGNET_KINDS.CREDENTIAL);
-      expect(filters[0].kinds).toContain(SIGNET_KINDS.VOUCH);
-      expect(filters[0]['#d']).toContain(kp.publicKey);
+      expect(filters[0].kinds).toContain(ATTESTATION_KIND);
+      expect(filters[0]['#d']).toContain(`credential:${kp.publicKey}`);
+      expect(filters[0]['#d']).toContain(`vouch:${kp.publicKey}`);
     });
 
     it('creates filters for multiple pubkeys', () => {
@@ -232,8 +232,10 @@ describe('badge display (Level 1)', () => {
       const kp2 = generateKeyPair();
       const filters = buildBadgeFilters([kp1.publicKey, kp2.publicKey]);
 
-      expect(filters[0]['#d']).toContain(kp1.publicKey);
-      expect(filters[0]['#d']).toContain(kp2.publicKey);
+      expect(filters[0]['#d']).toContain(`credential:${kp1.publicKey}`);
+      expect(filters[0]['#d']).toContain(`vouch:${kp1.publicKey}`);
+      expect(filters[0]['#d']).toContain(`credential:${kp2.publicKey}`);
+      expect(filters[0]['#d']).toContain(`vouch:${kp2.publicKey}`);
     });
   });
 

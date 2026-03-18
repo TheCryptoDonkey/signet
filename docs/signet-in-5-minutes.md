@@ -3,7 +3,7 @@
 Signet is an open-source, decentralised identity verification protocol for Nostr. It lets users prove claims
 about who they are — human, professional, adult, organisation — without exposing personal data. Verification
 is anchored to professional bodies (law societies, medical boards, notary commissions) rather than any central
-authority. Trust accumulates as a continuous Signet IQ score (0–200, where 100 represents the current government standard) assembled from weighted signals, and is expressed as a tier badge any Nostr client can display.
+authority. Trust accumulates as a continuous Signet Score score (0–200, where 100 represents the current government standard) assembled from weighted signals, and is expressed as a tier badge any Nostr client can display.
 
 
 ## How Trust Flows
@@ -32,10 +32,10 @@ authority. Trust accumulates as a continuous Signet IQ score (0–200, where 100
   Trust signals accumulated (professional verif, vouches, account age, identity bridges)
     |
     v
-  Signet IQ computed (0-200, where 100 = government standard)
+  Signet Score computed (0-200, where 100 = government standard)
     |
     v
-  Badge displayed by client  e.g. "Verified (Tier 3) — Signet IQ 106"
+  Badge displayed by client  e.g. "Verified (Tier 3) — Signet Score 106"
 ```
 
 
@@ -169,7 +169,7 @@ relay client library.
 - Full protocol specification: `spec/protocol.md`
 - Voting extension: `spec/voting.md`
 - Level 1 badge library: `src/badge.ts`
-- Signet IQ details: `src/trust-score.ts`
+- Signet Score details: `src/trust-score.ts`
 - Full working example: `examples/full-flow.ts`
 - Jurisdiction-specific examples: `examples/jurisdictions/`
 - "Signet me" peer verification: `examples/signet-me.ts`

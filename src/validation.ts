@@ -1,7 +1,7 @@
 // Signet Event Validation
 // Validates structure and required fields for all 6 event kinds
 
-import { SIGNET_KINDS, SIGNET_LABEL } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, APP_DATA_KIND, SIGNET_LABEL } from './constants.js';
 import type { NostrEvent } from './types.js';
 
 export const MAX_CONTENT_LENGTH = 65536;
@@ -54,8 +54,12 @@ export function validateCredential(event: NostrEvent): ValidationResult {
 
   validateFieldSizeBounds(event, errors);
 
-  if (event.kind !== SIGNET_KINDS.CREDENTIAL) {
-    errors.push(`Expected kind ${SIGNET_KINDS.CREDENTIAL}, got ${event.kind}`);
+  if (event.kind !== ATTESTATION_KIND) {
+    errors.push(`Expected kind ${ATTESTATION_KIND}, got ${event.kind}`);
+  }
+
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.CREDENTIAL) {
+    errors.push(`Expected type tag '${ATTESTATION_TYPES.CREDENTIAL}'`);
   }
 
   if (!hasSignetLabel(event)) {
@@ -70,9 +74,9 @@ export function validateCredential(event: NostrEvent): ValidationResult {
     errors.push('Missing or invalid "tier" tag (must be 1-4)');
   }
 
-  const type = getTagValue(event, 'type');
-  if (!type || !['self', 'peer', 'professional'].includes(type)) {
-    errors.push('Missing or invalid "type" tag');
+  const verificationType = getTagValue(event, 'verification-type');
+  if (!verificationType || !['self', 'peer', 'professional'].includes(verificationType)) {
+    errors.push('Missing or invalid "verification-type" tag');
   }
 
   const scope = getTagValue(event, 'scope');
@@ -84,16 +88,16 @@ export function validateCredential(event: NostrEvent): ValidationResult {
   if (!method) errors.push('Missing "method" tag');
 
   // Tier-specific validations — use string comparison (tier is already whitelisted above)
-  if (tier === '1' && type !== 'self') {
-    errors.push('Tier 1 must have type "self"');
+  if (tier === '1' && verificationType !== 'self') {
+    errors.push('Tier 1 must have verification-type "self"');
   }
 
-  if (tier === '2' && type !== 'peer') {
-    errors.push('Tier 2 must have type "peer"');
+  if (tier === '2' && verificationType !== 'peer') {
+    errors.push('Tier 2 must have verification-type "peer"');
   }
 
-  if ((tier === '3' || tier === '4') && type !== 'professional') {
-    errors.push(`Tier ${tier} must have type "professional"`);
+  if ((tier === '3' || tier === '4') && verificationType !== 'professional') {
+    errors.push(`Tier ${tier} must have verification-type "professional"`);
   }
 
   if (tier === '4') {
@@ -118,16 +122,23 @@ export function validateVouch(event: NostrEvent): ValidationResult {
 
   validateFieldSizeBounds(event, errors);
 
-  if (event.kind !== SIGNET_KINDS.VOUCH) {
-    errors.push(`Expected kind ${SIGNET_KINDS.VOUCH}, got ${event.kind}`);
+  if (event.kind !== ATTESTATION_KIND) {
+    errors.push(`Expected kind ${ATTESTATION_KIND}, got ${event.kind}`);
+  }
+
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.VOUCH) {
+    errors.push(`Expected type tag '${ATTESTATION_TYPES.VOUCH}'`);
   }
 
   if (!hasSignetLabel(event)) {
     errors.push('Missing signet protocol label');
   }
 
-  const subject = getTagValue(event, 'd');
-  if (!subject) errors.push('Missing "d" tag (subject pubkey)');
+  const dTag = getTagValue(event, 'd');
+  if (!dTag) errors.push('Missing "d" tag (subject pubkey)');
+
+  // Strip 'vouch:' prefix from d-tag to get subject pubkey
+  const subject = dTag && dTag.startsWith('vouch:') ? dTag.slice('vouch:'.length) : dTag;
 
   const method = getTagValue(event, 'method');
   if (!method || !['in-person', 'online'].includes(method)) {
@@ -153,16 +164,14 @@ export function validatePolicy(event: NostrEvent): ValidationResult {
 
   validateFieldSizeBounds(event, errors);
 
-  if (event.kind !== SIGNET_KINDS.POLICY) {
-    errors.push(`Expected kind ${SIGNET_KINDS.POLICY}, got ${event.kind}`);
+  if (event.kind !== APP_DATA_KIND) {
+    errors.push(`Expected kind ${APP_DATA_KIND}, got ${event.kind}`);
   }
 
-  if (!hasSignetLabel(event)) {
-    errors.push('Missing signet protocol label');
+  const dTag = getTagValue(event, 'd');
+  if (!dTag || !dTag.startsWith('signet:policy:')) {
+    errors.push('Missing or invalid "d" tag (must start with "signet:policy:")');
   }
-
-  const communityId = getTagValue(event, 'd');
-  if (!communityId) errors.push('Missing "d" tag (community identifier)');
 
   const adultMinTier = getTagValue(event, 'adult-min-tier');
   if (!adultMinTier || !['1', '2', '3', '4'].includes(adultMinTier)) {
@@ -188,8 +197,12 @@ export function validateVerifier(event: NostrEvent): ValidationResult {
 
   validateFieldSizeBounds(event, errors);
 
-  if (event.kind !== SIGNET_KINDS.VERIFIER) {
-    errors.push(`Expected kind ${SIGNET_KINDS.VERIFIER}, got ${event.kind}`);
+  if (event.kind !== ATTESTATION_KIND) {
+    errors.push(`Expected kind ${ATTESTATION_KIND}, got ${event.kind}`);
+  }
+
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.VERIFIER) {
+    errors.push(`Expected type tag '${ATTESTATION_TYPES.VERIFIER}'`);
   }
 
   if (!hasSignetLabel(event)) {
@@ -221,8 +234,12 @@ export function validateChallenge(event: NostrEvent): ValidationResult {
 
   validateFieldSizeBounds(event, errors);
 
-  if (event.kind !== SIGNET_KINDS.CHALLENGE) {
-    errors.push(`Expected kind ${SIGNET_KINDS.CHALLENGE}, got ${event.kind}`);
+  if (event.kind !== ATTESTATION_KIND) {
+    errors.push(`Expected kind ${ATTESTATION_KIND}, got ${event.kind}`);
+  }
+
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.CHALLENGE) {
+    errors.push(`Expected type tag '${ATTESTATION_TYPES.CHALLENGE}'`);
   }
 
   if (!hasSignetLabel(event)) {
@@ -255,8 +272,12 @@ export function validateRevocation(event: NostrEvent): ValidationResult {
 
   validateFieldSizeBounds(event, errors);
 
-  if (event.kind !== SIGNET_KINDS.REVOCATION) {
-    errors.push(`Expected kind ${SIGNET_KINDS.REVOCATION}, got ${event.kind}`);
+  if (event.kind !== ATTESTATION_KIND) {
+    errors.push(`Expected kind ${ATTESTATION_KIND}, got ${event.kind}`);
+  }
+
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.REVOCATION) {
+    errors.push(`Expected type tag '${ATTESTATION_TYPES.REVOCATION}'`);
   }
 
   if (!hasSignetLabel(event)) {
@@ -289,22 +310,29 @@ export function validateRevocation(event: NostrEvent): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-/** Validate any Signet event by kind */
+/** Validate any Signet event by kind + type tag */
 export function validateEvent(event: NostrEvent): ValidationResult {
-  switch (event.kind) {
-    case SIGNET_KINDS.CREDENTIAL:
-      return validateCredential(event);
-    case SIGNET_KINDS.VOUCH:
-      return validateVouch(event);
-    case SIGNET_KINDS.POLICY:
-      return validatePolicy(event);
-    case SIGNET_KINDS.VERIFIER:
-      return validateVerifier(event);
-    case SIGNET_KINDS.CHALLENGE:
-      return validateChallenge(event);
-    case SIGNET_KINDS.REVOCATION:
-      return validateRevocation(event);
-    default:
-      return { valid: false, errors: [`Unknown Signet event kind: ${event.kind}`] };
+  if (event.kind === APP_DATA_KIND) {
+    return validatePolicy(event);
   }
+
+  if (event.kind === ATTESTATION_KIND) {
+    const eventType = getTagValue(event, 'type');
+    switch (eventType) {
+      case ATTESTATION_TYPES.CREDENTIAL:
+        return validateCredential(event);
+      case ATTESTATION_TYPES.VOUCH:
+        return validateVouch(event);
+      case ATTESTATION_TYPES.VERIFIER:
+        return validateVerifier(event);
+      case ATTESTATION_TYPES.CHALLENGE:
+        return validateChallenge(event);
+      case ATTESTATION_TYPES.REVOCATION:
+        return validateRevocation(event);
+      default:
+        return { valid: false, errors: [`Unknown attestation type: ${eventType}`] };
+    }
+  }
+
+  return { valid: false, errors: [`Unknown Signet event kind: ${event.kind}`] };
 }

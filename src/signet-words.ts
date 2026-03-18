@@ -44,13 +44,22 @@ export function getEpoch(timestampMs?: number, epochSeconds: number = SIGNET_EPO
 }
 
 /** Derive N words from a shared secret and epoch number.
- *  Uses SPOKEN-DERIVE (HMAC-SHA256) and encodes as spoken-clarity words. */
-export function deriveWords(sharedSecret: string, epoch: number, wordCount: number = SIGNET_WORD_COUNT): string[] {
+ *  Uses SPOKEN-DERIVE (HMAC-SHA256) and encodes as spoken-clarity words.
+ *  @param sharedSecret - Hex string or Uint8Array shared secret (minimum 16 bytes).
+ *  @param epoch - Time-based epoch counter (uint32).
+ *  @param wordCount - Number of words to derive (1-16, default 3).
+ *  @param context - Domain-separation context string (default: 'signet:verify'). */
+export function deriveWords(
+  sharedSecret: Uint8Array | string,
+  epoch: number,
+  wordCount: number = SIGNET_WORD_COUNT,
+  context: string = SIGNET_CONTEXT,
+): string[] {
   if (wordCount < 1 || wordCount > MAX_WORD_COUNT) {
     throw new SignetValidationError(`wordCount must be between 1 and ${MAX_WORD_COUNT}`);
   }
 
-  const bytes = deriveTokenBytes(sharedSecret, SIGNET_CONTEXT, epoch);
+  const bytes = deriveTokenBytes(sharedSecret, context, epoch);
   return encodeAsWords(bytes, wordCount, WORDLIST);
 }
 

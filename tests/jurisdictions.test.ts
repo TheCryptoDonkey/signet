@@ -11,7 +11,7 @@ import {
   canTransferData,
   getAllLanguages,
   getJurisdictionsByLanguage,
-} from '../src/jurisdictions.js';
+} from 'jurisdiction-kit';
 
 describe('jurisdictions', () => {
   describe('getJurisdiction', () => {

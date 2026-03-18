@@ -24,7 +24,6 @@ export type {
   VerifierParams,
   ChallengeParams,
   RevocationParams,
-  DelegationParams,
   TrustSignal,
   TrustScoreBreakdown,
   MerkleProof,
@@ -41,18 +40,17 @@ export type {
   CredentialChain,
   GuardianDelegationParams,
   GuardianDelegationScope,
-  ElectionScale,
-  ReVotePolicy,
-  ElectionParams,
-  ParsedElection,
-  BallotParams,
-  ParsedBallot,
-  ElectionResultParams,
-  ParsedElectionResult,
+  SimpleEntityType,
 } from './types.js';
+
+// Entity display labels (value export from types)
+export { ENTITY_DISPLAY_LABELS } from './types.js';
 
 // Constants
 export {
+  ATTESTATION_KIND,
+  APP_DATA_KIND,
+  ATTESTATION_TYPES,
   SIGNET_KINDS,
   SIGNET_LABEL,
   DEFAULT_VOUCH_THRESHOLD,
@@ -81,7 +79,7 @@ export {
   hashString,
 } from './crypto.js';
 
-// Credentials (kind 30470)
+// Credentials (attestation type: credential)
 export {
   buildCredentialEvent,
   createSelfDeclaredCredential,
@@ -118,7 +116,7 @@ export {
 
 export type { RingProtectedContent, DocumentDescriptor, NullifierFamily } from './credentials.js';
 
-// Vouches (kind 30471)
+// Vouches (attestation type: vouch)
 export {
   buildVouchEvent,
   createVouch,
@@ -128,7 +126,7 @@ export {
   getVouchers,
 } from './vouches.js';
 
-// Policies (kind 30472)
+// Policies (NIP-78 kind 30078)
 export {
   buildPolicyEvent,
   createPolicy,
@@ -137,7 +135,7 @@ export {
   PolicyChecker,
 } from './policies.js';
 
-// Verifiers (kind 30473)
+// Verifiers (attestation type: verifier)
 export {
   buildVerifierEvent,
   createVerifierCredential,
@@ -146,7 +144,7 @@ export {
   isVerifierRevoked,
 } from './verifiers.js';
 
-// Challenges & Revocations (kind 30474, 30475)
+// Challenges & Revocations (attestation types: challenge, revocation)
 export {
   buildChallengeEvent,
   createChallenge,
@@ -158,7 +156,7 @@ export {
   hasReachedRevocationThreshold,
 } from './challenges.js';
 
-// Signet IQ
+// Signet Score
 export {
   computeTrustScore,
   formatTrustDisplay,
@@ -194,21 +192,7 @@ export {
 
 export type { LsagSignature } from './lsag.js';
 
-// Voting (kinds 30482-30484)
-export {
-  createElection,
-  parseElection,
-  castBallot,
-  verifyBallot,
-  tallyElection,
-  encryptBallotContent,
-  decryptBallotContent,
-  validateElection,
-  validateBallot,
-  validateElectionResult,
-} from './voting.js';
-
-// Identity Bridge (kind 30476)
+// Identity Bridge (attestation type: identity-bridge)
 export {
   createIdentityBridge,
   verifyIdentityBridge,
@@ -262,7 +246,7 @@ export type {
   AnomalyConfig,
 } from './anomaly.js';
 
-// Jurisdictions
+// Jurisdictions (re-exported from jurisdiction-kit)
 export {
   JURISDICTIONS,
   getJurisdiction,
@@ -279,7 +263,7 @@ export {
   computeJurisdictionConfidence,
   getJurisdictionConfidence,
   rankJurisdictionsByConfidence,
-} from './jurisdictions.js';
+} from 'jurisdiction-kit';
 
 export type {
   LegalSystem,
@@ -289,7 +273,7 @@ export type {
   ChildProtectionLaw,
   Jurisdiction,
   JurisdictionConfidence,
-} from './jurisdictions.js';
+} from 'jurisdiction-kit';
 
 // Internationalization
 export {
@@ -349,7 +333,6 @@ export {
   SignetError,
   SignetValidationError,
   SignetCryptoError,
-  SignetVotingError,
 } from './errors.js';
 
 // BIP-39 Wordlist
@@ -426,3 +409,15 @@ export {
 } from './signet-words.js';
 
 export type { SignetWordsConfig } from './signet-words.js';
+
+// Cold-Call Verification (institutional caller verification via .well-known/signet.json + ephemeral ECDH)
+export {
+  fetchInstitutionKeys,
+  generateSessionCode,
+  deriveColdCallWords,
+  initiateColdCallVerification,
+  completeColdCallVerification,
+  type ColdCallSession,
+} from './cold-call.js';
+
+export type { InstitutionKeys, InstitutionPubkey } from './types.js';

@@ -6,9 +6,9 @@ A guide for Nostr client developers integrating the Signet identity protocol. Th
 
 | Level | Effort | Event Kinds | New Crypto | What Users Get |
 |-------|--------|-------------|------------|----------------|
-| 1 — Read Trust Badges | ~1 weekend | 30470, 30471 | None | Tier badges and Signet IQ on profiles |
-| 2 — Issue Vouches | A few days | 30470–30472 | None | Peer vouching, Tier 2 networks, policy checks |
-| 3 — Full Protocol | Weeks to months | 30470–30480 | Merkle, Bulletproofs, ring signatures | Professional verification, ZK proofs, elections |
+| 1 — Read Trust Badges | ~1 weekend | 30999 (credential, vouch) | None | Tier badges and Signet Score on profiles |
+| 2 — Issue Vouches | A few days | 30999, 30078 | None | Peer vouching, Tier 2 networks, policy checks |
+| 3 — Full Protocol | Weeks to months | 30999, 30078, 30482-30484 | Merkle, Pedersen range proofs, ring signatures | Professional verification, ZK proofs, elections |
 
 ---
 
@@ -56,7 +56,7 @@ The `badge` object includes:
 - `badge.isVerified` — boolean, true if the pubkey has any Signet verification
 - `badge.tier` — number 1–4, the highest verified tier
 - `badge.tierLabel` — human-readable string (e.g. `"Vouched"`, `"Verified"`, `"Verified (Child Safety)"`)
-- `badge.score` — integer 0–200 Signet IQ derived from weighted trust signals (100 = government standard)
+- `badge.score` — integer 0–200 Signet Score derived from weighted trust signals (100 = government standard)
 
 ### Trust tiers at a glance
 
@@ -163,7 +163,7 @@ Reference: `src/policies.ts`
 
 **Effort:** Weeks to months
 **Event kinds:** 30470–30480 (all 11 kinds)
-**New crypto required:** Merkle trees, Bulletproofs (age range proofs), linkable ring signatures
+**New crypto required:** Merkle trees, Pedersen range proofs (age range proofs), linkable ring signatures
 
 Level 3 is full reference implementation. This is appropriate for clients that want to act as professional verifiers, run elections, or issue and receive Tier 3/4 credentials with zero-knowledge proofs.
 
@@ -171,7 +171,7 @@ Level 3 is full reference implementation. This is appropriate for clients that w
 
 - **Two-credential ceremony:** Professional verifiers issue a Natural Person credential (kind `30470`, with nullifier and Merkle root) and an anonymous Persona credential simultaneously. The Natural Person credential binds to a document-based nullifier (`SHA-256(docType || country || docNumber || salt)`) to prevent duplicate identity claims. The Persona credential reveals only an age range, not the full identity.
 - **Merkle selective disclosure:** Verified attributes are stored as private leaves of a Merkle tree. Only the root is published on-chain. Users disclose individual leaves with inclusion proofs when required.
-- **Age range proofs:** Bulletproofs prove that a user is within an age range without revealing their exact date of birth.
+- **Age range proofs:** Pedersen range proofs prove that a user is within an age range without revealing their exact date of birth.
 - **Professional verifier onboarding:** Verifier accounts (kind `30473`) are backed by recognised professional bodies (law societies, medical boards, notary commissions). The protocol has no central authority — trust anchors are these external bodies.
 - **Ring signatures and elections:** The voting extension (kinds `30478`–`30480`) uses linkable ring signatures for anonymous voting with double-spend prevention.
 - **Guardian delegation:** Kind `30477` delegation events with scopes (`full`, `activity-approval`, `content-management`, `contact-approval`) support family structures and guardian-linked sub-accounts.
@@ -189,7 +189,7 @@ All modules are re-exported from the package root. You can also import them dire
 | Ring signatures | `src/ring-signature.ts` | Linkable ring signature generation and verification for voting |
 | Range proofs | `src/range-proof.ts` | Bulletproof-based age range proofs |
 | Merkle trees | `src/merkle.ts` | Build attribute trees, generate and verify inclusion proofs |
-| Signet IQ | `src/trust-score.ts` | Weighted signal aggregation, 0–200 Signet IQ computation |
+| Signet Score | `src/trust-score.ts` | Weighted signal aggregation, 0–200 Signet Score computation |
 | Anomaly detection | `src/anomaly.ts` | Detect vouch ring attacks and other manipulation patterns |
 | Jurisdictions | `src/jurisdictions.ts` | Jurisdiction-specific rules for document types and professional bodies |
 

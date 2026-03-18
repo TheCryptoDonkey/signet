@@ -5,7 +5,7 @@
 // Published from the anon account. Content contains a ring signature proving
 // one of N verified accounts also controls this anon account.
 
-import { SIGNET_KINDS, SIGNET_LABEL, MIN_BRIDGE_RING_SIZE, TRUST_WEIGHTS, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, MIN_BRIDGE_RING_SIZE, TRUST_WEIGHTS, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { getPublicKey, signEvent, verifyEvent } from './crypto.js';
 import { ringSign, ringVerify } from './ring-signature.js';
 import { getTagValue } from './validation.js';
@@ -123,18 +123,21 @@ export async function createIdentityBridge(
       c0: ringSig.c0,
       responses: ringSig.responses,
       message: ringSig.message,
+      domain: ringSig.domain,
     },
     timestamp,
   });
 
   const unsigned: UnsignedEvent = {
-    kind: SIGNET_KINDS.IDENTITY_BRIDGE,
+    kind: ATTESTATION_KIND,
     pubkey: anonPubkey,
     created_at: timestamp,
     tags: [
       ['d', 'identity-bridge'],
+      ['type', ATTESTATION_TYPES.IDENTITY_BRIDGE],
       ['ring-min-tier', String(ringMinTier)],
       ['ring-size', String(ring.length)],
+      ['summary', 'Anonymous account linked to verified identity via ring signature'],
       ['algo', DEFAULT_CRYPTO_ALGORITHM],
       ['L', SIGNET_LABEL],
       ['l', 'identity-bridge', SIGNET_LABEL],
@@ -162,8 +165,9 @@ export async function verifyIdentityBridge(
   event: NostrEvent,
   opts?: { maxAgeSeconds?: number }
 ): Promise<boolean> {
-  // Check kind
-  if (event.kind !== SIGNET_KINDS.IDENTITY_BRIDGE) return false;
+  // Check kind + type tag
+  if (event.kind !== ATTESTATION_KIND) return false;
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.IDENTITY_BRIDGE) return false;
 
   // Verify Nostr event signature
   const validEvent = await verifyEvent(event);
@@ -211,7 +215,8 @@ export async function verifyIdentityBridge(
  * Parse an identity bridge event into a structured form.
  */
 export function parseIdentityBridge(event: NostrEvent): ParsedIdentityBridge | null {
-  if (event.kind !== SIGNET_KINDS.IDENTITY_BRIDGE) return null;
+  if (event.kind !== ATTESTATION_KIND) return null;
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.IDENTITY_BRIDGE) return null;
 
   try {
     const parsed = JSON.parse(event.content);

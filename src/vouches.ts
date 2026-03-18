@@ -1,7 +1,7 @@
 // Kind 30471 — Vouch Attestation
 // Create and manage peer vouches
 
-import { SIGNET_KINDS, SIGNET_LABEL, DEFAULT_VOUCH_THRESHOLD, DEFAULT_VOUCHER_MIN_TIER, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, DEFAULT_VOUCH_THRESHOLD, DEFAULT_VOUCHER_MIN_TIER, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
 import { getTagValue } from './validation.js';
 import type {
@@ -20,11 +20,13 @@ export function buildVouchEvent(
   params: VouchParams
 ): UnsignedEvent {
   const tags: string[][] = [
-    ['d', params.subjectPubkey],
+    ['d', `vouch:${params.subjectPubkey}`],
     ['p', params.subjectPubkey],
+    ['type', ATTESTATION_TYPES.VOUCH],
     ['method', params.method],
     ['voucher-tier', String(params.voucherTier)],
     ['voucher-score', String(params.voucherScore)],
+    ['summary', `${params.method} vouch for ${params.subjectPubkey.slice(0, 8)}...`],
     ['algo', DEFAULT_CRYPTO_ALGORITHM],
     ['L', SIGNET_LABEL],
     ['l', 'vouch', SIGNET_LABEL],
@@ -33,7 +35,7 @@ export function buildVouchEvent(
   if (params.context) tags.push(['context', params.context]);
 
   return {
-    kind: SIGNET_KINDS.VOUCH,
+    kind: ATTESTATION_KIND,
     pubkey: voucherPubkey,
     created_at: Math.floor(Date.now() / 1000),
     tags,
@@ -53,15 +55,20 @@ export async function createVouch(
 
 /** Parse a vouch event into a structured object */
 export function parseVouch(event: NostrEvent): ParsedVouch | null {
-  if (event.kind !== SIGNET_KINDS.VOUCH) return null;
+  if (event.kind !== ATTESTATION_KIND) return null;
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.VOUCH) return null;
 
   const tier = getTagValue(event, 'voucher-tier');
   const score = getTagValue(event, 'voucher-score');
 
   const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
 
+  // Strip 'vouch:' prefix from d-tag to get subject pubkey
+  const dTag = getTagValue(event, 'd') || '';
+  const subjectPubkey = dTag.startsWith('vouch:') ? dTag.slice('vouch:'.length) : dTag;
+
   return {
-    subjectPubkey: getTagValue(event, 'd') || '',
+    subjectPubkey,
     method: (getTagValue(event, 'method') || 'online') as VouchMethod,
     context: getTagValue(event, 'context'),
     voucherTier: (() => { const t = tier ? parseInt(tier, 10) : 1; return (t >= 1 && t <= 4 ? t : 1) as SignetTier; })(),
@@ -80,9 +87,11 @@ export function countQualifyingVouches(
   let count = 0;
 
   for (const vouch of vouches) {
-    if (vouch.kind !== SIGNET_KINDS.VOUCH) continue;
+    if (vouch.kind !== ATTESTATION_KIND) continue;
+    if (getTagValue(vouch, 'type') !== ATTESTATION_TYPES.VOUCH) continue;
 
-    const subject = getTagValue(vouch, 'd');
+    const dTag = getTagValue(vouch, 'd') || '';
+    const subject = dTag.startsWith('vouch:') ? dTag.slice('vouch:'.length) : dTag;
     if (subject !== subjectPubkey) continue;
 
     const tier = getTagValue(vouch, 'voucher-tier');
@@ -117,8 +126,10 @@ export function getVouchers(
   const vouchers = new Set<string>();
 
   for (const vouch of vouches) {
-    if (vouch.kind !== SIGNET_KINDS.VOUCH) continue;
-    const subject = getTagValue(vouch, 'd');
+    if (vouch.kind !== ATTESTATION_KIND) continue;
+    if (getTagValue(vouch, 'type') !== ATTESTATION_TYPES.VOUCH) continue;
+    const dTag = getTagValue(vouch, 'd') || '';
+    const subject = dTag.startsWith('vouch:') ? dTag.slice('vouch:'.length) : dTag;
     if (subject === subjectPubkey) {
       vouchers.add(vouch.pubkey);
     }

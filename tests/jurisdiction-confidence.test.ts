@@ -4,7 +4,7 @@ import {
   getJurisdictionConfidence,
   rankJurisdictionsByConfidence,
   getJurisdictionCodes,
-} from '../src/jurisdictions.js';
+} from 'jurisdiction-kit';
 
 describe('jurisdiction confidence', () => {
   describe('computeJurisdictionConfidence', () => {

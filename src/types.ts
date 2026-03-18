@@ -142,7 +142,7 @@ export interface RevocationParams {
   summary: string;
 }
 
-// --- Signet IQ ---
+// --- Signet Score ---
 
 export interface TrustSignal {
   type: 'professional-verification' | 'in-person-vouch' | 'online-vouch' | 'account-age' | 'identity-bridge';
@@ -152,7 +152,7 @@ export interface TrustSignal {
 }
 
 export interface TrustScoreBreakdown {
-  score: number; // 0-200 (Signet IQ)
+  score: number; // 0-200 (Signet Score)
   tier: SignetTier;
   professionalVerifications: number;
   inPersonVouches: number;
@@ -251,12 +251,28 @@ export type EntityType =
   | 'natural_person'
   | 'persona'
   | 'personal_agent'
-  | 'free_personal_agent'
+  | 'unlinked_personal_agent'
   | 'juridical_person'
   | 'juridical_persona'
   | 'organised_agent'
-  | 'free_organised_agent'
-  | 'free_agent';
+  | 'unlinked_organised_agent'
+  | 'unlinked_agent';
+
+/** Developer-friendly entity type labels */
+export type SimpleEntityType = 'person' | 'persona' | 'organisation' | 'agent';
+
+/** Maps full entity types to simplified labels */
+export const ENTITY_DISPLAY_LABELS: Record<EntityType, SimpleEntityType> = {
+  natural_person: 'person',
+  persona: 'persona',
+  juridical_person: 'organisation',
+  juridical_persona: 'organisation',
+  personal_agent: 'agent',
+  organised_agent: 'agent',
+  unlinked_agent: 'agent',
+  unlinked_personal_agent: 'agent',
+  unlinked_organised_agent: 'agent',
+};
 
 /** Dynamic mode signaling for teleoperated/autonomous entities (§17.9) */
 export type EntityMode =
@@ -264,17 +280,11 @@ export type EntityMode =
   | 'autonomous'
   | 'assisted';
 
-// --- Kind 30477: Agent Delegation ---
-
-export interface DelegationParams {
-  agentPubkey: string;
-  entityType: 'personal_agent' | 'free_personal_agent' | 'organised_agent' | 'free_organised_agent';
-  expiresAt?: number;
-}
+// --- Agent Delegation ---
 
 export interface ParsedDelegation {
   agentPubkey: string;
-  entityType: 'personal_agent' | 'free_personal_agent' | 'organised_agent' | 'free_organised_agent';
+  entityType: 'personal_agent' | 'unlinked_personal_agent' | 'organised_agent' | 'unlinked_organised_agent';
   ownerPubkey: string;
   expiresAt?: number;
   algorithm: CryptoAlgorithm;
@@ -396,6 +406,28 @@ export type GuardianDelegationScope =
   | 'activity-approval'
   | 'content-management'
   | 'contact-approval';
+
+// --- Cold-Call Verification ---
+
+/** A single institutional verification pubkey */
+export interface InstitutionPubkey {
+  id: string;
+  pubkey: string;         // 64-char hex, secp256k1 x-only
+  label: string;
+  created: string;        // ISO 8601
+}
+
+/** .well-known/signet.json response */
+export interface InstitutionKeys {
+  version: number;
+  name: string;
+  pubkeys: InstitutionPubkey[];
+  relay?: string;
+  policy?: {
+    rotation?: string;
+    contact?: string;
+  };
+}
 
 // --- Kind 30476: Identity Bridge ---
 

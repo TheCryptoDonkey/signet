@@ -1,7 +1,7 @@
-// Signet IQ Computation
-// Continuous 0-200 Signet IQ score from weighted signals
+// Signet Score Computation
+// Continuous 0-200 Signet Score from weighted signals
 
-import { TRUST_WEIGHTS, MAX_TRUST_SCORE, SIGNET_KINDS } from './constants.js';
+import { TRUST_WEIGHTS, MAX_TRUST_SCORE, ATTESTATION_KIND, ATTESTATION_TYPES } from './constants.js';
 import { getTagValue } from './validation.js';
 import type {
   NostrEvent,
@@ -10,7 +10,7 @@ import type {
   SignetTier,
 } from './types.js';
 
-/** Compute Signet IQ for a subject from their credentials, vouches, and bridges */
+/** Compute Signet Score for a subject from their credentials, vouches, and bridges */
 export function computeTrustScore(
   subjectPubkey: string,
   credentials: NostrEvent[],
@@ -25,18 +25,20 @@ export function computeTrustScore(
   let inPersonVouches = 0;
   let onlineVouches = 0;
 
-  // Process credentials (kind 30470)
+  // Process credentials
   for (const cred of credentials) {
-    if (cred.kind !== SIGNET_KINDS.CREDENTIAL) continue;
-    const subject = getTagValue(cred, 'd');
+    if (cred.kind !== ATTESTATION_KIND) continue;
+    if (getTagValue(cred, 'type') !== ATTESTATION_TYPES.CREDENTIAL) continue;
+    const dTag = getTagValue(cred, 'd') || '';
+    const subject = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
     if (subject !== subjectPubkey) continue;
 
     const rawTier = parseInt(getTagValue(cred, 'tier') || '1', 10);
     const tier = (!isNaN(rawTier) && rawTier >= 1 && rawTier <= 4 ? rawTier : 1) as SignetTier;
     if (tier > highestTier) highestTier = tier;
 
-    const type = getTagValue(cred, 'type');
-    if (type === 'professional') {
+    const verificationType = getTagValue(cred, 'verification-type');
+    if (verificationType === 'professional') {
       professionalVerifications++;
       const weight = TRUST_WEIGHTS.PROFESSIONAL_VERIFICATION;
       rawScore += weight;
@@ -48,11 +50,13 @@ export function computeTrustScore(
     }
   }
 
-  // Process vouches (kind 30471)
+  // Process vouches
   const vouchersSeen = new Set<string>();
   for (const vouch of vouches) {
-    if (vouch.kind !== SIGNET_KINDS.VOUCH) continue;
-    const subject = getTagValue(vouch, 'd');
+    if (vouch.kind !== ATTESTATION_KIND) continue;
+    if (getTagValue(vouch, 'type') !== ATTESTATION_TYPES.VOUCH) continue;
+    const dTag = getTagValue(vouch, 'd') || '';
+    const subject = dTag.startsWith('vouch:') ? dTag.slice('vouch:'.length) : dTag;
     if (subject !== subjectPubkey) continue;
 
     // One vouch per voucher
@@ -87,10 +91,11 @@ export function computeTrustScore(
     }
   }
 
-  // Process identity bridges (kind 30476)
+  // Process identity bridges
   if (bridges) {
     for (const bridge of bridges) {
-      if (bridge.kind !== SIGNET_KINDS.IDENTITY_BRIDGE) continue;
+      if (bridge.kind !== ATTESTATION_KIND) continue;
+      if (getTagValue(bridge, 'type') !== ATTESTATION_TYPES.IDENTITY_BRIDGE) continue;
       if (bridge.pubkey !== subjectPubkey) continue;
 
       const rawRingMinTier = parseInt(getTagValue(bridge, 'ring-min-tier') || '1', 10);
@@ -138,14 +143,14 @@ export function computeTrustScore(
   };
 }
 
-/** Get a human-readable Signet IQ display */
+/** Get a human-readable Signet Score display */
 export function formatTrustDisplay(breakdown: TrustScoreBreakdown): string {
   const checkmarks = breakdown.tier >= 2 ? '✓'.repeat(breakdown.tier - 1) : '';
   const tierLabel = ['', 'Self-declared', 'Web-of-trust', 'Verified', 'Verified (Child Safety)'][breakdown.tier];
 
   const lines = [
     `${checkmarks} Tier ${breakdown.tier} (${tierLabel})`,
-    `Signet IQ: ${breakdown.score}`,
+    `Signet Score: ${breakdown.score}`,
   ];
 
   if (breakdown.professionalVerifications > 0) {

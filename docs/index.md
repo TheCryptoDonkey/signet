@@ -12,7 +12,7 @@ flowchart TD
     T2["Tier 2: Web-of-Trust\n(3+ peer vouches)"]
     T3["Tier 3: Professional Adult\n(lawyer/doctor/notary verifies ID)"]
     T4["Tier 4: Adult + Child Safety\n(professional verifies parent + child)"]
-    IQ["Signet IQ (0–200)\nWeighted trust score"]
+    IQ["Signet Score (0–200)\nWeighted trust score"]
     Badge["Badge Display\nTier label + score"]
 
     T1 -->|"peers vouch\n(kind 30471)"| T2
@@ -70,7 +70,7 @@ sequenceDiagram
     Note over V: Verifies document authenticity
     V->>V: Computes nullifier SHA-256(docType‖country‖docNumber‖salt)
     V->>V: Builds Merkle tree of verified attributes
-    V->>V: Creates Bulletproof age range proof
+    V->>V: Creates Pedersen range proof age range proof
     V->>R: Publishes Natural Person credential (nullifier + Merkle root)
     V->>R: Publishes Persona credential (age range only, anonymous)
     Note over S,R: Subject now has Tier 3/4 — no personal data stored
@@ -86,7 +86,7 @@ flowchart TB
         Ring["SAG ring signatures\n(issuer privacy)"]
     end
 
-    subgraph L2["Layer 2: Bulletproofs (secp256k1)"]
+    subgraph L2["Layer 2: Pedersen range proofs (secp256k1)"]
         Age["Age range proofs\n(~700 byte, no trusted setup)"]
     end
 

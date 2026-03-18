@@ -1,7 +1,7 @@
 // Signet Event Store
 // In-memory event storage with query support and JSON serialization
 
-import { SIGNET_KINDS } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, APP_DATA_KIND } from './constants.js';
 import { getTagValue, validateFieldSizeBounds } from './validation.js';
 import { SignetValidationError } from './errors.js';
 import type {
@@ -153,7 +153,8 @@ export class SignetStore {
 
   /** Get all credentials for a subject */
   getCredentials(subjectPubkey: string): NostrEvent[] {
-    return this.query({ kinds: [SIGNET_KINDS.CREDENTIAL], subjects: [subjectPubkey] });
+    return this.query({ kinds: [ATTESTATION_KIND], subjects: [`credential:${subjectPubkey}`, subjectPubkey] })
+      .filter((e) => getTagValue(e, 'type') === ATTESTATION_TYPES.CREDENTIAL);
   }
 
   /** Get the highest-tier credential for a subject */
@@ -173,29 +174,36 @@ export class SignetStore {
 
   /** Get all vouches for a subject */
   getVouches(subjectPubkey: string): NostrEvent[] {
-    return this.query({ kinds: [SIGNET_KINDS.VOUCH], subjects: [subjectPubkey] });
+    return this.query({ kinds: [ATTESTATION_KIND], subjects: [`vouch:${subjectPubkey}`, subjectPubkey] })
+      .filter((e) => getTagValue(e, 'type') === ATTESTATION_TYPES.VOUCH);
   }
 
   /** Get the community policy for a community */
   getPolicy(communityId: string): NostrEvent | undefined {
-    const policies = this.query({ kinds: [SIGNET_KINDS.POLICY] });
-    return policies.find((p) => getTagValue(p, 'd') === communityId);
+    const policies = this.query({ kinds: [APP_DATA_KIND] });
+    return policies.find((p) => {
+      const dTag = getTagValue(p, 'd') || '';
+      return dTag === `signet:policy:${communityId}`;
+    });
   }
 
   /** Get a verifier credential */
   getVerifierCredential(verifierPubkey: string): NostrEvent | undefined {
-    const creds = this.query({ kinds: [SIGNET_KINDS.VERIFIER], authors: [verifierPubkey] });
+    const creds = this.query({ kinds: [ATTESTATION_KIND], authors: [verifierPubkey] })
+      .filter((e) => getTagValue(e, 'type') === ATTESTATION_TYPES.VERIFIER);
     return creds[0];
   }
 
   /** Get all challenges against a verifier */
   getChallenges(verifierPubkey: string): NostrEvent[] {
-    return this.query({ kinds: [SIGNET_KINDS.CHALLENGE], subjects: [verifierPubkey] });
+    return this.query({ kinds: [ATTESTATION_KIND], subjects: [`challenge:${verifierPubkey}`, verifierPubkey] })
+      .filter((e) => getTagValue(e, 'type') === ATTESTATION_TYPES.CHALLENGE);
   }
 
   /** Get all revocations for a verifier */
   getRevocations(verifierPubkey: string): NostrEvent[] {
-    return this.query({ kinds: [SIGNET_KINDS.REVOCATION], subjects: [verifierPubkey] });
+    return this.query({ kinds: [ATTESTATION_KIND], subjects: [`revocation:${verifierPubkey}`, verifierPubkey] })
+      .filter((e) => getTagValue(e, 'type') === ATTESTATION_TYPES.REVOCATION);
   }
 
   /** Check if a verifier is revoked */
@@ -205,7 +213,8 @@ export class SignetStore {
 
   /** Get all credentials issued by a verifier */
   getCredentialsByIssuer(issuerPubkey: string): NostrEvent[] {
-    return this.query({ kinds: [SIGNET_KINDS.CREDENTIAL], authors: [issuerPubkey] });
+    return this.query({ kinds: [ATTESTATION_KIND], authors: [issuerPubkey] })
+      .filter((e) => getTagValue(e, 'type') === ATTESTATION_TYPES.CREDENTIAL);
   }
 
   // --- Serialization ---

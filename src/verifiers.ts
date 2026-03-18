@@ -1,7 +1,7 @@
 // Kind 30473 — Verifier Credential
 // Professional verifier registration and cross-verification
 
-import { SIGNET_KINDS, SIGNET_LABEL, VERIFIER_ACTIVATION, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, VERIFIER_ACTIVATION, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
 import { getTagValue } from './validation.js';
 import type {
@@ -18,15 +18,17 @@ export function buildVerifierEvent(
   params: VerifierParams
 ): UnsignedEvent {
   return {
-    kind: SIGNET_KINDS.VERIFIER,
+    kind: ATTESTATION_KIND,
     pubkey: verifierPubkey,
     created_at: Math.floor(Date.now() / 1000),
     tags: [
-      ['d', 'verifier-credential'],
+      ['d', 'verifier'],
+      ['type', ATTESTATION_TYPES.VERIFIER],
       ['profession', params.profession],
       ['jurisdiction', params.jurisdiction],
       ['licence', params.licenceHash],
       ['body', params.professionalBody],
+      ['summary', `${params.profession} verifier in ${params.jurisdiction}`],
       ['algo', DEFAULT_CRYPTO_ALGORITHM],
       ['L', SIGNET_LABEL],
       ['l', 'verifier', SIGNET_LABEL],
@@ -47,7 +49,8 @@ export async function createVerifierCredential(
 
 /** Parse a verifier credential event */
 export function parseVerifier(event: NostrEvent): ParsedVerifier | null {
-  if (event.kind !== SIGNET_KINDS.VERIFIER) return null;
+  if (event.kind !== ATTESTATION_KIND) return null;
+  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.VERIFIER) return null;
 
   const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
 
@@ -80,7 +83,8 @@ export function checkCrossVerification(
   // Build a map of verifier pubkey -> profession
   const verifierProfessions = new Map<string, string>();
   for (const cred of verifierCredentials) {
-    if (cred.kind !== SIGNET_KINDS.VERIFIER) continue;
+    if (cred.kind !== ATTESTATION_KIND) continue;
+    if (getTagValue(cred, 'type') !== ATTESTATION_TYPES.VERIFIER) continue;
     const profession = getTagValue(cred, 'profession');
     if (profession) {
       verifierProfessions.set(cred.pubkey, profession);
@@ -89,9 +93,11 @@ export function checkCrossVerification(
 
   // Count qualifying vouches (from other verified professionals)
   for (const vouch of vouches) {
-    if (vouch.kind !== SIGNET_KINDS.VOUCH) continue;
+    if (vouch.kind !== ATTESTATION_KIND) continue;
+    if (getTagValue(vouch, 'type') !== ATTESTATION_TYPES.VOUCH) continue;
 
-    const subject = getTagValue(vouch, 'd');
+    const dTag = getTagValue(vouch, 'd') || '';
+    const subject = dTag.startsWith('vouch:') ? dTag.slice('vouch:'.length) : dTag;
     if (subject !== verifierPubkey) continue;
 
     // Voucher must themselves be a verified professional
@@ -131,8 +137,10 @@ export function isVerifierRevoked(
   revocations: NostrEvent[]
 ): boolean {
   return revocations.some((rev) => {
-    if (rev.kind !== SIGNET_KINDS.REVOCATION) return false;
-    const target = getTagValue(rev, 'd');
+    if (rev.kind !== ATTESTATION_KIND) return false;
+    if (getTagValue(rev, 'type') !== ATTESTATION_TYPES.REVOCATION) return false;
+    const dTag = getTagValue(rev, 'd') || '';
+    const target = dTag.startsWith('revocation:') ? dTag.slice('revocation:'.length) : dTag;
     return target === verifierPubkey;
   });
 }

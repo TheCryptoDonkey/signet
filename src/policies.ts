@@ -1,7 +1,7 @@
 // Kind 30472 — Community Verification Policy
 // Create policies and check compliance
 
-import { SIGNET_KINDS, SIGNET_LABEL, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
+import { APP_DATA_KIND, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
 import { getTagValue } from './validation.js';
 import { SignetValidationError } from './errors.js';
@@ -22,13 +22,11 @@ export function buildPolicyEvent(
   params: PolicyParams
 ): UnsignedEvent {
   const tags: string[][] = [
-    ['d', params.communityId],
+    ['d', `signet:policy:${params.communityId}`],
     ['adult-min-tier', String(params.adultMinTier)],
     ['child-min-tier', String(params.childMinTier)],
     ['enforcement', params.enforcement],
     ['algo', DEFAULT_CRYPTO_ALGORITHM],
-    ['L', SIGNET_LABEL],
-    ['l', 'policy', SIGNET_LABEL],
   ];
 
   if (params.minScore !== undefined) tags.push(['min-score', String(params.minScore)]);
@@ -37,7 +35,7 @@ export function buildPolicyEvent(
   if (params.revocationThreshold !== undefined) tags.push(['revocation-threshold', String(params.revocationThreshold)]);
 
   return {
-    kind: SIGNET_KINDS.POLICY,
+    kind: APP_DATA_KIND,
     pubkey: operatorPubkey,
     created_at: Math.floor(Date.now() / 1000),
     tags,
@@ -57,15 +55,21 @@ export async function createPolicy(
 
 /** Parse a policy event into a structured object */
 export function parsePolicy(event: NostrEvent): ParsedPolicy | null {
-  if (event.kind !== SIGNET_KINDS.POLICY) return null;
+  if (event.kind !== APP_DATA_KIND) return null;
+  // NIP-78 policy events are identified by the signet:policy: d-tag prefix
+  const dTag = getTagValue(event, 'd') || '';
+  if (!dTag.startsWith('signet:policy:')) return null;
 
   const adultTier = getTagValue(event, 'adult-min-tier');
   const childTier = getTagValue(event, 'child-min-tier');
 
   const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
 
+  // Strip 'signet:policy:' prefix from d-tag to get community ID
+  const communityId = dTag.slice('signet:policy:'.length);
+
   return {
-    communityId: getTagValue(event, 'd') || '',
+    communityId,
     adultMinTier: (() => { const t = adultTier ? parseInt(adultTier, 10) : 1; return (t >= 1 && t <= 4 ? t : 1) as SignetTier; })(),
     childMinTier: (() => { const t = childTier ? parseInt(childTier, 10) : 1; return (t >= 1 && t <= 4 ? t : 1) as SignetTier; })(),
     enforcement: (getTagValue(event, 'enforcement') || 'client') as EnforcementLevel,

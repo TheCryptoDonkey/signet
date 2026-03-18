@@ -8,7 +8,7 @@ import {
   isProfessionRegulated,
   type Jurisdiction,
   type ProfessionType,
-} from './jurisdictions.js';
+} from 'jurisdiction-kit';
 import { getTagValue } from './validation.js';
 import { SignetValidationError } from './errors.js';
 import type { NostrEvent } from './types.js';
