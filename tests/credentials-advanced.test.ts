@@ -95,6 +95,26 @@ describe('ring-protected credentials', () => {
     );
     expect(verifyRingProtectedContent(cred12).rangeProofValid).toBe(true);
   });
+
+  it('rejects a ring-protected child credential when the age-range tag is tampered', async () => {
+    const verifiers = generateKeypairs(3);
+    const parent = generateKeyPair();
+
+    const cred = await createRingProtectedChildCredential(
+      verifiers[0].privateKey,
+      parent.publicKey,
+      verifiers.map((v) => v.publicKey),
+      0,
+      { profession: 'doctor', jurisdiction: 'AU', ageRange: '8-12', actualAge: 10 }
+    );
+
+    const tampered = {
+      ...cred,
+      tags: cred.tags.map((tag) => (tag[0] === 'age-range' ? ['age-range', '18+'] : tag)),
+    };
+
+    expect(verifyRingProtectedContent(tampered).rangeProofValid).toBe(false);
+  });
 });
 
 describe('credential renewal', () => {

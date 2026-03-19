@@ -67,8 +67,8 @@ if (meetsMinimumTier(badge, 2)) {
 - `createIdentityBridge(anonKey, realKey, ring, signerIndex, minTier)` — link anonymous account to verified identity via ring signature
 
 ### ZKP Age Proofs
-- `createAgeRangeProof(age, minAge, maxAge)` — Bulletproof range proof
-- `verifyAgeRangeProof(proof)` — verify without learning the age
+- `createAgeRangeProof(age, ageRange, subjectPubkey?)` — create an age-range proof
+- `verifyAgeRangeProof(proof, expectedAgeRange, expectedSubjectPubkey?)` — verify against an expected age policy
 
 ### Voting Extension (kinds 30482–30484)
 - `createElection(privateKey, params)` — define an election

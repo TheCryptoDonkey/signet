@@ -397,11 +397,11 @@ export function verifyRingProtectedContent(event: NostrEvent): {
         typeof content.rangeProof === 'object' &&
         !Array.isArray(content.rangeProof)) {
       result.hasRangeProof = true;
-      // If the proof has a context binding, verify it matches the credential's subject
-      if (typeof content.rangeProof.context === 'string' && content.rangeProof.context !== subjectPubkey) {
+      const expectedAgeRange = getTagValue(event, 'age-range');
+      if (!expectedAgeRange) {
         result.rangeProofValid = false;
       } else {
-        result.rangeProofValid = verifyAgeRangeProof(content.rangeProof);
+        result.rangeProofValid = verifyAgeRangeProof(content.rangeProof, expectedAgeRange, subjectPubkey);
       }
     }
   } catch {
