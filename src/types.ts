@@ -57,7 +57,7 @@ export interface NostrEvent extends UnsignedEvent {
   sig: string;
 }
 
-// --- Kind 30470: Verification Credential ---
+// --- Verification Credential (type: credential) ---
 
 export interface CredentialParams {
   subjectPubkey: string;
@@ -77,7 +77,7 @@ export interface CredentialParams {
   supersedes?: string; // event ID of superseded credential
 }
 
-// --- Kind 30471: Vouch Attestation ---
+// --- Vouch Attestation (type: vouch) ---
 
 export interface VouchParams {
   subjectPubkey: string;
@@ -87,7 +87,7 @@ export interface VouchParams {
   voucherScore: number;
 }
 
-// --- Kind 30472: Community Verification Policy ---
+// --- Community Verification Policy (NIP-78) ---
 
 export interface PolicyParams {
   communityId: string;
@@ -110,7 +110,7 @@ export interface PolicyCheckResult {
   actualScore?: number;
 }
 
-// --- Kind 30473: Verifier Credential ---
+// --- Verifier Credential (type: verifier) ---
 
 export interface VerifierParams {
   profession: string;
@@ -120,7 +120,7 @@ export interface VerifierParams {
   statement?: string;
 }
 
-// --- Kind 30474: Verifier Challenge ---
+// --- Verifier Challenge (type: challenge) ---
 
 export interface ChallengeParams {
   verifierPubkey: string;
@@ -130,7 +130,7 @@ export interface ChallengeParams {
   evidence: string;
 }
 
-// --- Kind 30475: Verifier Revocation ---
+// --- Verifier Revocation (type: revocation) ---
 
 export interface RevocationParams {
   verifierPubkey: string;
@@ -429,7 +429,7 @@ export interface InstitutionKeys {
   };
 }
 
-// --- Kind 30476: Identity Bridge ---
+// --- Identity Bridge (type: identity-bridge) ---
 
 export interface ParsedIdentityBridge {
   anonPubkey: string;

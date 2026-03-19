@@ -1,5 +1,5 @@
-// Kind 30474 — Verifier Challenge
-// Kind 30475 — Verifier Revocation
+// Verifier Challenge (kind 30999, type: challenge)
+// Verifier Revocation (kind 30999, type: revocation)
 
 import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, DEFAULT_REVOCATION_THRESHOLD, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
@@ -18,7 +18,7 @@ import type {
   CryptoAlgorithm,
 } from './types.js';
 
-// --- Kind 30474: Challenge ---
+// --- Challenge attestation ---
 
 /** Build an unsigned challenge event */
 export function buildChallengeEvent(
@@ -75,7 +75,7 @@ export function parseChallenge(event: NostrEvent): ParsedChallenge | null {
   };
 }
 
-// --- Kind 30475: Revocation ---
+// --- Revocation attestation ---
 
 /** Build an unsigned revocation event */
 export function buildRevocationEvent(

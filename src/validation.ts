@@ -48,7 +48,7 @@ function hasSignetLabel(event: NostrEvent): boolean {
   );
 }
 
-/** Validate a kind 30470 Verification Credential */
+/** Validate a Verification Credential attestation (kind 30999, type: credential) */
 export function validateCredential(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
 
@@ -116,7 +116,7 @@ export function validateCredential(event: NostrEvent): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-/** Validate a kind 30471 Vouch Attestation */
+/** Validate a Vouch Attestation (kind 30999, type: vouch) */
 export function validateVouch(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
 
@@ -158,7 +158,7 @@ export function validateVouch(event: NostrEvent): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-/** Validate a kind 30472 Community Policy */
+/** Validate a Community Policy (kind 30078, NIP-78) */
 export function validatePolicy(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
 
@@ -191,7 +191,7 @@ export function validatePolicy(event: NostrEvent): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-/** Validate a kind 30473 Verifier Credential */
+/** Validate a Verifier Credential attestation (kind 30999, type: verifier) */
 export function validateVerifier(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
 
@@ -228,7 +228,7 @@ export function validateVerifier(event: NostrEvent): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-/** Validate a kind 30474 Verifier Challenge */
+/** Validate a Verifier Challenge attestation (kind 30999, type: challenge) */
 export function validateChallenge(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
 
@@ -266,7 +266,7 @@ export function validateChallenge(event: NostrEvent): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-/** Validate a kind 30475 Verifier Revocation */
+/** Validate a Verifier Revocation attestation (kind 30999, type: revocation) */
 export function validateRevocation(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
 

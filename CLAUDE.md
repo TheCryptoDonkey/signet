@@ -16,12 +16,13 @@ This repo contains:
 ## Key Concepts
 
 - **4 verification tiers**: Tier 1 (self-declared) → Tier 2 (web-of-trust) → Tier 3 (professional adult) → Tier 4 (professional adult+child)
-- **8 core event kinds** (30470-30477): credential, vouch, policy, verifier, challenge, revocation, identity bridge, delegation
+- **1 generic attestation kind** (30999, placeholder pending NIP): credential, vouch, verifier, challenge, revocation, identity-bridge, delegation — differentiated by `type` tag
+- **Policies** on NIP-78 kind 30078
 - **3 voting extension event kinds** (30482-30484): election, ballot, election result
 - **Two-credential ceremony**: Professional verification issues Natural Person credential (with nullifier, Merkle root) + Persona credential (anonymous, age-range only) simultaneously
 - **Document-based nullifiers**: SHA-256 of length-prefixed fields (docType, country, docNumber, "signet-nullifier-v2") prevents duplicate identity without revealing documents
-- **Guardian delegation**: Kind 30477 events with scopes (full, activity-approval, content-management, contact-approval) for family structures
-- **Crypto stack**: Schnorr (secp256k1 base) + Bulletproofs (age range proofs) + future ZK layer
+- **Guardian delegation**: Kind 30999 (`type: delegation`) events with scopes (full, activity-approval, content-management, contact-approval) for family structures
+- **Crypto stack**: Schnorr (secp256k1 base) + Pedersen range proofs (age range proofs) + future ZK layer
 - **No central authority**: professional bodies (Law Society, medical boards, notary commissions) are the trust anchors
 - **"Signet me"**: Time-based word verification (configurable 1-16 words, default 3) powered by canary-kit's CANARY-DERIVE
 - **nsec-tree identity model**: Master secret from BIP-39 mnemonic (`fromMnemonic()`) or existing nsec (`fromNsec()`). Two required personas (natural-person, persona) with optional extras. Linkage proofs (blind/full) via BIP-340 Schnorr. Shamir backup via `@forgesworn/shamir-words`.
@@ -98,7 +99,7 @@ These conventions were established during the security hardening review (2026-03
 
 ## Gotchas
 
-- **canary-kit dependency** — `canary-kit` is published on npm as `^0.9.0` (published 2026-03-16). The `package.json` now references the npm version. Used in `src/signet-words.ts`.
+- **spoken-token dependency** — `spoken-token` is published on npm as `^1.0.3`. Used in `src/signet-words.ts` for word-based verification tokens.
 - **npm publication** — `signet-protocol` is published to npm via semantic-release on push to main.
 - **`@noble/hashes` v2 import paths** — v2 requires `.js` suffix on subpath imports (e.g. `@noble/hashes/sha2.js`, `@noble/hashes/utils.js`, `@noble/curves/secp256k1.js`). The old `sha256` subpath is now `sha2` (but the `sha256` named export still exists within it). `randomPrivateKey` was renamed to `randomSecretKey`. Several functions now require `Uint8Array` instead of hex strings.
 - **nsec-tree dependency** — `nsec-tree` is published on npm as `^1.2.0`. Provides identity derivation, personas, linkage proofs. Requires Node `>=22`.

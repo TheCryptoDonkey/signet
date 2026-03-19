@@ -1,4 +1,4 @@
-// Kind 30471 — Vouch Attestation
+// Vouch Attestation (kind 30999, type: vouch)
 // Create and manage peer vouches
 
 import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, DEFAULT_VOUCH_THRESHOLD, DEFAULT_VOUCHER_MIN_TIER, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';

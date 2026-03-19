@@ -1,4 +1,4 @@
-// Kind 30473 — Verifier Credential
+// Verifier Credential (kind 30999, type: verifier)
 // Professional verifier registration and cross-verification
 
 import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, VERIFIER_ACTIVATION, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';

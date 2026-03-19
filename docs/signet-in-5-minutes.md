@@ -11,15 +11,15 @@ authority. Trust accumulates as a continuous Signet Score score (0–200, where 
 ```
   Person
     |
-    | signs a kind 30470 self-declaration
+    | signs a kind 30999 self-declaration (`type: credential`)
     v
   Tier 1 — Self-declared
     |
-    | three or more peers sign kind 30471 vouches
+    | three or more peers sign kind 30999 vouches (`type: vouch`)
     v
   Tier 2 — Web-of-trust
     |
-    | licensed professional issues kind 30470 credential
+    | licensed professional issues kind 30999 credential (`type: credential`)
     | with zero-knowledge age proof and document nullifier
     v
   Tier 3 — Professionally verified (adult)
@@ -44,11 +44,11 @@ authority. Trust accumulates as a continuous Signet Score score (0–200, where 
 | Tier | Name                        | Who issues                              | What it proves                                      | Score contribution |
 |------|-----------------------------|-----------------------------------------|-----------------------------------------------------|--------------------|
 | 1    | Self-declared               | Subject themselves                      | "I exist and I own this key"                        | —                  |
-| 2    | Web-of-trust                | Peers (kind 30471 vouches)              | Enough known people can vouch for this identity     | +2–8 per vouch     |
-| 3    | Professionally verified     | Licensed professional (kind 30470)      | Government document seen; adult age confirmed       | +40               |
-| 4    | Professional + child safety | Licensed professional (kind 30470)      | Tier 3 plus authorisation to interact with minors   | +40               |
+| 2    | Web-of-trust                | Peers (kind 30999, `type: vouch`)              | Enough known people can vouch for this identity     | +2–8 per vouch     |
+| 3    | Professionally verified     | Licensed professional (kind 30999, `type: credential`)      | Government document seen; adult age confirmed       | +40               |
+| 4    | Professional + child safety | Licensed professional (kind 30999, `type: credential`)      | Tier 3 plus authorisation to interact with minors   | +40               |
 
-Tier 2 requires at least 3 vouches from Tier 2+ peers (configurable per community via kind 30472 policy).
+Tier 2 requires at least 3 vouches from Tier 2+ peers (configurable per community via kind 30078 (NIP-78) policy).
 Tiers 3 and 4 are issued in a two-credential ceremony: one Natural Person credential (carries document
 nullifier and Merkle root) and one anonymous Persona credential (carries age range only, no identifying data).
 
@@ -57,19 +57,19 @@ nullifier and Merkle root) and one anonymous Persona credential (carries age ran
 
 ### Level 1 — Display badges (a weekend)
 
-Read kinds 30470 and 30471 from relays, call `computeBadge`, show a label.
+Read kind 30999 (`type: credential` and `type: vouch`) from relays, call `computeBadge`, show a label.
 No cryptography required beyond Schnorr signature verification (optional).
 
 ### Level 2 — Issue vouches (a few days)
 
-Add kind 30471 vouch issuance. Requires Schnorr signing, relay write access, and basic
-kind 30472 policy parsing so your client respects community verification thresholds.
+Add kind 30999 (`type: vouch`) vouch issuance. Requires Schnorr signing, relay write access, and basic
+kind 30078 (NIP-78) policy parsing so your client respects community verification thresholds.
 
 ### Level 3 — Full protocol (weeks)
 
-Issue professional credentials, manage verifier lifecycle (kinds 30473–30475), build
-guardian delegation (kind 30477), support credential chains (supersedes / superseded-by),
-and integrate the voting extension (kinds 30478–30480).
+Issue professional credentials, manage verifier lifecycle (kind 30999 types: verifier, challenge, revocation), build
+guardian delegation (kind 30999, `type: delegation`), support credential chains (supersedes / superseded-by),
+and integrate the voting extension (kinds 30482–30484).
 
 
 ## How Verification Works (Tier 3 / 4)
@@ -91,33 +91,33 @@ and integrate the voting extension (kinds 30478–30480).
     |        (proves "subject is 18+" without revealing birth date)
     |                        |
     |        Two credentials signed and published:
-    |          kind 30470 Natural Person  (nullifier + Merkle root)
-    |          kind 30470 Persona         (age range only, anonymous)
+    |          kind 30999 Natural Person  (nullifier + Merkle root, type: credential)
+    |          kind 30999 Persona         (age range only, anonymous, type: credential)
     |                        |
     v                        v
                Both events published to Nostr relays
 ```
 
-Professional verifiers are themselves credentialed (kind 30473) and require cross-verification
+Professional verifiers are themselves credentialed (kind 30999, `type: verifier`) and require cross-verification
 by two other licensed professionals before becoming active. A challenge / revocation mechanism
-(kinds 30474–30475) allows the community to remove a fraudulent verifier.
+(kind 30999 types: `challenge` and `revocation`) allows the community to remove a fraudulent verifier.
 
 
 ## Event Kinds Reference
 
-| Kind  | Name              | Purpose                                            |
+| Kind  | Type tag          | Purpose                                            |
 |-------|-------------------|----------------------------------------------------|
-| 30470 | Credential        | Verification credential for any tier               |
-| 30471 | Vouch             | Peer attestation (Tier 2 building block)           |
-| 30472 | Policy            | Community verification requirements                |
-| 30473 | Verifier          | Professional verifier credential                   |
-| 30474 | Challenge         | Report a suspected fraudulent verifier             |
-| 30475 | Revocation        | Remove a verifier after threshold confirmations    |
-| 30476 | Identity bridge   | Link two keypairs via ring signature               |
-| 30477 | Delegation        | Guardian / agent delegation with scoped permission |
-| 30478 | Election          | Voting extension: define an election               |
-| 30479 | Ballot            | Voting extension: cast an anonymous ballot         |
-| 30480 | Election result   | Voting extension: publish tallied result           |
+| 30999 | `credential`      | Verification credential for any tier               |
+| 30999 | `vouch`           | Peer attestation (Tier 2 building block)           |
+| 30078 | —                 | Policy: community verification requirements (NIP-78) |
+| 30999 | `verifier`        | Professional verifier credential                   |
+| 30999 | `challenge`       | Report a suspected fraudulent verifier             |
+| 30999 | `revocation`      | Remove a verifier after threshold confirmations    |
+| 30999 | `identity-bridge` | Link two keypairs via ring signature               |
+| 30999 | `delegation`      | Guardian / agent delegation with scoped permission |
+| 30482 | —                 | Voting extension: define an election               |
+| 30483 | —                 | Voting extension: cast an anonymous ballot         |
+| 30484 | —                 | Voting extension: publish tallied result           |
 
 
 ## Integrating at Level 1
@@ -137,7 +137,7 @@ import type { NostrEvent } from 'signet-protocol';
 // 1. Build relay filters for one or more pubkeys
 const pubkeys = ['<hex-pubkey>'];
 const filters = buildBadgeFilters(pubkeys);
-// filters = [{ kinds: [30470, 30471], '#d': ['<hex-pubkey>'] }]
+// filters = [{ kinds: [30999], '#d': ['<hex-pubkey>'] }]
 
 // 2. Fetch events from your relay (using whatever WebSocket client you prefer)
 const events: NostrEvent[] = await fetchFromRelay(filters);
@@ -156,7 +156,7 @@ if (meetsMinimumTier(badge, 2)) {
 }
 ```
 
-`computeBadge` accepts any mix of kind 30470 and 30471 events. It handles expiry, deduplication
+`computeBadge` accepts any mix of kind 30999 (`type: credential` and `type: vouch`) events. It handles expiry, deduplication
 (one vouch counted per voucher pubkey), and optional Schnorr signature verification. The result is
 a plain object — no rendering assumptions are made.
 

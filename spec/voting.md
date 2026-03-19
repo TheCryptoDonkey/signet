@@ -14,7 +14,7 @@
 
 This specification defines a voting extension for the Signet protocol. It enables cryptographically secure elections at organisational, community, and national scale, using linkable ring signatures for ballot secrecy and one-person-one-vote enforcement.
 
-The extension depends on the Signet protocol for identity verification (credential tiers, entity types, Signet IQ) and adds three new Nostr event kinds: Election Definition (30482), Ballot (30483), and Election Result (30484).
+The extension depends on the Signet protocol for identity verification (credential tiers, entity types, Signet Score) and adds three new Nostr event kinds: Election Definition (30482), Ballot (30483), and Election Result (30484).
 
 Ballot secrecy is achieved through linkable ring signatures — voters prove membership in an eligible set without revealing which member they are, while key images prevent double voting. Encrypted ballots ensure vote content remains secret until tallying.
 
@@ -373,7 +373,7 @@ These threats require national-scale mechanisms (see §11).
 A political party (e.g., Restore Britain) wants members to vote on policy positions:
 
 1. Party establishes itself as a Juridical Person (verified organisation) with Signet credentials
-2. Members are verified Natural Persons who hold party membership credentials (kind 30470)
+2. Members are verified Natural Persons who hold party membership credentials (kind 30999, `type: credential`)
 3. Party leadership publishes a kind 30482 election: "Should the party support policy X?"
    - `eligible-entity-types`: `natural_person`
    - `eligible-min-tier`: `2` (web-of-trust verified)
@@ -388,7 +388,7 @@ A political party (e.g., Restore Britain) wants members to vote on policy positi
 
 A Nostr relay community votes on moderation policy:
 
-1. Relay operator publishes community verification policy (kind 30472) requiring Tier 2+
+1. Relay operator publishes community verification policy (kind 30078, NIP-78) requiring Tier 2+
 2. Operator publishes a kind 30482 election for policy change
    - `scale`: `community`
    - `eligible-entity-types`: `natural_person,persona`
@@ -414,7 +414,7 @@ A company board votes on a resolution:
 
 Using civic identity from the Signet protocol spec (§19):
 
-1. Government issues citizen credentials (kind 30470) as described in protocol spec §19.2
+1. Government issues citizen credentials (kind 30999, `type: credential`) as described in protocol spec §19.2
 2. Election authority publishes kind 30482 referencing citizenship credentials
    - `eligible-entity-types`: `natural_person`
    - `eligible-min-tier`: `3` (government-verified)

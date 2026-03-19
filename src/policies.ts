@@ -1,4 +1,4 @@
-// Kind 30472 — Community Verification Policy
+// Community Verification Policy (kind 30078, NIP-78)
 // Create policies and check compliance
 
 import { APP_DATA_KIND, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';

@@ -1,4 +1,4 @@
-// Identity Bridge (kind 30476)
+// Identity Bridge (kind 30999, type: identity-bridge)
 // Allows an anonymous account to cryptographically prove it is controlled by
 // a verified real account, without revealing which one. Uses SAG ring signatures.
 //
@@ -86,7 +86,7 @@ export function computeBridgeWeight(ringMinTier: SignetTier): number {
 }
 
 /**
- * Create an identity bridge event (kind 30476).
+ * Create an identity bridge event (kind 30999, type: identity-bridge).
  * Published from the anonymous account, it proves the anon account owner
  * also controls one of the verified accounts in the ring.
  *
@@ -95,7 +95,7 @@ export function computeBridgeWeight(ringMinTier: SignetTier): number {
  * @param ring - Array of verified pubkeys forming the anonymity set
  * @param signerIndex - Position of the real account in the ring
  * @param ringMinTier - Minimum verification tier among ring members
- * @returns Signed kind 30476 NostrEvent
+ * @returns Signed kind 30999 (type: identity-bridge) NostrEvent
  */
 export async function createIdentityBridge(
   anonPrivateKey: string,

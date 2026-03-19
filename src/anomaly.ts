@@ -48,8 +48,8 @@ const DEFAULT_CONFIG: AnomalyConfig = {
  * Analyze a verifier's issuance patterns for anomalies.
  *
  * @param verifierPubkey - The verifier to analyze
- * @param allCredentials - All credential events (kind 30470) in the store
- * @param verifierCredential - The verifier's own credential (kind 30473)
+ * @param allCredentials - All credential events (kind 30999, type: credential) in the store
+ * @param verifierCredential - The verifier's own credential (kind 30999, type: verifier)
  * @param config - Detection thresholds
  */
 export function detectAnomalies(

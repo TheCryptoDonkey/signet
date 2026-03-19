@@ -1,4 +1,4 @@
-// Kind 30470 — Verification Credential
+// Verification Credential (kind 30999, type: credential)
 // Create, sign, verify, and parse Signet credentials for all 4 tiers
 
 import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, DEFAULT_CREDENTIAL_EXPIRY_SECONDS, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
@@ -827,7 +827,7 @@ export function checkNullifierFamilyDuplicate(
 // --- Guardian Delegation ---
 
 /**
- * Create a guardian delegation event (kind 30477).
+ * Create a guardian delegation event (kind 30999, type: delegation).
  * Allows a guardian to delegate specific permissions to another adult for a child.
  */
 export async function createGuardianDelegation(
