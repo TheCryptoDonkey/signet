@@ -58,7 +58,7 @@ export function ApproveVerification({ request, credential, onApprove, onDeny, on
       <div className="section">
         <h2 style={{ marginBottom: 8 }}>Age Verification Request</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 20 }}>
-          A website wants to verify you are {safeAgeRange}.
+          {originDisplay} wants to verify you are {safeAgeRange}.
         </p>
       </div>
 
