@@ -99,6 +99,62 @@ export async function publishVerifyResponseToRelay(
 }
 
 /**
+ * Publish a verification rejection to a Nostr relay (cross-device flow).
+ * The SDK running on the website is listening for this event and will
+ * immediately resolve with error: 'cancelled' instead of waiting for timeout.
+ * Returns true if the message was sent, false on error or invalid relay URL.
+ */
+export async function publishVerifyRejectionToRelay(
+  requestId: string,
+  relayUrl: string,
+  privateKey: string,
+): Promise<boolean> {
+  if (!relayUrl) return false;
+  // Validate relay URL: must be wss:// for production or ws://localhost for dev
+  if (!/^wss:\/\//i.test(relayUrl) && !/^ws:\/\/(localhost|127\.0\.0\.1)([:\/]|$)/i.test(relayUrl)) {
+    return false;
+  }
+
+  const pubkey = bytesToHex(schnorr.getPublicKey(hexToBytes(privateKey)));
+
+  const unsigned: UnsignedEvent = {
+    kind: 29999,
+    pubkey,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['session', requestId],
+      ['status', 'rejected'],
+    ],
+    content: '',
+  };
+
+  let signedEvent: NostrEvent;
+  try {
+    signedEvent = await signEvent(unsigned, privateKey);
+  } catch {
+    return false;
+  }
+
+  return new Promise((resolve) => {
+    try {
+      const ws = new WebSocket(relayUrl);
+      const timeout = setTimeout(() => { ws.close(); resolve(false); }, 10000);
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify(['EVENT', signedEvent]));
+        clearTimeout(timeout);
+        // Give the relay a moment to receive the message before closing
+        setTimeout(() => { ws.close(); resolve(true); }, 1000);
+      };
+
+      ws.onerror = () => { clearTimeout(timeout); resolve(false); };
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
+/**
  * Publish an auth response to a Nostr relay (cross-device flow).
  * The website is listening for this event.
  * Returns true if the message was sent, false on error or invalid relay URL.

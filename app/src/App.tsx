@@ -30,7 +30,7 @@ import { getActivePubkey, getActivePrivateKey, getActiveDisplayName, signAuthCha
 import { isAuthSetUp, generateEncryptionKey, clearAuthData } from './lib/auth';
 import type { VerifyRequest, VerifyResponse } from './lib/presentation';
 import { buildVerifyResponse, sendResponseViaBroadcast, parseVerifyRequest } from './lib/presentation';
-import { publishVerifyResponseToRelay, publishAuthResponseToRelay } from './lib/relay-publish';
+import { publishVerifyResponseToRelay, publishVerifyRejectionToRelay, publishAuthResponseToRelay } from './lib/relay-publish';
 import type { AuthResponse } from './lib/relay-publish';
 import { parseNostrConnectURI } from './lib/nip46';
 import type { NostrConnectRequest } from './lib/nip46';
@@ -214,9 +214,13 @@ export function App() {
   }, [pendingVerifyRequest, credentials, activePubkey, identity]);
 
   const handleDenyVerification = useCallback(() => {
+    if (pendingVerifyRequest?.relayUrl && identity) {
+      const privKey = getActivePrivateKey(identity);
+      publishVerifyRejectionToRelay(pendingVerifyRequest.requestId, pendingVerifyRequest.relayUrl, privKey).catch(() => {});
+    }
     setPendingVerifyRequest(null);
     setPage('home');
-  }, []);
+  }, [pendingVerifyRequest, identity]);
 
   const handleNostrConnect = useCallback((data: string) => {
     const request = parseNostrConnectURI(data);

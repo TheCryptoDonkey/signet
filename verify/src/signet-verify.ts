@@ -334,6 +334,16 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
       const sessionTag = (envelopeTags as string[][]).find(t => t[0] === 'session');
       if (!sessionTag || sessionTag[1] !== requestId) return;
 
+      // Handle rejection event immediately — no credential needed
+      const envStatusTag = (envelopeTags as string[][]).find(t => t[0] === 'status');
+      if (envStatusTag && envStatusTag[1] === 'rejected') {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        resolve({ verified: false, ageRange: null, tier: null, entityType: null, credentialId: null, verifierPubkey: null, verifierConfirmed: null, verifierMethod: null, issuedAt: null, expiresAt: null, error: 'cancelled' });
+        return;
+      }
+
       // Extract the inner kind 30470 credential from the credential tag
       const credentialTag = (envelopeTags as string[][]).find(t => t[0] === 'credential');
       if (!credentialTag || !credentialTag[1]) return;
