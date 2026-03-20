@@ -49,6 +49,13 @@ export interface SignetVerifyOptions {
    * Set to true to accept any valid credential regardless of verifier status.
    */
   acceptUnconfirmed?: boolean;
+  /**
+   * List of trusted verifier pubkeys (hex, 64 chars).
+   * If set, only credentials from these verifiers are accepted — bot check is skipped.
+   * If set and verifier is NOT in list, fails with 'verifier-not-confirmed'.
+   * If not set, falls through to verifierCheckUrl / acceptUnconfirmed logic.
+   */
+  acceptedVerifiers?: string[];
 }
 
 /** The presentation request sent to the app */
@@ -99,6 +106,7 @@ function getTagValue(tags: string[][], key: string): string | undefined {
 import { schnorr } from '@noble/curves/secp256k1';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex } from '@noble/hashes/utils';
+import { generateQRSvg } from './qr-svg';
 
 function hexToBytes(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2);
@@ -224,7 +232,7 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
 
   const opts: SignetVerifyOptions = {
     requiredAgeRange,
-    relayUrl: options?.relayUrl || 'wss://relay.damus.io',
+    relayUrl: options?.relayUrl || 'wss://nos.lol',
     theme: options?.theme || 'auto',
     timeout: options?.timeout || 120000,
     verifierCheckUrl: options?.verifierCheckUrl !== undefined ? options.verifierCheckUrl : 'https://verify.signet.forgesworn.dev',
@@ -234,6 +242,7 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
   opts.timeout = Math.max(5000, Math.min(opts.timeout ?? 120000, 600000));
 
   const requestId = generateRequestId();
+  const timeoutSec = Math.round((opts.timeout ?? 120000) / 1000);
 
   const request: PresentationRequest = {
     type: 'signet-verify-request',
@@ -242,10 +251,6 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
     relayUrl: opts.relayUrl,
     timestamp: Math.floor(Date.now() / 1000),
   };
-
-  // Encode the request as a URL for QR code
-  const requestPayload = JSON.stringify(request);
-  const requestBase64 = btoa(requestPayload);
 
   return new Promise<SignetVerifyResult>((resolve) => {
     // Inject ::backdrop style for the native <dialog> element
@@ -263,46 +268,118 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
     dialog.id = 'signet-verify-dialog';
     dialog.style.cssText = `border:none;border-radius:16px;padding:32px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);background:${bg};color:${fg};font-family:system-ui,-apple-system,sans-serif;`;
 
+    // escapeHtml is applied to all user-supplied values interpolated into innerHTML
     dialog.innerHTML = `
       <h2 style="margin:0 0 8px;font-size:1.3rem;">Verify your age with Signet</h2>
       <p style="margin:0 0 24px;color:${muted};font-size:0.9rem;">Scan this QR code with your Signet app to prove you are ${escapeHtml(requiredAgeRange)}. No personal data is shared.</p>
       <div id="signet-qr" style="display:flex;justify-content:center;margin-bottom:24px;"></div>
-      <p style="margin:0 0 16px;color:${muted};font-size:0.8rem;">Waiting for verification...</p>
+      <p id="signet-timer" style="margin:0 0 16px;color:${muted};font-size:0.8rem;">Waiting... ${timeoutSec}s remaining</p>
       <button id="signet-cancel" style="background:none;border:1px solid ${muted};color:${fg};padding:10px 24px;border-radius:8px;cursor:pointer;font-size:0.9rem;">Cancel</button>
     `;
 
     document.body.appendChild(dialog);
     dialog.showModal();
 
-    // Generate QR code (simple SVG-based, no dependency)
+    // Render real QR code from the request payload
     const qrContainer = dialog.querySelector<HTMLElement>('#signet-qr');
     if (qrContainer) {
-      // For MVP: show the request payload as text that can be copied
-      // A proper QR library should be bundled for production
-      const qrPlaceholder = document.createElement('div');
-      qrPlaceholder.style.cssText = `width:200px;height:200px;background:${isDark ? '#2a2a3e' : '#f0f0f0'};border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;color:${muted};word-break:break-all;padding:12px;`;
-      qrPlaceholder.textContent = `signet:verify:${requestBase64.slice(0, 40)}...`;
-      qrContainer.appendChild(qrPlaceholder);
+      const qrPayload = JSON.stringify(request);
+      const svgMarkup = generateQRSvg(qrPayload, 200);
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgMarkup, 'image/svg+xml');
+      const svgEl = svgDoc.documentElement;
+      qrContainer.appendChild(document.importNode(svgEl, true));
     }
 
-    // Listen for response via BroadcastChannel (same-device, request-specific channel)
+    // Countdown timer
+    let remaining = timeoutSec;
+    const timerEl = dialog.querySelector<HTMLElement>('#signet-timer');
+    const countdown = setInterval(() => {
+      remaining--;
+      if (timerEl) timerEl.textContent = `Waiting... ${remaining}s remaining`;
+    }, 1000);
+
+    // Resolved flag to prevent double-resolution
+    let resolved = false;
+
+    // Relay WebSocket subscription
+    const ws = new WebSocket(opts.relayUrl ?? 'wss://nos.lol');
+
+    ws.addEventListener('open', () => {
+      ws.send(JSON.stringify(['REQ', 'signet-verify', { kinds: [29999], limit: 5 }]));
+    });
+
+    ws.addEventListener('message', async (evt) => {
+      if (resolved) return;
+
+      let msg: unknown;
+      try {
+        msg = JSON.parse(evt.data as string);
+      } catch {
+        return;
+      }
+
+      if (!Array.isArray(msg) || msg[0] !== 'EVENT' || msg[1] !== 'signet-verify') return;
+
+      const envelope = msg[2] as Record<string, unknown>;
+      if (typeof envelope !== 'object' || envelope === null) return;
+      if (envelope['kind'] !== 29999) return;
+
+      const envelopeTags = envelope['tags'];
+      if (!Array.isArray(envelopeTags)) return;
+
+      // Client-side filter: session tag must match our requestId
+      const sessionTag = (envelopeTags as string[][]).find(t => t[0] === 'session');
+      if (!sessionTag || sessionTag[1] !== requestId) return;
+
+      // Extract the inner kind 30470 credential from the credential tag
+      const credentialTag = (envelopeTags as string[][]).find(t => t[0] === 'credential');
+      if (!credentialTag || !credentialTag[1]) return;
+
+      let credential: PresentationResponse['credential'];
+      try {
+        const parsed: unknown = JSON.parse(credentialTag[1]);
+        if (typeof parsed !== 'object' || parsed === null) return;
+        credential = parsed as PresentationResponse['credential'];
+      } catch {
+        return;
+      }
+
+      if (!Array.isArray(credential.tags)) return;
+
+      const statusTag = (envelopeTags as string[][]).find(t => t[0] === 'status');
+      const status = statusTag ? statusTag[1] : undefined;
+
+      await handleCredential(credential, status);
+    });
+
+    // BroadcastChannel fallback (same-device flow)
     const channel = new BroadcastChannel('signet-verify-' + requestId);
 
-    // Cancel handler — scoped to the dialog
-    dialog.querySelector<HTMLButtonElement>('#signet-cancel')?.addEventListener('click', () => {
-      channel.close();
-      dialog.close(); dialog.remove(); style.remove();
-      resolve({ verified: false, ageRange: null, tier: null, entityType: null, credentialId: null, verifierPubkey: null, verifierConfirmed: null, verifierMethod: null, issuedAt: null, expiresAt: null, error: 'cancelled' });
-    });
     channel.onmessage = async (event) => {
+      if (resolved) return;
       const data: unknown = event.data;
       if (typeof data !== 'object' || data === null) return;
       const response = data as Partial<PresentationResponse>;
       if (response.type !== 'signet-verify-response' || response.requestId !== requestId) return;
       if (!response.credential || typeof response.credential !== 'object' || !Array.isArray(response.credential.tags)) return;
       const credential = response.credential as PresentationResponse['credential'];
+      await handleCredential(credential, undefined);
+    };
 
-      // Verify the credential
+    function cleanup() {
+      clearInterval(countdown);
+      ws.close();
+      channel.close();
+      dialog.close();
+      dialog.remove();
+      style.remove();
+    }
+
+    async function handleCredential(credential: PresentationResponse['credential'], _status: string | undefined) {
+      if (resolved) return;
+
+      // Validate the inner kind 30470 credential signature
       const valid = await verifyEventSignature(credential);
       const ageRange = getTagValue(credential.tags, 'age-range');
       const tier = getTagValue(credential.tags, 'tier');
@@ -311,19 +388,30 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
 
       const satisfied = ageRange ? ageRangeSatisfies(ageRange, opts.requiredAgeRange) : false;
 
-      // Check verifier status against the verification bot
-      const verifierStatus = await checkVerifierStatus(credential.pubkey, opts.verifierCheckUrl);
-      const verifierConfirmed = verifierStatus?.confirmed ?? null;
-      const verifierMethod = verifierStatus?.method ?? null;
+      // Two-layer verifier check: acceptedVerifiers → bot → acceptUnconfirmed
+      let verifierConfirmed: boolean | null = null;
+      let verifierMethod: SignetVerifyResult['verifierMethod'] = null;
+      let verifierOk: boolean;
 
-      // By default, verified is true only when:
-      // 1. Credential signature is valid
-      // 2. Age range satisfies requirement
-      // 3. Verifier is confirmed (unless acceptUnconfirmed is true)
-      const verifierOk = opts.acceptUnconfirmed || verifierConfirmed === true;
+      if (opts.acceptedVerifiers !== undefined) {
+        // acceptedVerifiers takes precedence — bot check is skipped entirely
+        if (opts.acceptedVerifiers.includes(credential.pubkey)) {
+          verifierConfirmed = true;
+          verifierOk = true;
+        } else {
+          verifierConfirmed = false;
+          verifierOk = false;
+        }
+      } else {
+        // Fall through to bot check / acceptUnconfirmed logic
+        const verifierStatus = await checkVerifierStatus(credential.pubkey, opts.verifierCheckUrl);
+        verifierConfirmed = verifierStatus?.confirmed ?? null;
+        verifierMethod = verifierStatus?.method ?? null;
+        verifierOk = opts.acceptUnconfirmed === true || verifierConfirmed === true;
+      }
 
-      dialog.close(); dialog.remove(); style.remove();
-      channel.close();
+      resolved = true;
+      cleanup();
 
       const tierValue = tier ? parseInt(tier, 10) : null;
       const expiresValue = expires ? parseInt(expires, 10) : null;
@@ -350,12 +438,21 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
         expiresAt: (expiresValue !== null && !isNaN(expiresValue)) ? expiresValue : null,
         error,
       });
-    };
+    }
+
+    // Cancel handler — scoped to the dialog
+    dialog.querySelector<HTMLButtonElement>('#signet-cancel')?.addEventListener('click', () => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      resolve({ verified: false, ageRange: null, tier: null, entityType: null, credentialId: null, verifierPubkey: null, verifierConfirmed: null, verifierMethod: null, issuedAt: null, expiresAt: null, error: 'cancelled' });
+    });
 
     // Timeout
     setTimeout(() => {
-      dialog.close(); dialog.remove(); style.remove();
-      channel.close();
+      if (resolved) return;
+      resolved = true;
+      cleanup();
       resolve({ verified: false, ageRange: null, tier: null, entityType: null, credentialId: null, verifierPubkey: null, verifierConfirmed: null, verifierMethod: null, issuedAt: null, expiresAt: null, error: 'timeout' });
     }, opts.timeout);
   });
