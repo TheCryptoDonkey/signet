@@ -29,7 +29,7 @@ The demo is pre-configured to accept attestations from a single known verifier k
 **Verifier public key (hex):**
 
 ```
-PLACEHOLDER_PUBKEY
+02a1aa16af3f355ada9bd6e20baad6927e0ea5e9a02e06e5808045309c4a8511
 ```
 
 ## Importing the Verifier into My Signet
