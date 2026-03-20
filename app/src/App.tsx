@@ -204,13 +204,14 @@ export function App() {
       const response = buildVerifyResponse(pendingVerifyRequest.requestId, parsedEvent, subjectPubkey);
       sendResponseViaBroadcast(response);
       // Cross-device flow: also publish to relay if request came with a relayUrl
-      if (pendingVerifyRequest.relayUrl) {
-        publishVerifyResponseToRelay(response, pendingVerifyRequest.relayUrl).catch(() => {});
+      if (pendingVerifyRequest.relayUrl && identity) {
+        const privKey = getActivePrivateKey(identity);
+        publishVerifyResponseToRelay(response, pendingVerifyRequest.relayUrl, privKey).catch(() => {});
       }
     }
     setPendingVerifyRequest(null);
     setPage('home');
-  }, [pendingVerifyRequest, credentials, activePubkey]);
+  }, [pendingVerifyRequest, credentials, activePubkey, identity]);
 
   const handleDenyVerification = useCallback(() => {
     setPendingVerifyRequest(null);
@@ -280,7 +281,7 @@ export function App() {
     // Cross-device: relay
     const relayUrl = pendingAuthRequest.relay;
     if (relayUrl) {
-      publishAuthResponseToRelay(response, relayUrl).catch(() => {});
+      publishAuthResponseToRelay(response, relayUrl, privateKey).catch(() => {});
     }
 
     setPendingAuthRequest(null);
