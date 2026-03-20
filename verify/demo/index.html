@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Age-Restricted Content — Signet Demo</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #0d0d0d;
+      color: #e8e8e8;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .gate {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 2.5rem 2rem;
+    }
+
+    .gate__icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .gate__heading {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+
+    .gate__subtitle {
+      font-size: 1rem;
+      color: #888;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+
+    .btn {
+      display: inline-block;
+      background: #7c3aed;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.875rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: #6d28d9;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .message {
+      margin-top: 1.25rem;
+      padding: 0.875rem 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      display: none;
+    }
+
+    .message--success {
+      background: #052e16;
+      color: #4ade80;
+      border: 1px solid #166534;
+    }
+
+    .message--error {
+      background: #2d0a0a;
+      color: #f87171;
+      border: 1px solid #7f1d1d;
+    }
+
+    .message--visible {
+      display: block;
+    }
+
+    .content {
+      display: none;
+      margin-top: 2rem;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: left;
+    }
+
+    .content--visible {
+      display: block;
+    }
+
+    .content__heading {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.75rem;
+    }
+
+    .content__body {
+      color: #aaa;
+      line-height: 1.6;
+    }
+
+    .signet-badge {
+      margin-top: 1.5rem;
+      font-size: 0.75rem;
+      color: #555;
+    }
+
+    .signet-badge a {
+      color: #7c3aed;
+      text-decoration: none;
+    }
+
+    .signet-badge a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="gate" id="gate">
+      <span class="gate__icon" aria-hidden="true">🔒</span>
+      <h1 class="gate__heading">Age-Restricted Content</h1>
+      <p class="gate__subtitle">You must be 18+ to view this content.</p>
+      <button class="btn" id="verify-btn">Verify My Age (18+)</button>
+      <div class="message message--success" id="success-msg" role="status"></div>
+      <div class="message message--error" id="error-msg" role="alert"></div>
+    </div>
+
+    <div class="content" id="protected-content">
+      <h2 class="content__heading">Welcome!</h2>
+      <p class="content__body">
+        Your age has been verified via the Signet protocol. This content is now
+        unlocked. In a real application, this section would contain the
+        age-restricted material.
+      </p>
+    </div>
+
+    <p class="signet-badge">
+      Age verification powered by <a href="https://signet.id" target="_blank" rel="noopener">Signet</a>
+    </p>
+  </div>
+
+  <script src="../dist/signet-verify.js"></script>
+  <script>
+    // Known verifier pubkey — generated for this demo
+    const KNOWN_VERIFIER = 'PLACEHOLDER_PUBKEY';
+
+    const verifyBtn = document.getElementById('verify-btn');
+    const successMsg = document.getElementById('success-msg');
+    const errorMsg = document.getElementById('error-msg');
+    const protectedContent = document.getElementById('protected-content');
+
+    function hideMessages() {
+      successMsg.classList.remove('message--visible');
+      errorMsg.classList.remove('message--visible');
+    }
+
+    verifyBtn.addEventListener('click', async () => {
+      verifyBtn.disabled = true;
+      hideMessages();
+
+      try {
+        const result = await Signet.verifyAge('18+', {
+          acceptedVerifiers: [KNOWN_VERIFIER],
+          verifierCheckUrl: null,
+          relayUrl: 'wss://nos.lol',
+          theme: 'dark',
+        });
+
+        successMsg.textContent = 'Age verified: ' + result.ageRange + ' (' + result.tier + ')';
+        successMsg.classList.add('message--visible');
+        protectedContent.classList.add('content--visible');
+        verifyBtn.style.display = 'none';
+      } catch (err) {
+        const reason = (err && err.message) ? err.message : 'Verification failed. Please try again.';
+        errorMsg.textContent = reason;
+        errorMsg.classList.add('message--visible');
+        verifyBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
