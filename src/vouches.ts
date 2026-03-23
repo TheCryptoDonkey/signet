@@ -1,6 +1,8 @@
-// Vouch Attestation (kind 30999, type: vouch)
+// Vouch Attestation (kind 31000, type: vouch)
 // Create and manage peer vouches
 
+import { createAttestation } from 'nostr-attestations';
+import { parseAttestation } from 'nostr-attestations';
 import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, DEFAULT_VOUCH_THRESHOLD, DEFAULT_VOUCHER_MIN_TIER, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
 import { getTagValue } from './validation.js';
@@ -19,27 +21,29 @@ export function buildVouchEvent(
   voucherPubkey: string,
   params: VouchParams
 ): UnsignedEvent {
-  const tags: string[][] = [
-    ['d', `vouch:${params.subjectPubkey}`],
-    ['p', params.subjectPubkey],
-    ['type', ATTESTATION_TYPES.VOUCH],
+  const signetTags: string[][] = [
     ['method', params.method],
     ['voucher-tier', String(params.voucherTier)],
     ['voucher-score', String(params.voucherScore)],
-    ['summary', `${params.method} vouch for ${params.subjectPubkey.slice(0, 8)}...`],
     ['algo', DEFAULT_CRYPTO_ALGORITHM],
     ['L', SIGNET_LABEL],
     ['l', 'vouch', SIGNET_LABEL],
   ];
 
-  if (params.context) tags.push(['context', params.context]);
+  if (params.context) signetTags.push(['context', params.context]);
+
+  const template = createAttestation({
+    type: ATTESTATION_TYPES.VOUCH,
+    identifier: params.subjectPubkey,
+    subject: params.subjectPubkey,
+    summary: `${params.method} vouch for ${params.subjectPubkey.slice(0, 8)}...`,
+    tags: signetTags,
+  });
 
   return {
-    kind: ATTESTATION_KIND,
+    ...template,
     pubkey: voucherPubkey,
     created_at: Math.floor(Date.now() / 1000),
-    tags,
-    content: '', // no personal data
   };
 }
 
@@ -55,17 +59,16 @@ export async function createVouch(
 
 /** Parse a vouch event into a structured object */
 export function parseVouch(event: NostrEvent): ParsedVouch | null {
-  if (event.kind !== ATTESTATION_KIND) return null;
-  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.VOUCH) return null;
+  const base = parseAttestation(event);
+  if (!base) return null;
+  if (base.type !== ATTESTATION_TYPES.VOUCH) return null;
 
   const tier = getTagValue(event, 'voucher-tier');
   const score = getTagValue(event, 'voucher-score');
 
   const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
 
-  // Strip 'vouch:' prefix from d-tag to get subject pubkey
-  const dTag = getTagValue(event, 'd') || '';
-  const subjectPubkey = dTag.startsWith('vouch:') ? dTag.slice('vouch:'.length) : dTag;
+  const subjectPubkey = base.identifier ?? '';
 
   return {
     subjectPubkey,
