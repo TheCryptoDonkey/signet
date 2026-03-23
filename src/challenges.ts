@@ -1,6 +1,8 @@
-// Verifier Challenge (kind 30999, type: challenge)
-// Verifier Revocation (kind 30999, type: revocation)
+// Verifier Challenge (kind 31000, type: challenge)
+// Verifier Revocation (kind 31000, type: revocation)
 
+import { createAttestation } from 'nostr-attestations';
+import { parseAttestation } from 'nostr-attestations';
 import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, DEFAULT_REVOCATION_THRESHOLD, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
 import { getTagValue } from './validation.js';
@@ -25,23 +27,26 @@ export function buildChallengeEvent(
   reporterPubkey: string,
   params: ChallengeParams
 ): UnsignedEvent {
-  return {
-    kind: ATTESTATION_KIND,
-    pubkey: reporterPubkey,
-    created_at: Math.floor(Date.now() / 1000),
+  const template = createAttestation({
+    type: ATTESTATION_TYPES.CHALLENGE,
+    identifier: params.verifierPubkey,
+    subject: params.verifierPubkey,
+    summary: `Challenge: ${params.reason}`,
+    content: params.evidence,
     tags: [
-      ['d', `challenge:${params.verifierPubkey}`],
-      ['p', params.verifierPubkey],
-      ['type', ATTESTATION_TYPES.CHALLENGE],
       ['reason', params.reason],
       ['evidence-type', params.evidenceType],
       ['reporter-tier', String(params.reporterTier)],
-      ['summary', `Challenge against verifier ${params.verifierPubkey.slice(0, 8)}... (${params.reason})`],
       ['algo', DEFAULT_CRYPTO_ALGORITHM],
       ['L', SIGNET_LABEL],
       ['l', 'challenge', SIGNET_LABEL],
     ],
-    content: params.evidence,
+  });
+
+  return {
+    ...template,
+    pubkey: reporterPubkey,
+    created_at: Math.floor(Date.now() / 1000),
   };
 }
 
@@ -57,14 +62,12 @@ export async function createChallenge(
 
 /** Parse a challenge event */
 export function parseChallenge(event: NostrEvent): ParsedChallenge | null {
-  if (event.kind !== ATTESTATION_KIND) return null;
-  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.CHALLENGE) return null;
+  const base = parseAttestation(event);
+  if (!base) return null;
+  if (base.type !== ATTESTATION_TYPES.CHALLENGE) return null;
 
   const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
-
-  // Strip 'challenge:' prefix from d-tag to get verifier pubkey
-  const dTag = getTagValue(event, 'd') || '';
-  const verifierPubkey = dTag.startsWith('challenge:') ? dTag.slice('challenge:'.length) : dTag;
+  const verifierPubkey = base.identifier ?? '';
 
   return {
     verifierPubkey,
@@ -82,25 +85,28 @@ export function buildRevocationEvent(
   authorityPubkey: string,
   params: RevocationParams
 ): UnsignedEvent {
-  return {
-    kind: ATTESTATION_KIND,
-    pubkey: authorityPubkey,
-    created_at: Math.floor(Date.now() / 1000),
+  const template = createAttestation({
+    type: ATTESTATION_TYPES.REVOCATION,
+    identifier: params.verifierPubkey,
+    subject: params.verifierPubkey,
+    summary: params.summary,
+    content: params.summary,
     tags: [
-      ['d', `revocation:${params.verifierPubkey}`],
-      ['p', params.verifierPubkey],
-      ['type', ATTESTATION_TYPES.REVOCATION],
       ['challenge', params.challengeEventId],
       ['confirmations', String(params.confirmations)],
       ['bond-action', params.bondAction],
       ['scope', params.scope],
       ['effective', String(params.effectiveAt)],
-      ['summary', `Revocation of verifier ${params.verifierPubkey.slice(0, 8)}...`],
       ['algo', DEFAULT_CRYPTO_ALGORITHM],
       ['L', SIGNET_LABEL],
       ['l', 'revocation', SIGNET_LABEL],
     ],
-    content: params.summary,
+  });
+
+  return {
+    ...template,
+    pubkey: authorityPubkey,
+    created_at: Math.floor(Date.now() / 1000),
   };
 }
 
@@ -116,14 +122,12 @@ export async function createRevocation(
 
 /** Parse a revocation event */
 export function parseRevocation(event: NostrEvent): ParsedRevocation | null {
-  if (event.kind !== ATTESTATION_KIND) return null;
-  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.REVOCATION) return null;
+  const base = parseAttestation(event);
+  if (!base) return null;
+  if (base.type !== ATTESTATION_TYPES.REVOCATION) return null;
 
   const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
-
-  // Strip 'revocation:' prefix from d-tag to get verifier pubkey
-  const dTag = getTagValue(event, 'd') || '';
-  const verifierPubkey = dTag.startsWith('revocation:') ? dTag.slice('revocation:'.length) : dTag;
+  const verifierPubkey = base.identifier ?? '';
 
   return {
     verifierPubkey,
