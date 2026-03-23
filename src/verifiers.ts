@@ -1,6 +1,7 @@
-// Verifier Credential (kind 30999, type: verifier)
+// Verifier Credential (kind 31000, type: verifier)
 // Professional verifier registration and cross-verification
 
+import { createAttestation, parseAttestation } from 'nostr-attestations';
 import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, VERIFIER_ACTIVATION, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
 import { getTagValue } from './validation.js';
@@ -17,23 +18,27 @@ export function buildVerifierEvent(
   verifierPubkey: string,
   params: VerifierParams
 ): UnsignedEvent {
+  const signetTags: string[][] = [
+    ['profession', params.profession],
+    ['jurisdiction', params.jurisdiction],
+    ['licence', params.licenceHash],
+    ['body', params.professionalBody],
+    ['algo', DEFAULT_CRYPTO_ALGORITHM],
+    ['L', SIGNET_LABEL],
+    ['l', 'verifier', SIGNET_LABEL],
+  ];
+
+  const template = createAttestation({
+    type: ATTESTATION_TYPES.VERIFIER,
+    summary: `${params.profession} verifier in ${params.jurisdiction}`,
+    tags: signetTags,
+    content: params.statement || '',
+  });
+
   return {
-    kind: ATTESTATION_KIND,
+    ...template,
     pubkey: verifierPubkey,
     created_at: Math.floor(Date.now() / 1000),
-    tags: [
-      ['d', 'verifier'],
-      ['type', ATTESTATION_TYPES.VERIFIER],
-      ['profession', params.profession],
-      ['jurisdiction', params.jurisdiction],
-      ['licence', params.licenceHash],
-      ['body', params.professionalBody],
-      ['summary', `${params.profession} verifier in ${params.jurisdiction}`],
-      ['algo', DEFAULT_CRYPTO_ALGORITHM],
-      ['L', SIGNET_LABEL],
-      ['l', 'verifier', SIGNET_LABEL],
-    ],
-    content: params.statement || '',
   };
 }
 
@@ -49,8 +54,9 @@ export async function createVerifierCredential(
 
 /** Parse a verifier credential event */
 export function parseVerifier(event: NostrEvent): ParsedVerifier | null {
-  if (event.kind !== ATTESTATION_KIND) return null;
-  if (getTagValue(event, 'type') !== ATTESTATION_TYPES.VERIFIER) return null;
+  const base = parseAttestation(event);
+  if (!base) return null;
+  if (base.type !== ATTESTATION_TYPES.VERIFIER) return null;
 
   const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
 
