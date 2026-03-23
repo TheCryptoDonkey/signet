@@ -16,7 +16,7 @@ This repo contains:
 ## Key Concepts
 
 - **4 verification tiers**: Tier 1 (self-declared) → Tier 2 (web-of-trust) → Tier 3 (professional adult) → Tier 4 (professional adult+child)
-- **1 generic attestation kind** (30999, placeholder pending NIP): credential, vouch, verifier, challenge, revocation, identity-bridge, delegation — differentiated by `type` tag
+- **1 generic attestation kind** (31000, NIP-VA via `nostr-attestations`): credential, vouch, verifier, challenge, revocation, identity-bridge, delegation — differentiated by `type` tag
 - **Policies** on NIP-78 kind 30078
 - **3 voting extension event kinds** (30482-30484): election, ballot, election result
 - **Two-credential ceremony**: Professional verification issues Natural Person credential (with nullifier, Merkle root) + Persona credential (anonymous, age-range only) simultaneously
