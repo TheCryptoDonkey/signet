@@ -368,7 +368,7 @@ describe('Guardian Delegation', () => {
       expiresAt,
     });
 
-    expect(getTagValue(delegation, 'expires')).toBe(String(expiresAt));
+    expect(getTagValue(delegation, 'expiration')).toBe(String(expiresAt));
   });
 
   it('uses guardian-delegate type (not agent type)', async () => {

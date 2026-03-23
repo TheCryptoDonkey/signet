@@ -840,29 +840,30 @@ export async function createGuardianDelegation(
 ): Promise<NostrEvent> {
   const guardianPubkey = getPublicKey(guardianPrivateKey);
 
-  const tags: string[][] = [
-    ['d', `delegation:${params.childPubkey}:${params.delegatePubkey}`],
+  const signetTags: string[][] = [
     ['p', params.delegatePubkey],
-    ['type', ATTESTATION_TYPES.DELEGATION],
     ['delegation-type', 'guardian-delegate'],
     ['child', params.childPubkey],
     ['scope', params.scope],
-    ['summary', `Guardian delegation for ${params.childPubkey.slice(0, 8)}... to ${params.delegatePubkey.slice(0, 8)}...`],
     ['algo', DEFAULT_CRYPTO_ALGORITHM],
     ['L', SIGNET_LABEL],
     ['l', 'delegation', SIGNET_LABEL],
   ];
 
-  if (params.expiresAt) {
-    tags.push(['expires', String(params.expiresAt)]);
-  }
+  const template = createAttestation({
+    type: ATTESTATION_TYPES.DELEGATION,
+    identifier: `${params.childPubkey}:${params.delegatePubkey}`,
+    subject: params.delegatePubkey,
+    expiration: params.expiresAt,
+    summary: `Guardian delegation for ${params.childPubkey.slice(0, 8)}... to ${params.delegatePubkey.slice(0, 8)}...`,
+    content: '',
+    tags: signetTags,
+  });
 
-  const event: UnsignedEvent = {
-    kind: ATTESTATION_KIND,
+  const event = {
+    ...template,
     pubkey: guardianPubkey,
     created_at: Math.floor(Date.now() / 1000),
-    tags,
-    content: '',
   };
 
   return signEvent(event, guardianPrivateKey);
