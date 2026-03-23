@@ -1,7 +1,8 @@
 // Signet Protocol Constants
+import { ATTESTATION_KIND } from 'nostr-attestations';
 
-/** Generic Verifiable Attestation kind (NIP-VA, placeholder pending NIP assignment) */
-export const ATTESTATION_KIND = 30999;
+/** Generic Verifiable Attestation kind (NIP-VA, kind 31000) */
+export { ATTESTATION_KIND };
 
 /** NIP-78 App-specific Data kind (existing Nostr kind) */
 export const APP_DATA_KIND = 30078;
