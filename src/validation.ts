@@ -1,6 +1,7 @@
 // Signet Event Validation
 // Validates structure and required fields for all 6 event kinds
 
+import { validateAttestation } from 'nostr-attestations';
 import { ATTESTATION_KIND, ATTESTATION_TYPES, APP_DATA_KIND, SIGNET_LABEL } from './constants.js';
 import type { NostrEvent } from './types.js';
 
@@ -54,8 +55,9 @@ export function validateCredential(event: NostrEvent): ValidationResult {
 
   validateFieldSizeBounds(event, errors);
 
-  if (event.kind !== ATTESTATION_KIND) {
-    errors.push(`Expected kind ${ATTESTATION_KIND}, got ${event.kind}`);
+  const base = validateAttestation(event);
+  if (!base.valid) {
+    return { valid: false, errors: [...base.errors] };
   }
 
   if (getTagValue(event, 'type') !== ATTESTATION_TYPES.CREDENTIAL) {
@@ -122,8 +124,9 @@ export function validateVouch(event: NostrEvent): ValidationResult {
 
   validateFieldSizeBounds(event, errors);
 
-  if (event.kind !== ATTESTATION_KIND) {
-    errors.push(`Expected kind ${ATTESTATION_KIND}, got ${event.kind}`);
+  const base = validateAttestation(event);
+  if (!base.valid) {
+    return { valid: false, errors: [...base.errors] };
   }
 
   if (getTagValue(event, 'type') !== ATTESTATION_TYPES.VOUCH) {
@@ -197,8 +200,9 @@ export function validateVerifier(event: NostrEvent): ValidationResult {
 
   validateFieldSizeBounds(event, errors);
 
-  if (event.kind !== ATTESTATION_KIND) {
-    errors.push(`Expected kind ${ATTESTATION_KIND}, got ${event.kind}`);
+  const base = validateAttestation(event);
+  if (!base.valid) {
+    return { valid: false, errors: [...base.errors] };
   }
 
   if (getTagValue(event, 'type') !== ATTESTATION_TYPES.VERIFIER) {
@@ -234,8 +238,9 @@ export function validateChallenge(event: NostrEvent): ValidationResult {
 
   validateFieldSizeBounds(event, errors);
 
-  if (event.kind !== ATTESTATION_KIND) {
-    errors.push(`Expected kind ${ATTESTATION_KIND}, got ${event.kind}`);
+  const base = validateAttestation(event);
+  if (!base.valid) {
+    return { valid: false, errors: [...base.errors] };
   }
 
   if (getTagValue(event, 'type') !== ATTESTATION_TYPES.CHALLENGE) {
@@ -272,8 +277,9 @@ export function validateRevocation(event: NostrEvent): ValidationResult {
 
   validateFieldSizeBounds(event, errors);
 
-  if (event.kind !== ATTESTATION_KIND) {
-    errors.push(`Expected kind ${ATTESTATION_KIND}, got ${event.kind}`);
+  const base = validateAttestation(event);
+  if (!base.valid) {
+    return { valid: false, errors: [...base.errors] };
   }
 
   if (getTagValue(event, 'type') !== ATTESTATION_TYPES.REVOCATION) {
