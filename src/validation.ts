@@ -49,7 +49,7 @@ function hasSignetLabel(event: NostrEvent): boolean {
   );
 }
 
-/** Validate a Verification Credential attestation (kind 30999, type: credential) */
+/** Validate a Verification Credential attestation (kind 31000, type: credential) */
 export function validateCredential(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
 
@@ -118,7 +118,7 @@ export function validateCredential(event: NostrEvent): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-/** Validate a Vouch Attestation (kind 30999, type: vouch) */
+/** Validate a Vouch Attestation (kind 31000, type: vouch) */
 export function validateVouch(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
 
@@ -194,7 +194,7 @@ export function validatePolicy(event: NostrEvent): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-/** Validate a Verifier Credential attestation (kind 30999, type: verifier) */
+/** Validate a Verifier Credential attestation (kind 31000, type: verifier) */
 export function validateVerifier(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
 
@@ -232,7 +232,7 @@ export function validateVerifier(event: NostrEvent): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-/** Validate a Verifier Challenge attestation (kind 30999, type: challenge) */
+/** Validate a Verifier Challenge attestation (kind 31000, type: challenge) */
 export function validateChallenge(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
 
@@ -271,7 +271,7 @@ export function validateChallenge(event: NostrEvent): ValidationResult {
   return { valid: errors.length === 0, errors };
 }
 
-/** Validate a Verifier Revocation attestation (kind 30999, type: revocation) */
+/** Validate a Verifier Revocation attestation (kind 31000, type: revocation) */
 export function validateRevocation(event: NostrEvent): ValidationResult {
   const errors: string[] = [];
 

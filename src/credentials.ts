@@ -831,7 +831,7 @@ export function checkNullifierFamilyDuplicate(
 // --- Guardian Delegation ---
 
 /**
- * Create a guardian delegation event (kind 30999, type: delegation).
+ * Create a guardian delegation event (kind 31000, type: delegation).
  * Allows a guardian to delegate specific permissions to another adult for a child.
  */
 export async function createGuardianDelegation(
