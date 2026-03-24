@@ -61,11 +61,11 @@ The Processor processes Personal Data on behalf of the Controller in connection 
 
 | Processing Activity | Purpose |
 |---------------------|---------|
-| Credential issuance support | Facilitating the creation and signing of Signet credentials (kind 30470) |
+| Credential issuance support | Facilitating the creation and signing of Signet credentials (kind 31000) |
 | Verification processing | Supporting identity verification processes across Tiers 1–4 |
 | Signet IQ computation | Computing and updating Signet IQ scores based on vouches and credentials |
-| Revocation processing | Processing and propagating credential revocations (kind 30475) |
-| Challenge/response facilitation | Processing verifier legitimacy challenges (kind 30474) |
+| Revocation processing | Processing and propagating credential revocations (kind 31000) |
+| Challenge/response facilitation | Processing verifier legitimacy challenges (kind 31000) |
 | Professional register checking | Automated verification bot checks that professional verifiers appear on applicable public registers (bar associations, medical boards, notary commissions) |
 | Biometric unlock facilitation | Device-local WebAuthn biometric authentication to protect user accounts; no biometric data transmitted or stored by the Processor |
 | SDK verification flow | Routing age-range proof requests from relying party websites through the My Signet app; only ZK proofs are transmitted — no PII |
@@ -83,7 +83,7 @@ The Processor processes Personal Data on behalf of the Controller in connection 
 - Nostr public keys (npub / secp256k1 public keys)
 - Credential metadata (tier level, issuance date, expiry date, credential type)
 - Zero-knowledge proof outputs (Bulletproofs, ring signatures)
-- Verification event data (kinds 30470–30477)
+- Verification event data (kinds 31000–31000)
 - Verifier registration data (professional credentials, jurisdiction)
 - Signet IQ scores and vouch records
 - Nullifier hashes (computed using `signet-nullifier-v2` formula; one-way hash of document details; cannot be reversed)
@@ -356,7 +356,7 @@ The Processor shall:
 
 The decentralised nature of the Protocol presents unique considerations for Data Subject rights:
 
-1. **Right to Erasure:** The Processor can delete data from systems under its control but cannot delete events published to Nostr relays. The Processor shall assist the Controller in publishing revocation events (kind 30475) and requesting deletion from known relay operators. Because published credential events contain no raw personal data (only hashes and ZK proofs), the practical privacy impact of relay retention is minimal — but revocation ensures credentials are no longer accepted by the Protocol.
+1. **Right to Erasure:** The Processor can delete data from systems under its control but cannot delete events published to Nostr relays. The Processor shall assist the Controller in publishing revocation events (kind 31000) and requesting deletion from known relay operators. Because published credential events contain no raw personal data (only hashes and ZK proofs), the practical privacy impact of relay retention is minimal — but revocation ensures credentials are no longer accepted by the Protocol.
 
 2. **Right to Portability:** Credential data is inherently portable through the Nostr protocol. The Processor shall provide data in a structured, commonly used, machine-readable format upon request.
 
@@ -439,7 +439,7 @@ Deletion shall be performed using methods that render the data irrecoverable, in
 ### 10.4 Nostr Network Data
 
 The Parties acknowledge that events published to the Nostr network cannot be deleted by the Processor. The Processor shall:
-1. Publish revocation events (kind 30475) for any credentials that should be invalidated.
+1. Publish revocation events (kind 31000) for any credentials that should be invalidated.
 2. Request deletion from known relay operators where feasible.
 3. Ensure that published events contain the minimum Personal Data necessary.
 
@@ -590,7 +590,7 @@ If any provision of this DPA is found to be invalid or unenforceable, the remain
 | Sub-processor | Processing Activity | Location | Safeguard |
 |---------------|---------------------|----------|-----------|
 | Signet Verification Bot | Automated open-source bot that checks professional verifiers against public professional registers (bar associations, medical boards, notary commissions). Processes verifier licence numbers and public register data only. No credential holder personal data is processed. Source code is publicly auditable. | [HOSTING JURISDICTION] | [SCCs / Adequacy / Other] |
-| Nostr Relay Operators | Store and transmit public Nostr events (kinds 30470–30477). Published events contain only ZK proofs, nullifier hashes, Merkle roots, and public keys — no raw personal data. Relay operators are processors of pseudonymous public protocol data. | Various (global, decentralised) | Relay operators are selected from jurisdictions with adequate protections where feasible; events minimise personal data per §6.5 |
+| Nostr Relay Operators | Store and transmit public Nostr events (kinds 31000–31000). Published events contain only ZK proofs, nullifier hashes, Merkle roots, and public keys — no raw personal data. Relay operators are processors of pseudonymous public protocol data. | Various (global, decentralised) | Relay operators are selected from jurisdictions with adequate protections where feasible; events minimise personal data per §6.5 |
 | [INFRASTRUCTURE PROVIDER] | Hosting, compute, and storage for Protocol services | [COUNTRY] | [SCCs / Adequacy / Other] |
 
 *Update this annex as Sub-processors are added or removed.*

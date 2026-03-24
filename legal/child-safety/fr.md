@@ -165,7 +165,7 @@ Le Protocole prend en charge les mécanismes de consentement parental suivants :
    - Identité du parent vérifiée par un vérificateur professionnel (cérémonie à deux attestations)
    - Consentement du parent signé cryptographiquement avec sa clé Nostr
    - Attestation de l'enfant liée au parent via des balises de tuteur immuables sur les deux attestations (Personne Physique et Persona)
-   - Les événements de délégation de tuteur (type 30477) permettent au parent de déléguer des autorisations spécifiques à d'autres adultes de confiance
+   - Les événements de délégation de tuteur (type 31000) permettent au parent de déléguer des autorisations spécifiques à d'autres adultes de confiance
 
 2. **Co-vérification :**
    Le parent/tuteur et l'enfant participent ensemble à une session de vérification de niveau 4. Le vérificateur professionnel :
@@ -182,7 +182,7 @@ Le Protocole prend en charge les mécanismes de consentement parental suivants :
 ### 6.3 Retrait du consentement
 
 Les parents/tuteurs peuvent retirer leur consentement à tout moment en :
-1. Publiant un événement de révocation (type 30475) depuis la clé Nostr du parent/tuteur, révoquant l'événement de consentement.
+1. Publiant un événement de révocation (type 31000) depuis la clé Nostr du parent/tuteur, révoquant l'événement de consentement.
 2. Contactant l'équipe de support du Protocole Signet pour demander une assistance à la révocation.
 3. Via tout client Nostr implémentant les fonctionnalités de gestion du consentement du Protocole.
 
@@ -493,7 +493,7 @@ Le Protocole met en œuvre un modèle de structure familiale à trois couches :
 Les balises de tuteur (`["guardian", "<parent_pubkey>"]`) sont définies par le vérificateur professionnel et reflètent la responsabilité parentale légale. Elles ne peuvent être modifiées que par une nouvelle attestation émise par un professionnel avec la documentation légale appropriée (p. ex. ordonnance du tribunal).
 
 **Couche 2 — Niveau de délégation (flexible) :**
-Les tuteurs peuvent déléguer des autorisations spécifiques à des adultes de confiance (beaux-parents, grands-parents, enseignants) via des événements de délégation de tuteur de type 30477. Les délégations sont :
+Les tuteurs peuvent déléguer des autorisations spécifiques à des adultes de confiance (beaux-parents, grands-parents, enseignants) via des événements de délégation de tuteur de type 31000. Les délégations sont :
 - Limitées dans le temps (avec expiration)
 - Limitées en portée : `full`, `activity-approval`, `content-management`, `contact-approval`
 - Révocables par le tuteur à tout moment

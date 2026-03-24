@@ -38,18 +38,18 @@ The Signet Protocol is architected to minimise data collection. Because the Prot
 | Category | Description | Source | Storage Location |
 |----------|-------------|--------|-----------------|
 | **Nostr Public Keys** | secp256k1 public keys (npub) used for Protocol interactions | User-generated | Nostr relays (decentralised) |
-| **Credential Metadata** | Nostr event kinds 30470–30477 containing verification tier, issuance timestamps, expiry dates, age range, and entity type identifiers | Generated during credential issuance | Nostr relays (decentralised) |
+| **Credential Metadata** | Nostr event kinds 31000–31000 containing verification tier, issuance timestamps, expiry dates, age range, and entity type identifiers | Generated during credential issuance | Nostr relays (decentralised) |
 | **Zero-Knowledge Proofs** | Bulletproofs for age range verification | Generated locally by user | Embedded in credential events on Nostr relays |
 | **Ring Signatures** | Cryptographic signatures that prove membership in a group without revealing which member signed | Generated locally by user | Nostr relays (decentralised) |
 | **Nullifier Hashes** | SHA-256 hash of length-prefixed document type, country code, document number, and domain tag "signet-nullifier-v2" — prevents duplicate identity creation; cannot be reversed to recover document details | Computed locally during two-credential ceremony | Embedded in Natural Person credential events |
 | **Merkle Roots** | Hash commitment to verified attributes enabling selective disclosure. Leaves include name, nationality, documentType, dateOfBirth, documentNumber, documentExpiry, photoHash, and nullifier. Only the root hash is published — individual leaf values are never published | Computed locally during two-credential ceremony | Embedded in Natural Person credential events |
-| **Vouch Records** | Kind 30471 events representing web-of-trust endorsements | Created by vouching parties | Nostr relays (decentralised) |
-| **Policy Events** | Kind 30472 events specifying relying party requirements | Created by relying parties | Nostr relays (decentralised) |
-| **Verifier Registration** | Kind 30473 events identifying professional verifiers, including professional signing pubkey and jurisdictional information | Created by verifiers | Nostr relays (decentralised) |
-| **Challenge/Response Data** | Kind 30474 events for verifier legitimacy challenges | Generated during verification | Nostr relays (decentralised) |
-| **Revocation Records** | Kind 30475 events for credential revocation | Created when credentials are revoked | Nostr relays (decentralised) |
-| **Identity Bridge Events** | Kind 30476 events linking Natural Person and Persona keypairs via ring signatures | Created by the user | Nostr relays (decentralised) |
-| **Delegation Events** | Kind 30477 events for agent or guardian delegation with scoped permissions | Created by the delegator | Nostr relays (decentralised) |
+| **Vouch Records** | Kind 31000 events representing web-of-trust endorsements | Created by vouching parties | Nostr relays (decentralised) |
+| **Policy Events** | Kind 30078 events specifying relying party requirements | Created by relying parties | Nostr relays (decentralised) |
+| **Verifier Registration** | Kind 31000 events identifying professional verifiers, including professional signing pubkey and jurisdictional information | Created by verifiers | Nostr relays (decentralised) |
+| **Challenge/Response Data** | Kind 31000 events for verifier legitimacy challenges | Generated during verification | Nostr relays (decentralised) |
+| **Revocation Records** | Kind 31000 events for credential revocation | Created when credentials are revoked | Nostr relays (decentralised) |
+| **Identity Bridge Events** | Kind 31000 events linking Natural Person and Persona keypairs via ring signatures | Created by the user | Nostr relays (decentralised) |
+| **Delegation Events** | Kind 31000 events for agent or guardian delegation with scoped permissions | Created by the delegator | Nostr relays (decentralised) |
 | **Encrypted Key Material** | Private keys encrypted with AES-256-GCM (key derived via PBKDF2, 600,000 iterations, SHA-256) | Stored locally on device | Device local storage only — never transmitted |
 
 ### 3.2 What Stays on Your Device
@@ -107,7 +107,7 @@ This section explains the professional verification process in detail, because i
 
 2. **The verifier inspects your physical documents.** A Tier 3 or Tier 4 verifier (a licensed professional such as a solicitor, notary, or medical professional) examines your physical identity documents in person. The verifier confirms that the data you have entered matches your documents. The verifier does not independently enter your data into the system.
 
-3. **The verifier signs the credential.** The verifier signs two credential events: a Natural Person credential (kind 30470, signed by the verifier's professional Nostr keypair) and a Persona credential (anonymous, age-range only, also signed by the verifier). Both are published to Nostr relays.
+3. **The verifier signs the credential.** The verifier signs two credential events: a Natural Person credential (kind 31000, signed by the verifier's professional Nostr keypair) and a Persona credential (anonymous, age-range only, also signed by the verifier). Both are published to Nostr relays.
 
 4. **What is published.** The published credential events contain: the verifier's public key, your Persona public key (subject pubkey), credential metadata (tier, dates, entity type, age range), the zero-knowledge age range proof, the nullifier hash (a one-way hash; cannot be reversed), and the Merkle root (a hash commitment; individual leaf values are not published). No name, date of birth, document number, or other identifying information is published.
 
@@ -138,10 +138,10 @@ where `len16(x)` is the UTF-8 byte length of `x` encoded as a 2-byte big-endian 
 
 Each Signet user has two keypairs derived from a single 12-word BIP-39 mnemonic:
 
-- **Natural Person keypair** — derived via NIP-06 path `m/44'/1237'/0'/0/0`. Used for the Natural Person credential (kind 30470). This keypair is associated with your verified real-world identity via the credential, but the keypair itself carries no inherent linkage to your documents.
+- **Natural Person keypair** — derived via NIP-06 path `m/44'/1237'/0'/0/0`. Used for the Natural Person credential (kind 31000). This keypair is associated with your verified real-world identity via the credential, but the keypair itself carries no inherent linkage to your documents.
 - **Persona keypair** — derived via BIP-32 HD path at a separate account index. Used for the Persona credential (anonymous, age-range only). This keypair carries no direct link to your real-world identity. Your online social activity uses this keypair.
 
-**Privacy implication:** Because both keypairs derive from the same mnemonic, you can prove linkage between them (via kind 30476 identity bridge events) or keep them entirely separate. An identity bridge event, once published, creates a public cryptographic link. You should only publish a bridge event if you wish to associate your anonymous Persona with your verified Natural Person status.
+**Privacy implication:** Because both keypairs derive from the same mnemonic, you can prove linkage between them (via kind 31000 identity bridge events) or keep them entirely separate. An identity bridge event, once published, creates a public cryptographic link. You should only publish a bridge event if you wish to associate your anonymous Persona with your verified Natural Person status.
 
 **Key management and data subject rights:** Your private keys are derived deterministically from your mnemonic. Signet never possesses or transmits your private keys. If you delete the app and lose your mnemonic (and any Shamir backup), your keys are unrecoverable. Signet cannot assist with key recovery because we do not hold copies.
 
@@ -212,7 +212,7 @@ We process data under the following legal bases, depending on your jurisdiction.
 
 Note: Biometric data is processed exclusively on-device via WebAuthn. Signet does not process biometric data under Article 9(1). If any biometric processing by Signet were later established, the legal basis would be explicit consent under Art. 9(2)(a).
 
-**eIDAS 2.0:** The EU Digital Identity Wallet Regulation (eIDAS 2.0) mandates that member states issue digital identity wallets to citizens by December 2026. Signet's architecture is designed to be compatible with eIDAS 2.0-issued credentials via the kind 30476 identity bridge mechanism.
+**eIDAS 2.0:** The EU Digital Identity Wallet Regulation (eIDAS 2.0) mandates that member states issue digital identity wallets to citizens by December 2026. Signet's architecture is designed to be compatible with eIDAS 2.0-issued credentials via the kind 31000 identity bridge mechanism.
 
 ### 8.2 United Kingdom (UK GDPR / Data Protection Act 2018)
 
@@ -271,7 +271,7 @@ Data processed through the Signet Protocol is used exclusively for:
 6. **Protocol Integrity** — Maintaining the cryptographic integrity and security of the Protocol.
 7. **Legal Compliance** — Complying with applicable laws and regulations.
 8. **Two-Credential Ceremony** — Issuing paired Natural Person and Persona credentials during professional verification, including computation of Merkle trees, nullifiers, and age-range proofs.
-9. **Guardian Management** — Processing guardian delegation events (kind 30477) for child account management.
+9. **Guardian Management** — Processing guardian delegation events (kind 31000) for child account management.
 10. **Selective Disclosure** — Enabling users to prove individual Merkle leaf attributes (including document number and document expiry) to relying parties that require them, without revealing unrelated attributes.
 11. **Credential Lifecycle** — Processing credential chains (supersedes/superseded-by tags) for name changes, document renewal, and tier upgrades.
 
@@ -296,9 +296,9 @@ We may disclose information if required by a valid court order, subpoena, or leg
 
 ### 10.4 Verifier Data Sharing
 
-Professional verifiers (Tier 3 and Tier 4) publish verifier registration events (kind 30473) on the Nostr network. These events include the verifier's professional Nostr pubkey and jurisdictional information. Verifiers consent to this publication as part of the Verifier Agreement.
+Professional verifiers (Tier 3 and Tier 4) publish verifier registration events (kind 31000) on the Nostr network. These events include the verifier's professional Nostr pubkey and jurisdictional information. Verifiers consent to this publication as part of the Verifier Agreement.
 
-The only data shared between the verifier and the Protocol via published events is the credential event (kind 30470), which contains the verifier's public key, the subject's Persona public key, credential metadata (tier, dates, entity type, age range), the zero-knowledge age-range proof, the nullifier hash, and the Merkle root.
+The only data shared between the verifier and the Protocol via published events is the credential event (kind 31000), which contains the verifier's public key, the subject's Persona public key, credential metadata (tier, dates, entity type, age range), the zero-knowledge age-range proof, the nullifier hash, and the Merkle root.
 
 No personal identification data (name, date of birth, document numbers, nationality) appears in any published event.
 
@@ -468,7 +468,7 @@ The Protocol uses Bulletproofs-based zero-knowledge proofs for age range verific
 Where parental consent is required, the Protocol supports:
 - Verifiable parental consent through Tier 3 or Tier 4 verified parent/guardian credentials
 - Age-gating through ZK proof verification at the relying party level
-- Guardian delegation events (kind 30477) enabling parents to manage their children's Signet activity
+- Guardian delegation events (kind 31000) enabling parents to manage their children's Signet activity
 - Mechanisms for parents to revoke delegation and consent
 
 ### 14.5 COPPA Compliance (United States)

@@ -11,9 +11,12 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import Database from 'better-sqlite3';
-import { createServer } from 'node:http';
+
 import WebSocket from 'ws';
 import { webcrypto } from 'node:crypto';
+import { schnorr } from '@noble/curves/secp256k1';
+import { sha256 } from '@noble/hashes/sha2';
+import { bytesToHex } from '@noble/hashes/utils';
 
 const PORT = parseInt(process.env.PORT ?? '3847', 10);
 const RELAY_URL = process.env.RELAY_URL ?? 'ws://localhost:7777';
@@ -71,21 +74,35 @@ async function ensureBotKeypair() {
   const row = db.prepare('SELECT privkey_hex, pubkey_hex FROM bot_keys WHERE id = 1').get();
   if (row) return row;
 
-  // Generate a random 32-byte private key
+  // Generate a random 32-byte private key and derive secp256k1 x-only pubkey
   const privBytes = webcrypto.getRandomValues(new Uint8Array(32));
-  const privkey_hex = Buffer.from(privBytes).toString('hex');
-  // Derive pubkey: for a reference bot we store both; real signing needs secp256k1.
-  // We store a placeholder pubkey derived via SHA-256 of privkey (not cryptographically
-  // correct Schnorr, but sufficient for a reference bot that doesn't yet sign events
-  // with full Nostr NIP-01 compatibility without a secp256k1 library dependency).
-  const pubDigest = await webcrypto.subtle.digest('SHA-256', privBytes);
-  const pubkey_hex = Buffer.from(pubDigest).toString('hex');
+  const privkey_hex = bytesToHex(privBytes);
+  const pubkey_hex = bytesToHex(schnorr.getPublicKey(privBytes));
 
   db.prepare('INSERT INTO bot_keys (id, privkey_hex, pubkey_hex) VALUES (1, ?, ?)')
     .run(privkey_hex, pubkey_hex);
 
   console.log('[bot] Generated new keypair. pubkey:', pubkey_hex);
   return { privkey_hex, pubkey_hex };
+}
+
+/**
+ * Compute a NIP-01 event ID and sign it with Schnorr (BIP-340).
+ */
+function signNostrEvent(event, privkeyHex) {
+  const encoder = new TextEncoder();
+  const serialised = JSON.stringify([
+    0,
+    event.pubkey,
+    event.created_at,
+    event.kind,
+    event.tags,
+    event.content,
+  ]);
+  const idBytes = sha256(encoder.encode(serialised));
+  event.id = bytesToHex(idBytes);
+  event.sig = bytesToHex(schnorr.sign(idBytes, privkeyHex));
+  return event;
 }
 
 // ---------------------------------------------------------------------------
@@ -152,8 +169,8 @@ function resolveChecker(profession, jurisdiction) {
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch Kind 30473 (verifier credential) events for a pubkey from the relay.
- * Returns the first matching event's tags, or null.
+ * Fetch kind 31000 (NIP-VA) verifier attestation events for a pubkey from the relay.
+ * Filters by type tag 'verifier'. Returns the first matching event, or null.
  */
 async function fetchVerifierEvent(pubkey) {
   return new Promise((resolve) => {
@@ -174,7 +191,7 @@ async function fetchVerifierEvent(pubkey) {
     const subId = `bot-${Date.now()}`;
 
     ws.on('open', () => {
-      ws.send(JSON.stringify(['REQ', subId, { kinds: [30473], authors: [pubkey], limit: 1 }]));
+      ws.send(JSON.stringify(['REQ', subId, { kinds: [31000], authors: [pubkey], '#type': ['verifier'], limit: 1 }]));
     });
 
     ws.on('message', (data) => {
@@ -201,7 +218,7 @@ async function fetchVerifierEvent(pubkey) {
 
 /**
  * Publish a Kind 1 result note to the relay.
- * NOTE: Event signing is stubbed — a production bot needs a secp256k1 library.
+ * Signs the event with secp256k1 Schnorr (BIP-340) per NIP-01.
  */
 async function publishResult(verifierPubkey, result, method, jurisdiction, botKeys) {
   const now = Math.floor(Date.now() / 1000);
@@ -222,10 +239,9 @@ async function publishResult(verifierPubkey, result, method, jurisdiction, botKe
       ['checked_at', String(now)],
     ],
     content,
-    // id and sig are omitted in this reference implementation (no secp256k1 dep)
-    id: 'stub',
-    sig: 'stub',
   };
+
+  signNostrEvent(event, botKeys.privkey_hex);
 
   return new Promise((resolve) => {
     let ws;
@@ -248,8 +264,8 @@ async function publishResult(verifierPubkey, result, method, jurisdiction, botKe
 
 /**
  * Check a verifier pubkey against public registers.
- * Fetches Kind 30473 event, extracts credential fields, runs registry check,
- * stores result, and publishes to relay.
+ * Fetches kind 31000 verifier attestation, extracts credential fields,
+ * runs registry check, stores result, and publishes to relay.
  */
 async function checkVerifier(pubkey, botKeys) {
   const now = Math.floor(Date.now() / 1000);
@@ -292,7 +308,7 @@ async function checkVerifier(pubkey, botKeys) {
     }
   } else if (!profession && !jurisdiction) {
     checkResult = 'error';
-    details = { note: 'No Kind 30473 event found and no cached credential data.' };
+    details = { note: 'No kind 31000 verifier attestation found and no cached credential data.' };
   }
 
   // 3. Persist result

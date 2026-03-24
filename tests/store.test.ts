@@ -193,7 +193,7 @@ describe('SignetStore', () => {
       const data = JSON.stringify([{
         id: 'ZZZZ' + 'a'.repeat(60),  // uppercase / invalid hex
         pubkey: 'b'.repeat(64),
-        kind: 30470,
+        kind: 31000,
         created_at: 1000,
         tags: [],
         content: '',
@@ -207,7 +207,7 @@ describe('SignetStore', () => {
       const data = JSON.stringify([{
         id: 'a'.repeat(64),
         pubkey: 'NOT-HEX!',
-        kind: 30470,
+        kind: 31000,
         created_at: 1000,
         tags: [],
         content: '',
@@ -221,7 +221,7 @@ describe('SignetStore', () => {
       const data = JSON.stringify([{
         id: 'a'.repeat(64),
         pubkey: 'b'.repeat(64),
-        kind: 30470,
+        kind: 31000,
         created_at: 1000,
         tags: [],
         content: '',

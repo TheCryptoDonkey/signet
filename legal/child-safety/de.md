@@ -165,7 +165,7 @@ Das Protokoll unterstützt die folgenden Mechanismen zur elterlichen Einwilligun
    - Identität des Elternteils durch professionellen Verifizierer verifiziert (Zwei-Nachweis-Zeremonie)
    - Einwilligung des Elternteils kryptografisch mit seinem Nostr-Schlüssel unterzeichnet
    - Nachweis des Kindes über unveränderliche Guardian-Tags auf beiden Nachweisen (Natural Person und Persona) mit dem Elternteil verknüpft
-   - Delegierungsereignisse für Vormunde (Art 30477) ermöglichen es dem Elternteil, bestimmte Berechtigungen an andere vertrauenswürdige Erwachsene zu delegieren
+   - Delegierungsereignisse für Vormunde (Art 31000) ermöglichen es dem Elternteil, bestimmte Berechtigungen an andere vertrauenswürdige Erwachsene zu delegieren
 
 2. **Co-Verifizierung:**
    Elternteil/Vormund und Kind nehmen gemeinsam an einer Stufe-4-Verifizierungssitzung teil. Der professionelle Verifizierer:
@@ -182,7 +182,7 @@ Das Protokoll unterstützt die folgenden Mechanismen zur elterlichen Einwilligun
 ### 6.3 Einwilligungswiderruf
 
 Eltern/Vormunde können die Einwilligung jederzeit widerrufen durch:
-1. Veröffentlichung eines Widerrufsereignisses (Art 30475) vom Nostr-Schlüssel des Elternteils/Vormunds, das das Einwilligungsereignis widerruft.
+1. Veröffentlichung eines Widerrufsereignisses (Art 31000) vom Nostr-Schlüssel des Elternteils/Vormunds, das das Einwilligungsereignis widerruft.
 2. Kontaktaufnahme mit dem Signet-Protokoll-Supportteam, um Widerrufshilfe zu beantragen.
 3. Durch jeden Nostr-Client, der die Einwilligungsverwaltungsfunktionen des Protokolls implementiert.
 
@@ -493,7 +493,7 @@ Das Protokoll implementiert ein Drei-Schichten-Familienstrukturmodell:
 Guardian-Tags (`["guardian", "<parent_pubkey>"]`) werden vom professionellen Verifizierer gesetzt und spiegeln die gesetzliche elterliche Verantwortung wider. Sie können nur durch einen neuen Nachweis geändert werden, der von einem Fachmann mit entsprechender rechtlicher Dokumentation (z. B. Gerichtsbeschluss) ausgestellt wird.
 
 **Schicht 2 — Delegierungsebene (flexibel):**
-Vormunde können bestimmte Berechtigungen über Art-30477-Vormund-Delegierungsereignisse an vertrauenswürdige Erwachsene (Stiefelternteile, Großeltern, Lehrkräfte) delegieren. Delegierungen sind:
+Vormunde können bestimmte Berechtigungen über Art-31000-Vormund-Delegierungsereignisse an vertrauenswürdige Erwachsene (Stiefelternteile, Großeltern, Lehrkräfte) delegieren. Delegierungen sind:
 - Zeitlich begrenzt (mit Ablaufdatum)
 - Umfangsbegrenzt: `full`, `activity-approval`, `content-management`, `contact-approval`
 - Jederzeit durch den Vormund widerrufbar

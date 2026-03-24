@@ -50,7 +50,7 @@ Wenn Sie diesen Bedingungen nicht zustimmen, dürfen Sie das Protokoll nicht nut
 
 Wenn Sie das Protokoll im Namen einer Organisation nutzen, versichern Sie, dass Sie die Befugnis haben, diese Organisation zu binden, und „Sie" schließt diese Organisation ein.
 
-**Verifizierer:** Durch die Veröffentlichung eines Art-30473-Verifizierer-Nachweis-Ereignisses im Nostr-Netzwerk oder durch die Durchführung einer Signet-Verifizierungszeremonie akzeptieren Sie Abschnitt 8 (Verifizierer-Pflichten) als rechtsverbindliche Bedingung Ihrer Teilnahme. Sie müssen kein separates Dokument unterzeichnen. Die Durchführung einer Verifizierung ist Ihre Annahme.
+**Verifizierer:** Durch die Veröffentlichung eines Art-31000-Verifizierer-Nachweis-Ereignisses im Nostr-Netzwerk oder durch die Durchführung einer Signet-Verifizierungszeremonie akzeptieren Sie Abschnitt 8 (Verifizierer-Pflichten) als rechtsverbindliche Bedingung Ihrer Teilnahme. Sie müssen kein separates Dokument unterzeichnen. Die Durchführung einer Verifizierung ist Ihre Annahme.
 
 ---
 
@@ -115,14 +115,14 @@ Das Protokoll verwendet die folgenden Nostr-Ereignisarten:
 
 | Art | Zweck |
 |---|---|
-| 30470 | Nachweis-Ereignisse |
-| 30471 | Bürgschaftsbeglaubigungen |
-| 30472 | Community-Verifizierungsrichtlinien |
-| 30473 | Verifizierer-Registrierungsnachweise |
-| 30474 | Challenge-Ereignisse |
-| 30475 | Widerrufsereignisse |
-| 30476 | Identitätsbrücken-Ereignisse |
-| 30477 | Delegierungsereignisse (Vormund und Agent) |
+| 31000 | Nachweis-Ereignisse |
+| 31000 | Bürgschaftsbeglaubigungen |
+| 30078 | Community-Verifizierungsrichtlinien |
+| 31000 | Verifizierer-Registrierungsnachweise |
+| 31000 | Challenge-Ereignisse |
+| 31000 | Widerrufsereignisse |
+| 31000 | Identitätsbrücken-Ereignisse |
+| 31000 | Delegierungsereignisse (Vormund und Agent) |
 | 30482–30484 | Abstimmungserweiterung (Wahl, Stimmzettel, Ergebnis) |
 
 Ereignisart-Nummern stehen noch unter finaler NIP-Zuweisung.
@@ -156,7 +156,7 @@ Während des Onboardings wählen Sie, welches Schlüsselpaar Ihr primäres Konto
 
 ### 4.2 Einzelschlüsselpaar-Modus (nsec-Import)
 
-Wenn Sie ein bestehender Nostr-Benutzer sind, können Sie Ihren bestehenden privaten Schlüssel (nsec) importieren. Im Einzelschlüsselpaar-Modus wird Ihr bestehender npub zu Ihrer Natural-Person-Identität, und Sie können eine Identitätsbrücke (Art-30476-Ereignis) erstellen, um ihn mit einem Persona-Konto zu verknüpfen. Alle Ihre bestehenden Follower, NIP-05, Zaps und Reputation bleiben erhalten.
+Wenn Sie ein bestehender Nostr-Benutzer sind, können Sie Ihren bestehenden privaten Schlüssel (nsec) importieren. Im Einzelschlüsselpaar-Modus wird Ihr bestehender npub zu Ihrer Natural-Person-Identität, und Sie können eine Identitätsbrücke (Art-31000-Ereignis) erstellen, um ihn mit einem Persona-Konto zu verknüpfen. Alle Ihre bestehenden Follower, NIP-05, Zaps und Reputation bleiben erhalten.
 
 ### 4.3 Schlüsselgenerierung und Backup
 
@@ -197,7 +197,7 @@ Stufe-3- und Stufe-4-Nachweise werden durch die Zwei-Nachweis-Zeremonie ausgeste
 
 3. **Der Verifizierer bestätigt oder lehnt ab.** Der Verifizierer prüft Ihre Dokumente, verifiziert, dass Sie die in ihnen beschriebene Person sind, und bestätigt oder lehnt die von Ihnen eingegebenen Daten ab. Der Verifizierer tippt Ihre persönlichen Daten nicht — er bestätigt nur, was Sie eingegeben haben.
 
-4. **Zwei Nachweise werden ausgestellt.** Wenn der Verifizierer die Daten bestätigt, veröffentlicht er zwei Art-30470-Nachweis-Ereignisse — eines für Ihr Natural-Person-Schlüsselpaar (mit Ihrer Merkle-Root und Ihrem Nullifier) und eines für Ihr Persona-Schlüsselpaar (nur mit Ihrem Altersbereichsnachweis). Beide Nachweise werden mit dem professionellen Nostr-Schlüssel des Verifizierers unterzeichnet.
+4. **Zwei Nachweise werden ausgestellt.** Wenn der Verifizierer die Daten bestätigt, veröffentlicht er zwei Art-31000-Nachweis-Ereignisse — eines für Ihr Natural-Person-Schlüsselpaar (mit Ihrer Merkle-Root und Ihrem Nullifier) und eines für Ihr Persona-Schlüsselpaar (nur mit Ihrem Altersbereichsnachweis). Beide Nachweise werden mit dem professionellen Nostr-Schlüssel des Verifizierers unterzeichnet.
 
 5. **Die Dokumentnummer wird verworfen.** Nach Berechnung des Nullifiers wird die Dokumentnummer nicht vom Protokoll, der App oder (sofern nicht durch berufliche Verpflichtungen erforderlich) dem Verifizierer aufbewahrt.
 
@@ -256,7 +256,7 @@ Wenn das dem Nachweis zugrunde liegende Dokument vor dem Nachweis selbst abläuf
 
 ### 6.2 Nachweis-Widerruf
 
-Nachweise können durch Veröffentlichung eines Art-30475-Ereignisses widerrufen werden. Widerruf kann initiiert werden durch:
+Nachweise können durch Veröffentlichung eines Art-31000-Ereignisses widerrufen werden. Widerruf kann initiiert werden durch:
 
 - Sie (Selbstwiderruf — z. B. bei Schlüsselkompromittierung oder Namensänderung)
 - Den ausstellenden Verifizierer (aus Gründen, wie entdecktem Betrug)
@@ -279,7 +279,7 @@ Wenn sich Ihre realen Attribute ändern (Namensänderung, Dokumenterneuerung, St
 
 ### 6.5 Vormund-Delegierung
 
-Ein Vormund (verifizierter Elternteil oder gesetzlicher Vormund) kann bestimmte Berechtigungen über Art-30477-Delegierungsereignisse an vertrauenswürdige Erwachsene delegieren. Delegierungsbereiche umfassen:
+Ein Vormund (verifizierter Elternteil oder gesetzlicher Vormund) kann bestimmte Berechtigungen über Art-31000-Delegierungsereignisse an vertrauenswürdige Erwachsene delegieren. Delegierungsbereiche umfassen:
 
 - `full` — vollständige Delegierung (z. B. gleichberechtigter Elternteil)
 - `activity-approval` — Aktivitäten genehmigen, die elterliche Einwilligung erfordern
@@ -303,12 +303,12 @@ Eine Persona ist ein anonymes Alias:
 
 - Eine Persona trägt keine persönlich identifizierenden Informationen — keinen Namen, keinen Nullifier, keine Merkle-Root
 - Eine Persona übernimmt den Altersbereichsnachweis von der Zwei-Nachweis-Zeremonie
-- Eine Persona kann über eine Identitätsbrücke (Art 30476) unter Verwendung von Ringsignaturen mit einer Natural Person verknüpft werden, was der Persona ermöglicht, „Ich bin eine echte, verifizierte Person" zu beweisen, ohne preiszugeben, welche Person
+- Eine Persona kann über eine Identitätsbrücke (Art 31000) unter Verwendung von Ringsignaturen mit einer Natural Person verknüpft werden, was der Persona ermöglicht, „Ich bin eine echte, verifizierte Person" zu beweisen, ohne preiszugeben, welche Person
 - Sie sind verantwortlich für alle Aktivitäten, die über Ihre Persona-Konten durchgeführt werden
 
 ### 6.8 Keine Garantie der Akzeptanz
 
-Wir garantieren nicht, dass ein Nachweis von einer vertrauenden Partei akzeptiert wird. Gemeinschaften legen ihre eigenen Akzeptanzrichtlinien durch Art-30472-Richtlinienereignisse fest.
+Wir garantieren nicht, dass ein Nachweis von einer vertrauenden Partei akzeptiert wird. Gemeinschaften legen ihre eigenen Akzeptanzrichtlinien durch Art-30078-Richtlinienereignisse fest.
 
 ### 6.9 Dokumenten-Wallet
 
@@ -345,7 +345,7 @@ Sie dürfen nicht:
 
 ### 7.3 Bürgschaftspflichten (Stufe 2)
 
-Beim Bürgen für einen anderen Benutzer (Art-30471-Ereignis):
+Beim Bürgen für einen anderen Benutzer (Art-31000-Ereignis):
 
 - Sie müssen eine echte, persönliche Grundlage für die Bürgschaft haben
 - Sie dürfen keine Zahlung oder andere Gegenleistung für die Bürgschaft annehmen
@@ -358,7 +358,7 @@ Beim Bürgen für einen anderen Benutzer (Art-30471-Ereignis):
 
 ### 8.1 Warum es keine separate Vereinbarung gibt
 
-Wir haben die Verifizierer-Vereinbarung in diese Bedingungen integriert, weil diejenigen, die Kinder am wahrscheinlichsten verifizieren — Lehrkräfte bei Elternabenden, Hausärzte, Sozialarbeiter — kein zweites Rechtsdokument navigieren sollten. Durch das Handeln als Signet-Verifizierer (Veröffentlichung eines Art-30473-Ereignisses oder Durchführung einer Zeremonie) akzeptieren Sie die Verpflichtungen in diesem Abschnitt. Diese Verpflichtungen ergänzen Ihre bestehenden beruflichen Pflichten und ersetzen sie nicht.
+Wir haben die Verifizierer-Vereinbarung in diese Bedingungen integriert, weil diejenigen, die Kinder am wahrscheinlichsten verifizieren — Lehrkräfte bei Elternabenden, Hausärzte, Sozialarbeiter — kein zweites Rechtsdokument navigieren sollten. Durch das Handeln als Signet-Verifizierer (Veröffentlichung eines Art-31000-Ereignisses oder Durchführung einer Zeremonie) akzeptieren Sie die Verpflichtungen in diesem Abschnitt. Diese Verpflichtungen ergänzen Ihre bestehenden beruflichen Pflichten und ersetzen sie nicht.
 
 ### 8.2 Berechtigte Berufe
 
@@ -386,7 +386,7 @@ In allen Fällen müssen Sie in gutem Stand sein (nicht Gegenstand von Suspendie
 
 Zur Registrierung als Verifizierer:
 
-1. Veröffentlichen Sie ein Art-30473-Verifizierer-Nachweis-Ereignis auf Nostr mit Ihrer Berufskategorie, Rechtsordnung, Lizenzierungsbehörde und Lizenzreferenz.
+1. Veröffentlichen Sie ein Art-31000-Verifizierer-Nachweis-Ereignis auf Nostr mit Ihrer Berufskategorie, Rechtsordnung, Lizenzierungsbehörde und Lizenzreferenz.
 2. Erhalten Sie mindestens zwei Bürgschaften von anderen verifizierten Signet-Fachleuten aus mindestens zwei verschiedenen Berufen (berufsfachübergreifendes Bürgen verhindert Kollussionsringe aus einem einzigen Beruf).
 3. Die Registrierung impliziert keine Billigung durch uns.
 
@@ -399,7 +399,7 @@ Bei der Durchführung einer Stufe-3-(Erwachsener-)Verifizierung müssen Sie:
 3. Bestätigen, dass die vor Ihnen stehende Person mit dem Dokument übereinstimmt.
 4. Die vom Subjekt vorab in die App eingegebenen Daten bestätigen (oder ablehnen). Sie bestätigen, was Sie sehen; Sie geben keine Daten im Namen des Subjekts ein.
 5. Den Dokumentnullifier und, wo mehrere Dokumente vorgelegt werden, die Nullifier-Familie berechnen.
-6. Den Natural-Person-Nachweis (Art 30470) und den Persona-Nachweis (Art 30470) über die Zwei-Nachweis-Zeremonie ausstellen.
+6. Den Natural-Person-Nachweis (Art 31000) und den Persona-Nachweis (Art 31000) über die Zwei-Nachweis-Zeremonie ausstellen.
 7. Die Dokumentnummer nach der Nullifier-Berechnung verwerfen. Speichern Sie sie nicht, sofern Ihre beruflichen Verpflichtungen dies nicht unabhängig erfordern.
 8. Aufzeichnungen über die Verifizierung führen (Datum, Ort, Identität des Subjekts, geprüfte Dokumente, Nullifier-Hash, beide Pubkeys) für den Zeitraum, der durch Ihre beruflichen Verpflichtungen gefordert wird — typischerweise mindestens sechs Jahre.
 
@@ -473,7 +473,7 @@ Ihr Verifizierer-Status kann gekündigt werden:
 
 **Mit 30-tägiger Ankündigung, wenn:** Sie wesentlich gegen diese Bedingungen verstoßen und dies nicht innerhalb von 14 Tagen beheben; Sie die Berechtigungsanforderungen nicht mehr erfüllen; oder das Protokoll eingestellt wird.
 
-Bei Kündigung wird Ihr Art-30473-Verifizierer-Nachweis widerrufen. Zuvor ausgestellte Nachweise bleiben gültig, sofern sie nicht einzeln widerrufen werden. Sie müssen Verifizierungsaufzeichnungen für den erforderlichen Aufbewahrungszeitraum aufbewahren.
+Bei Kündigung wird Ihr Art-31000-Verifizierer-Nachweis widerrufen. Zuvor ausgestellte Nachweise bleiben gültig, sofern sie nicht einzeln widerrufen werden. Sie müssen Verifizierungsaufzeichnungen für den erforderlichen Aufbewahrungszeitraum aufbewahren.
 
 ---
 
@@ -528,11 +528,11 @@ Die Integration des SDK impliziert keine Billigung Ihrer Website oder Ihres Dien
 
 ### 10.1 Was er ist
 
-Der Signet-Verifizierungsbot („der Bot") ist ein automatisierter Dienst, der das Nostr-Netzwerk auf Art-30470-Nachweis-Ereignisse überwacht und auf Anfrage Nachweis-Verifizierungszusammenfassungen bereitstellt. Der Bot kann Antworten auf Anfragen posten, periodische Übersichten veröffentlichen oder auf Erwähnungen reagieren.
+Der Signet-Verifizierungsbot („der Bot") ist ein automatisierter Dienst, der das Nostr-Netzwerk auf Art-31000-Nachweis-Ereignisse überwacht und auf Anfrage Nachweis-Verifizierungszusammenfassungen bereitstellt. Der Bot kann Antworten auf Anfragen posten, periodische Übersichten veröffentlichen oder auf Erwähnungen reagieren.
 
 ### 10.2 Was er verarbeitet
 
-Der Bot verarbeitet nur öffentliche Nostr-Ereignisse. Er liest Art-30470, 30471, 30472, 30473, 30475, 30476 und 30477-Ereignisse von öffentlichen Relays. Er greift nicht auf Ihren privaten Schlüssel, Ihre Mnemonic oder lokal in der App gespeicherte Daten zu.
+Der Bot verarbeitet nur öffentliche Nostr-Ereignisse. Er liest Art-31000, 31000, 30078, 31000, 31000, 31000 und 31000-Ereignisse von öffentlichen Relays. Er greift nicht auf Ihren privaten Schlüssel, Ihre Mnemonic oder lokal in der App gespeicherte Daten zu.
 
 Der Bot berechnet Signet-IQ-Werte aus öffentlichen On-Chain-Daten. Er erhebt oder speichert keine personenbezogenen Daten über das hinaus, was in öffentlichen Nostr-Ereignissen veröffentlicht ist.
 
@@ -559,7 +559,7 @@ Der Wert wird aus gewichteten Beiträgen berechnet, einschließlich:
 - Stufe-3- oder Stufe-4-professioneller Verifizierung (höchstes Gewicht)
 - Kreuz-Verifizierung durch zusätzliche unabhängige Fachleute
 - Persönliche Peer-Bürgschaften von Benutzern mit hohem IQ
-- Identitätsbrücken (Art 30476)
+- Identitätsbrücken (Art 31000)
 - Kontoalter und -aktivität
 - Verifizierer-Vertrauenswert (siehe Abschnitt 11.3)
 

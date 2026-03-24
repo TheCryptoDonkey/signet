@@ -21,7 +21,7 @@ This repo contains:
 - **3 voting extension event kinds** (30482-30484): election, ballot, election result
 - **Two-credential ceremony**: Professional verification issues Natural Person credential (with nullifier, Merkle root) + Persona credential (anonymous, age-range only) simultaneously
 - **Document-based nullifiers**: SHA-256 of length-prefixed fields (docType, country, docNumber, "signet-nullifier-v2") prevents duplicate identity without revealing documents
-- **Guardian delegation**: Kind 30999 (`type: delegation`) events with scopes (full, activity-approval, content-management, contact-approval) for family structures
+- **Guardian delegation**: Kind 31000 (`type: delegation`) events with scopes (full, activity-approval, content-management, contact-approval) for family structures
 - **Crypto stack**: Schnorr (secp256k1 base) + Pedersen range proofs (age range proofs) + future ZK layer
 - **No central authority**: professional bodies (Law Society, medical boards, notary commissions) are the trust anchors
 - **"Signet me"**: Time-based word verification (configurable 1-16 words, default 3) powered by canary-kit's CANARY-DERIVE
@@ -99,10 +99,10 @@ These conventions were established during the security hardening review (2026-03
 
 ## Gotchas
 
-- **spoken-token dependency** — `spoken-token` is published on npm as `^1.0.3`. Used in `src/signet-words.ts` for word-based verification tokens.
+- **spoken-token dependency** — `spoken-token` is published on npm as `^2.0.3`. Used in `src/signet-words.ts` for word-based verification tokens. v2.0 has breaking changes (PIN encoding bias fix, directional pair domain separation, whitespace context rejection) but Signet's usage (deriveTokenBytes + encodeAsWords) is backwards-compatible.
 - **npm publication** — `signet-protocol` is published to npm via semantic-release on push to main.
 - **`@noble/hashes` v2 import paths** — v2 requires `.js` suffix on subpath imports (e.g. `@noble/hashes/sha2.js`, `@noble/hashes/utils.js`, `@noble/curves/secp256k1.js`). The old `sha256` subpath is now `sha2` (but the `sha256` named export still exists within it). `randomPrivateKey` was renamed to `randomSecretKey`. Several functions now require `Uint8Array` instead of hex strings.
-- **nsec-tree dependency** — `nsec-tree` is published on npm as `^1.2.0`. Provides identity derivation, personas, linkage proofs. Requires Node `>=22`.
+- **nsec-tree dependency** — `nsec-tree` is published on npm as `^1.4.1`. Provides identity derivation, personas, sub-identity derivation, linkage proofs, NIP-19 encoding. Requires Node `>=22`.
 
 ## Subagent Model Selection
 

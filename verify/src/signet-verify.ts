@@ -123,7 +123,7 @@ function hexToBytes(hex: string): Uint8Array {
  */
 async function verifyEventSignature(event: PresentationResponse['credential']): Promise<boolean> {
   // Structural validation: check field formats
-  if (!event.id || !event.pubkey || !event.sig || !event.tags || event.kind !== 30470) {
+  if (!event.id || !event.pubkey || !event.sig || !event.tags || event.kind !== 31000) {
     return false;
   }
   // sig must be exactly 128 hex chars (64-byte Schnorr signature)
@@ -344,7 +344,7 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
         return;
       }
 
-      // Extract the inner kind 30470 credential from the credential tag
+      // Extract the inner kind 31000 credential from the credential tag
       const credentialTag = (envelopeTags as string[][]).find(t => t[0] === 'credential');
       if (!credentialTag || !credentialTag[1]) return;
 
@@ -391,7 +391,7 @@ export async function verifyAge(requiredAgeRange: string, options?: Partial<Sign
     async function handleCredential(credential: PresentationResponse['credential'], _status: string | undefined) {
       if (resolved) return;
 
-      // Validate the inner kind 30470 credential signature
+      // Validate the inner kind 31000 credential signature
       const valid = await verifyEventSignature(credential);
       const ageRange = getTagValue(credential.tags, 'age-range');
       const tier = getTagValue(credential.tags, 'tier');

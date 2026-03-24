@@ -11,15 +11,15 @@ authority. Trust accumulates as a continuous Signet Score score (0–200, where 
 ```
   Person
     |
-    | signs a kind 30999 self-declaration (`type: credential`)
+    | signs a kind 31000 self-declaration (`type: credential`)
     v
   Tier 1 — Self-declared
     |
-    | three or more peers sign kind 30999 vouches (`type: vouch`)
+    | three or more peers sign kind 31000 vouches (`type: vouch`)
     v
   Tier 2 — Web-of-trust
     |
-    | licensed professional issues kind 30999 credential (`type: credential`)
+    | licensed professional issues kind 31000 credential (`type: credential`)
     | with zero-knowledge age proof and document nullifier
     v
   Tier 3 — Professionally verified (adult)
@@ -44,9 +44,9 @@ authority. Trust accumulates as a continuous Signet Score score (0–200, where 
 | Tier | Name                        | Who issues                              | What it proves                                      | Score contribution |
 |------|-----------------------------|-----------------------------------------|-----------------------------------------------------|--------------------|
 | 1    | Self-declared               | Subject themselves                      | "I exist and I own this key"                        | —                  |
-| 2    | Web-of-trust                | Peers (kind 30999, `type: vouch`)              | Enough known people can vouch for this identity     | +2–8 per vouch     |
-| 3    | Professionally verified     | Licensed professional (kind 30999, `type: credential`)      | Government document seen; adult age confirmed       | +40               |
-| 4    | Professional + child safety | Licensed professional (kind 30999, `type: credential`)      | Tier 3 plus authorisation to interact with minors   | +40               |
+| 2    | Web-of-trust                | Peers (kind 31000, `type: vouch`)              | Enough known people can vouch for this identity     | +2–8 per vouch     |
+| 3    | Professionally verified     | Licensed professional (kind 31000, `type: credential`)      | Government document seen; adult age confirmed       | +40               |
+| 4    | Professional + child safety | Licensed professional (kind 31000, `type: credential`)      | Tier 3 plus authorisation to interact with minors   | +40               |
 
 Tier 2 requires at least 3 vouches from Tier 2+ peers (configurable per community via kind 30078 (NIP-78) policy).
 Tiers 3 and 4 are issued in a two-credential ceremony: one Natural Person credential (carries document
@@ -57,18 +57,18 @@ nullifier and Merkle root) and one anonymous Persona credential (carries age ran
 
 ### Level 1 — Display badges (a weekend)
 
-Read kind 30999 (`type: credential` and `type: vouch`) from relays, call `computeBadge`, show a label.
+Read kind 31000 (`type: credential` and `type: vouch`) from relays, call `computeBadge`, show a label.
 No cryptography required beyond Schnorr signature verification (optional).
 
 ### Level 2 — Issue vouches (a few days)
 
-Add kind 30999 (`type: vouch`) vouch issuance. Requires Schnorr signing, relay write access, and basic
+Add kind 31000 (`type: vouch`) vouch issuance. Requires Schnorr signing, relay write access, and basic
 kind 30078 (NIP-78) policy parsing so your client respects community verification thresholds.
 
 ### Level 3 — Full protocol (weeks)
 
-Issue professional credentials, manage verifier lifecycle (kind 30999 types: verifier, challenge, revocation), build
-guardian delegation (kind 30999, `type: delegation`), support credential chains (supersedes / superseded-by),
+Issue professional credentials, manage verifier lifecycle (kind 31000 types: verifier, challenge, revocation), build
+guardian delegation (kind 31000, `type: delegation`), support credential chains (supersedes / superseded-by),
 and integrate the voting extension (kinds 30482–30484).
 
 
@@ -91,30 +91,30 @@ and integrate the voting extension (kinds 30482–30484).
     |        (proves "subject is 18+" without revealing birth date)
     |                        |
     |        Two credentials signed and published:
-    |          kind 30999 Natural Person  (nullifier + Merkle root, type: credential)
-    |          kind 30999 Persona         (age range only, anonymous, type: credential)
+    |          kind 31000 Natural Person  (nullifier + Merkle root, type: credential)
+    |          kind 31000 Persona         (age range only, anonymous, type: credential)
     |                        |
     v                        v
                Both events published to Nostr relays
 ```
 
-Professional verifiers are themselves credentialed (kind 30999, `type: verifier`) and require cross-verification
+Professional verifiers are themselves credentialed (kind 31000, `type: verifier`) and require cross-verification
 by two other licensed professionals before becoming active. A challenge / revocation mechanism
-(kind 30999 types: `challenge` and `revocation`) allows the community to remove a fraudulent verifier.
+(kind 31000 types: `challenge` and `revocation`) allows the community to remove a fraudulent verifier.
 
 
 ## Event Kinds Reference
 
 | Kind  | Type tag          | Purpose                                            |
 |-------|-------------------|----------------------------------------------------|
-| 30999 | `credential`      | Verification credential for any tier               |
-| 30999 | `vouch`           | Peer attestation (Tier 2 building block)           |
+| 31000 | `credential`      | Verification credential for any tier               |
+| 31000 | `vouch`           | Peer attestation (Tier 2 building block)           |
 | 30078 | —                 | Policy: community verification requirements (NIP-78) |
-| 30999 | `verifier`        | Professional verifier credential                   |
-| 30999 | `challenge`       | Report a suspected fraudulent verifier             |
-| 30999 | `revocation`      | Remove a verifier after threshold confirmations    |
-| 30999 | `identity-bridge` | Link two keypairs via ring signature               |
-| 30999 | `delegation`      | Guardian / agent delegation with scoped permission |
+| 31000 | `verifier`        | Professional verifier credential                   |
+| 31000 | `challenge`       | Report a suspected fraudulent verifier             |
+| 31000 | `revocation`      | Remove a verifier after threshold confirmations    |
+| 31000 | `identity-bridge` | Link two keypairs via ring signature               |
+| 31000 | `delegation`      | Guardian / agent delegation with scoped permission |
 | 30482 | —                 | Voting extension: define an election               |
 | 30483 | —                 | Voting extension: cast an anonymous ballot         |
 | 30484 | —                 | Voting extension: publish tallied result           |
@@ -137,7 +137,7 @@ import type { NostrEvent } from 'signet-protocol';
 // 1. Build relay filters for one or more pubkeys
 const pubkeys = ['<hex-pubkey>'];
 const filters = buildBadgeFilters(pubkeys);
-// filters = [{ kinds: [30999], '#d': ['<hex-pubkey>'] }]
+// filters = [{ kinds: [31000], '#d': ['<hex-pubkey>'] }]
 
 // 2. Fetch events from your relay (using whatever WebSocket client you prefer)
 const events: NostrEvent[] = await fetchFromRelay(filters);
@@ -156,7 +156,7 @@ if (meetsMinimumTier(badge, 2)) {
 }
 ```
 
-`computeBadge` accepts any mix of kind 30999 (`type: credential` and `type: vouch`) events. It handles expiry, deduplication
+`computeBadge` accepts any mix of kind 31000 (`type: credential` and `type: vouch`) events. It handles expiry, deduplication
 (one vouch counted per voucher pubkey), and optional Schnorr signature verification. The result is
 a plain object — no rendering assumptions are made.
 

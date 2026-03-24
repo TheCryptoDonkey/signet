@@ -334,7 +334,7 @@ describe('Guardian Delegation', () => {
   const child = generateKeyPair();
   const delegate = generateKeyPair();
 
-  it('creates valid kind 30477 event', async () => {
+  it('creates valid kind 31000 (type: delegation) event', async () => {
     const delegation = await createGuardianDelegation(guardian.privateKey, {
       childPubkey: child.publicKey,
       delegatePubkey: delegate.publicKey,

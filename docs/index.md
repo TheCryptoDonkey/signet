@@ -15,8 +15,8 @@ flowchart TD
     IQ["Signet Score (0–200)\nWeighted trust score"]
     Badge["Badge Display\nTier label + score"]
 
-    T1 -->|"peers vouch\n(kind 30471)"| T2
-    T2 -->|"professional issues\ncredential (kind 30470)"| T3
+    T1 -->|"peers vouch\n(kind 31000, type: vouch)"| T2
+    T2 -->|"professional issues\ncredential (kind 31000)"| T3
     T3 -->|"extended ceremony\nwith child evidence"| T4
 
     T1 --> IQ
@@ -30,15 +30,15 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph Core["Core Protocol (30470–30477)"]
-        Cred["30470\nCredential"]
-        Vouch["30471\nVouch"]
-        Policy["30472\nPolicy"]
-        Verifier["30473\nVerifier"]
-        Challenge["30474\nChallenge"]
-        Revocation["30475\nRevocation"]
-        Bridge["30476\nIdentity Bridge"]
-        Delegation["30477\nDelegation"]
+    subgraph Core["Core Protocol (kind 31000 NIP-VA + 30078)"]
+        Cred["31000\ntype: credential"]
+        Vouch["31000\ntype: vouch"]
+        Policy["30078\nPolicy (NIP-78)"]
+        Verifier["31000\ntype: verifier"]
+        Challenge["31000\ntype: challenge"]
+        Revocation["31000\ntype: revocation"]
+        Bridge["31000\ntype: identity-bridge"]
+        Delegation["31000\ntype: delegation"]
     end
 
     subgraph Voting["Voting Extension (30482–30484)"]

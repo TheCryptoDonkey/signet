@@ -50,7 +50,7 @@ Se você não concordar com estes Termos, não deve usar o Protocolo.
 
 Se você usar o Protocolo em nome de uma organização, você declara que tem autoridade para vincular essa organização, e "você" inclui essa organização.
 
-**Verificadores:** Ao publicar um evento de credencial de verificador de tipo 30473 na rede Nostr, ou ao realizar uma cerimônia de verificação Signet, você aceita a Seção 8 (Obrigações do Verificador) como uma condição juridicamente vinculante da sua participação. Você não precisa assinar um documento separado. O ato de realizar uma verificação é a sua aceitação.
+**Verificadores:** Ao publicar um evento de credencial de verificador de tipo 31000 na rede Nostr, ou ao realizar uma cerimônia de verificação Signet, você aceita a Seção 8 (Obrigações do Verificador) como uma condição juridicamente vinculante da sua participação. Você não precisa assinar um documento separado. O ato de realizar uma verificação é a sua aceitação.
 
 ---
 
@@ -115,14 +115,14 @@ O Protocolo usa os seguintes tipos de eventos Nostr:
 
 | Tipo | Finalidade |
 |---|---|
-| 30470 | Eventos de credenciais |
-| 30471 | Atestações de atestação |
-| 30472 | Políticas de verificação de comunidade |
-| 30473 | Credenciais de registro de verificadores |
-| 30474 | Eventos de desafio |
-| 30475 | Eventos de revogação |
-| 30476 | Eventos de ponte de identidade |
-| 30477 | Eventos de delegação (guardião e agente) |
+| 31000 | Eventos de credenciais |
+| 31000 | Atestações de atestação |
+| 30078 | Políticas de verificação de comunidade |
+| 31000 | Credenciais de registro de verificadores |
+| 31000 | Eventos de desafio |
+| 31000 | Eventos de revogação |
+| 31000 | Eventos de ponte de identidade |
+| 31000 | Eventos de delegação (guardião e agente) |
 | 30482–30484 | Extensão de votação (eleição, cédula, resultado) |
 
 Os números de tipo de evento estão pendentes de alocação final de NIP.
@@ -156,7 +156,7 @@ Durante o processo de integração, você escolhe qual par de chaves é sua cont
 
 ### 4.2 Modo de Par de Chaves Único (Importação nsec)
 
-Se você for um usuário Nostr existente, pode importar sua chave privada existente (nsec). No modo de par de chaves único, seu npub existente se torna sua identidade de Pessoa Natural, e você pode criar uma ponte de identidade (evento de tipo 30476) para vinculá-la a uma conta Persona. Todos os seus seguidores existentes, NIP-05, zaps e reputação são preservados.
+Se você for um usuário Nostr existente, pode importar sua chave privada existente (nsec). No modo de par de chaves único, seu npub existente se torna sua identidade de Pessoa Natural, e você pode criar uma ponte de identidade (evento de tipo 31000) para vinculá-la a uma conta Persona. Todos os seus seguidores existentes, NIP-05, zaps e reputação são preservados.
 
 ### 4.3 Geração e Backup de Chaves
 
@@ -197,7 +197,7 @@ As credenciais de Nível 3 e Nível 4 são emitidas através da cerimônia das d
 
 3. **O verificador confirma ou rejeita.** O verificador inspeciona seus documentos, verifica que você é a pessoa descrita neles e confirma ou rejeita os dados que você inseriu. O verificador não digita seus dados pessoais — ele apenas confirma o que você inseriu.
 
-4. **Duas credenciais são emitidas.** Se o verificador confirmar os dados, ele publica dois eventos de credencial de tipo 30470 — um para o seu par de chaves de Pessoa Natural (com sua raiz Merkle e nullifier) e um para o seu par de chaves de Persona (com apenas sua prova de faixa etária). Ambas as credenciais são assinadas com a chave Nostr profissional do verificador.
+4. **Duas credenciais são emitidas.** Se o verificador confirmar os dados, ele publica dois eventos de credencial de tipo 31000 — um para o seu par de chaves de Pessoa Natural (com sua raiz Merkle e nullifier) e um para o seu par de chaves de Persona (com apenas sua prova de faixa etária). Ambas as credenciais são assinadas com a chave Nostr profissional do verificador.
 
 5. **O número do documento é descartado.** Após o cálculo do nullifier, o número do documento não é retido pelo Protocolo, pelo Aplicativo, ou (a menos que exigido por suas obrigações profissionais) pelo verificador.
 
@@ -256,7 +256,7 @@ Se o documento subjacente a uma credencial vencer antes da própria credencial, 
 
 ### 6.2 Revogação de Credenciais
 
-As credenciais podem ser revogadas publicando um evento de tipo 30475. A revogação pode ser iniciada por:
+As credenciais podem ser revogadas publicando um evento de tipo 31000. A revogação pode ser iniciada por:
 
 - Você (autorrevogação — por exemplo, em caso de comprometimento de chave ou mudança de nome)
 - O verificador emissor (por causa justa, como fraude descoberta)
@@ -279,7 +279,7 @@ Quando seus atributos do mundo real mudam (mudança de nome, renovação de docu
 
 ### 6.5 Delegação de Guardião
 
-Um guardião (pai ou tutor legal verificado) pode delegar permissões específicas a adultos confiáveis via eventos de delegação de tipo 30477. Os escopos de delegação incluem:
+Um guardião (pai ou tutor legal verificado) pode delegar permissões específicas a adultos confiáveis via eventos de delegação de tipo 31000. Os escopos de delegação incluem:
 
 - `full` — delegação total (por exemplo, coparentalidade)
 - `activity-approval` — aprovar atividades que requerem consentimento parental
@@ -303,12 +303,12 @@ Uma Persona é um alias anônimo:
 
 - Uma Persona não carrega nenhuma informação de identificação pessoal — sem nome, sem nullifier, sem raiz Merkle
 - Uma Persona herda a prova de faixa etária da cerimônia das duas credenciais
-- Uma Persona pode ser vinculada a uma Pessoa Natural via uma ponte de identidade (tipo 30476) usando assinaturas em anel, permitindo que a Persona comprove "Sou uma pessoa real e verificada" sem revelar qual pessoa
+- Uma Persona pode ser vinculada a uma Pessoa Natural via uma ponte de identidade (tipo 31000) usando assinaturas em anel, permitindo que a Persona comprove "Sou uma pessoa real e verificada" sem revelar qual pessoa
 - Você é responsável por toda a atividade realizada através de suas contas Persona
 
 ### 6.8 Sem Garantia de Aceitação
 
-Não garantimos que qualquer credencial será aceita por qualquer parte confiante. As comunidades estabelecem suas próprias políticas de aceitação através de eventos de política de tipo 30472.
+Não garantimos que qualquer credencial será aceita por qualquer parte confiante. As comunidades estabelecem suas próprias políticas de aceitação através de eventos de política de tipo 30078.
 
 ### 6.9 Carteira de Documentos
 
@@ -345,7 +345,7 @@ Você não deve:
 
 ### 7.3 Obrigações de Atestação (Nível 2)
 
-Ao atestar outro usuário (evento de tipo 30471):
+Ao atestar outro usuário (evento de tipo 31000):
 
 - Você deve ter uma base genuína e pessoal para a atestação
 - Você não deve aceitar pagamento ou outra consideração por fornecer atestações
@@ -358,7 +358,7 @@ Ao atestar outro usuário (evento de tipo 30471):
 
 ### 8.1 Por que Não Há Acordo Separado
 
-Incorporamos o acordo do verificador nestes Termos porque as pessoas mais propensas a verificar crianças — professores em reuniões de pais, clínicos gerais, assistentes sociais — não devem precisar navegar por um segundo documento jurídico. Ao atuar como verificador Signet (publicando um evento de tipo 30473 ou realizando uma cerimônia), você aceita as obrigações desta seção. Estas obrigações são adicionais e não substituem seus deveres profissionais existentes.
+Incorporamos o acordo do verificador nestes Termos porque as pessoas mais propensas a verificar crianças — professores em reuniões de pais, clínicos gerais, assistentes sociais — não devem precisar navegar por um segundo documento jurídico. Ao atuar como verificador Signet (publicando um evento de tipo 31000 ou realizando uma cerimônia), você aceita as obrigações desta seção. Estas obrigações são adicionais e não substituem seus deveres profissionais existentes.
 
 ### 8.2 Profissões Elegíveis
 
@@ -386,7 +386,7 @@ Em todos os casos, você deve estar em bom estado (não sujeito a suspensão, re
 
 Para se registrar como verificador:
 
-1. Publique um evento de credencial de verificador de tipo 30473 no Nostr contendo sua categoria profissional, jurisdição, órgão de licenciamento e referência de licença.
+1. Publique um evento de credencial de verificador de tipo 31000 no Nostr contendo sua categoria profissional, jurisdição, órgão de licenciamento e referência de licença.
 2. Obtenha pelo menos duas atestações de outros profissionais Signet verificados de pelo menos duas profissões diferentes (a atestação entre profissões evita anéis de conluio de única profissão).
 3. O registro não implica endosso da nossa parte.
 
@@ -399,7 +399,7 @@ Ao realizar uma verificação de Nível 3 (Adulto), você deve:
 3. Confirmar que a pessoa diante de você corresponde ao documento.
 4. Confirmar (ou rejeitar) os dados que o sujeito pré-inseriu no Aplicativo. Você está confirmando o que vê; não está inserindo dados em nome do sujeito.
 5. Calcular o nullifier do documento e, quando múltiplos documentos são apresentados, a família de nullifiers.
-6. Emitir a credencial de Pessoa Natural (tipo 30470) e a credencial de Persona (tipo 30470) via a cerimônia das duas credenciais.
+6. Emitir a credencial de Pessoa Natural (tipo 31000) e a credencial de Persona (tipo 31000) via a cerimônia das duas credenciais.
 7. Descartar o número do documento após o cálculo do nullifier. Não o armazene a menos que suas obrigações profissionais exijam independentemente.
 8. Manter registros da verificação (data, local, identidade do sujeito, documentos inspecionados, hash do nullifier, ambas as chaves públicas) pelo período exigido pelas suas obrigações profissionais — normalmente pelo menos seis anos.
 
@@ -473,7 +473,7 @@ Seu status de verificador pode ser rescindido:
 
 **Com 30 dias de aviso se:** você viola materialmente estes Termos e não corrige em 14 dias; você não atende mais aos requisitos de elegibilidade; ou o Protocolo é descontinuado.
 
-Após a rescisão, sua credencial de verificador de tipo 30473 é revogada. As credenciais anteriormente emitidas permanecem válidas a menos que sejam individualmente revogadas. Você deve manter os registros de verificação pelo período de retenção exigido.
+Após a rescisão, sua credencial de verificador de tipo 31000 é revogada. As credenciais anteriormente emitidas permanecem válidas a menos que sejam individualmente revogadas. Você deve manter os registros de verificação pelo período de retenção exigido.
 
 ---
 
@@ -528,11 +528,11 @@ A integração do SDK não implica endosso do seu site ou serviço por nossa par
 
 ### 10.1 O que É
 
-O bot de verificação Signet ("o Bot") é um serviço automatizado que monitora a rede Nostr em busca de eventos de credencial de tipo 30470 e fornece resumos de verificação de credencial mediante solicitação. O Bot pode publicar respostas a consultas, publicar resumos periódicos ou responder a menções.
+O bot de verificação Signet ("o Bot") é um serviço automatizado que monitora a rede Nostr em busca de eventos de credencial de tipo 31000 e fornece resumos de verificação de credencial mediante solicitação. O Bot pode publicar respostas a consultas, publicar resumos periódicos ou responder a menções.
 
 ### 10.2 O que Ele Processa
 
-O Bot processa apenas eventos Nostr públicos. Ele lê eventos de tipos 30470, 30471, 30472, 30473, 30475, 30476 e 30477 de relays públicos. Ele não acessa sua chave privada, sua mnemônica ou quaisquer dados armazenados localmente no Aplicativo.
+O Bot processa apenas eventos Nostr públicos. Ele lê eventos de tipos 31000, 31000, 30078, 31000, 31000, 31000 e 31000 de relays públicos. Ele não acessa sua chave privada, sua mnemônica ou quaisquer dados armazenados localmente no Aplicativo.
 
 O Bot calcula pontuações Signet IQ a partir de dados públicos na cadeia. Ele não coleta ou armazena dados pessoais além do que é publicado em eventos Nostr públicos.
 
@@ -559,7 +559,7 @@ A pontuação é calculada a partir de contribuições ponderadas incluindo:
 - Verificação profissional de Nível 3 ou Nível 4 (maior peso)
 - Verificação cruzada por profissionais independentes adicionais
 - Atestações presenciais de usuários com alto IQ
-- Pontes de identidade (tipo 30476)
+- Pontes de identidade (tipo 31000)
 - Idade e atividade da conta
 - Pontuação de confiança do verificador (veja a Seção 11.3)
 

@@ -35,11 +35,11 @@ if (meetsMinimumTier(badge, 2)) {
 - **Signet IQ** (0–200): A continuous trust score weighted by professional verification, in-person vouches, online vouches, account age, and identity bridges. 100 represents the current government standard.
 - **Zero-knowledge age proofs**: Bulletproofs on secp256k1 prove age ranges (e.g. "adult" or "child aged 8–12") without revealing date of birth.
 - **Document nullifiers**: SHA-256 of document fields prevents duplicate identity registration without storing any personal data.
-- **11 event kinds** (30470–30477, 30482–30484): Credentials, vouches, policies, verifier management, challenges, revocations, identity bridges, delegation, elections, ballots, and results.
+- **Single attestation kind** (31000, NIP-VA) plus policies (30078) and voting (30482–30484): All identity attestations (credentials, vouches, verifier management, challenges, revocations, identity bridges, delegation) share kind 31000, differentiated by `type` tag.
 
 ## API Surface
 
-### Credentials (kind 30470)
+### Credentials (kind 31000, type: credential)
 - `createSelfDeclaredCredential(privateKey)` — Tier 1
 - `createPeerVouchedCredential(issuerKey, subjectPubkey)` — Tier 2
 - `createProfessionalCredential(verifierKey, subjectPubkey, opts)` — Tier 3
@@ -47,7 +47,7 @@ if (meetsMinimumTier(badge, 2)) {
 - `verifyCredential(event)` — verify signature and structure
 - `parseCredential(event)` — extract structured fields
 
-### Vouches (kind 30471)
+### Vouches (kind 31000, type: vouch)
 - `createVouch(privateKey, params)` — vouch for another user
 - `hasEnoughVouches(vouches, pubkey)` — check Tier 2 threshold
 
@@ -55,15 +55,15 @@ if (meetsMinimumTier(badge, 2)) {
 - `computeBadge(pubkey, events, opts)` — Level 1 badge display
 - `computeTrustScore(pubkey, credentials, vouches, accountCreatedAt)` — full Signet IQ
 
-### Policies (kind 30472)
+### Policies (kind 30078, NIP-78)
 - `createPolicy(privateKey, params)` — community verification requirements
 - `PolicyChecker` — check users against a policy
 
-### Verifiers (kind 30473)
+### Verifiers (kind 31000, type: verifier)
 - `createVerifierCredential(privateKey, params)` — register as professional verifier
 - `checkCrossVerification(pubkey, vouches, verifiers)` — activation check
 
-### Identity Bridge (kind 30476)
+### Identity Bridge (kind 31000, type: identity-bridge)
 - `createIdentityBridge(anonKey, realKey, ring, signerIndex, minTier)` — link anonymous account to verified identity via ring signature
 
 ### ZKP Age Proofs

@@ -35,11 +35,11 @@ if (meetsMinimumTier(badge, 2)) {
 - **Signet IQ** (0–200): A continuous trust score weighted by professional verification, in-person vouches, online vouches, account age, and identity bridges. 100 represents the current government standard.
 - **Zero-knowledge age proofs**: Bulletproofs on secp256k1 prove age ranges (e.g. "adult" or "child aged 8–12") without revealing date of birth.
 - **Document nullifiers**: SHA-256 of document fields prevents duplicate identity registration without storing any personal data.
-- **11 event kinds** (30470–30477, 30482–30484): Credentials, vouches, policies, verifier management, challenges, revocations, identity bridges, delegation, elections, ballots, and results.
+- **Event kinds**: Single attestation kind 31000 (NIP-VA, differentiated by `type` tag) for credentials, vouches, verifier registration, challenges, revocations, identity bridges, and delegation; kind 30078 (NIP-78) for community policies; and kinds 30482–30484 for elections, ballots, and results.
 
 ## API Surface
 
-### Credentials (kind 30470)
+### Credentials (kind 31000, type: credential)
 - `createSelfDeclaredCredential(privateKey)` — Tier 1
 - `createPeerVouchedCredential(issuerKey, subjectPubkey)` — Tier 2
 - `createProfessionalCredential(verifierKey, subjectPubkey, opts)` — Tier 3
@@ -47,7 +47,7 @@ if (meetsMinimumTier(badge, 2)) {
 - `verifyCredential(event)` — verify signature and structure
 - `parseCredential(event)` — extract structured fields
 
-### Vouches (kind 30471)
+### Vouches (kind 31000, type: vouch)
 - `createVouch(privateKey, params)` — vouch for another user
 - `hasEnoughVouches(vouches, pubkey)` — check Tier 2 threshold
 
@@ -55,15 +55,15 @@ if (meetsMinimumTier(badge, 2)) {
 - `computeBadge(pubkey, events, opts)` — Level 1 badge display
 - `computeTrustScore(pubkey, credentials, vouches, accountCreatedAt)` — full Signet IQ
 
-### Policies (kind 30472)
+### Policies (kind 30078)
 - `createPolicy(privateKey, params)` — community verification requirements
 - `PolicyChecker` — check users against a policy
 
-### Verifiers (kind 30473)
+### Verifiers (kind 31000, type: verifier)
 - `createVerifierCredential(privateKey, params)` — register as professional verifier
 - `checkCrossVerification(pubkey, vouches, verifiers)` — activation check
 
-### Identity Bridge (kind 30476)
+### Identity Bridge (kind 31000, type: identity-bridge)
 - `createIdentityBridge(anonKey, realKey, ring, signerIndex, minTier)` — link anonymous account to verified identity via ring signature
 
 ### ZKP Age Proofs
@@ -103,7 +103,7 @@ if (meetsMinimumTier(badge, 2)) {
 
 Signet is an open protocol for decentralised identity verification on Nostr. It enables users to prove claims about their identity — age, parenthood, professional status — using zero-knowledge proofs, without revealing personal data or relying on a central authority.
 
-The protocol defines four verification tiers, nine entity types, a continuous Signet IQ score (Identification Quotient), a verifier accountability framework, and eleven Nostr event kinds (30470–30480, including the voting extension). Every professionally verified person receives two credentials — a Natural Person (real identity with Merkle-bound attributes and document nullifier) and a Persona (anonymous alias with age-range proof only). This two-credential model makes privacy a first-class design goal.
+The protocol defines four verification tiers, nine entity types, a continuous Signet IQ score (Identification Quotient), and a verifier accountability framework. All attestations use a single NIP-VA kind 31000 event, differentiated by `type` tag; community policies use NIP-78 kind 30078; and the voting extension adds kinds 30482–30484. Every professionally verified person receives two credentials — a Natural Person (real identity with Merkle-bound attributes and document nullifier) and a Persona (anonymous alias with age-range proof only). This two-credential model makes privacy a first-class design goal.
 
 Any Nostr client can implement Signet. Any community can set verification policies. Any licensed professional can become a verifier.
 
@@ -266,7 +266,7 @@ On top of discrete tiers, a continuous Signet IQ score (0-200) provides nuanced 
 | Signal | Weight | Notes |
 |--------|--------|-------|
 | Professional verification (Tier 3/4) | Heavy | Single event, large impact |
-| Identity bridge (kind 30476) | Medium | Ring-sig proof linking anon account to verified identity, scaled by ring min tier |
+| Identity bridge (kind 31000, type: identity-bridge) | Medium | Ring-sig proof linking anon account to verified identity, scaled by ring min tier |
 | In-person peer signature | Strong | Met in person, signed keys face-to-face |
 | Online vouch from verified user | Light | Accumulates — many light vouches add up |
 | Account age | Passive | Time on the network adds weight gradually |
@@ -342,7 +342,7 @@ Anyone can become a verifier if they meet the criteria. No single entity approve
 
 **Becoming a professional verifier:**
 
-1. Publish a verifier credential (kind 30473) containing your professional licence information (bar number, medical licence number, notary commission ID)
+1. Publish a verifier credential (kind 31000, type: verifier) containing your professional licence information (bar number, medical licence number, notary commission ID)
 2. Get cross-verified by other professional verifiers (prevents fraudulent licence claims)
 3. You can now issue Tier 3 and Tier 4 attestations
 4. Your professional body is your accountability — fraudulent attestations = professional misconduct, loss of licence, potential criminal liability
@@ -418,7 +418,7 @@ A registered professional can still be corrupt — doctors sell black market pre
 
 ### Layer 1 — Public Registry Verification
 
-Every verifier credential (kind 30473) includes a licence number and jurisdiction. Any client can link directly to the relevant public register for users to verify:
+Every verifier credential (kind 31000, type: verifier) includes a licence number and jurisdiction. Any client can link directly to the relevant public register for users to verify:
 
 | Jurisdiction | Register | URL |
 |-------------|----------|-----|
@@ -456,33 +456,33 @@ This is purely client-side — no central authority decides what's suspicious. E
 
 Professional verifiers stake sats via Lightning when registering as a verifier. The bond is:
 
-- **Locked** when the verifier credential (kind 30473) is published
+- **Locked** when the verifier credential (kind 31000, type: verifier) is published
 - **Slashed** (burned or redistributed to reporters) if the verifier is found fraudulent and revoked
 - **Returned** if the verifier deactivates cleanly (retires, leaves the network)
 
 Bond amount is configurable per community policy. A casual group might require 100,000 sats. A high-security community might require 1,000,000 sats. The bond makes corruption financially costly — a corrupt verifier doesn't just lose their reputation, they lose money.
 
-Implementation: NWC (Nostr Wallet Connect) for bond locking. The bond mechanism is optional — communities that don't require it simply don't set a bond threshold in their policy (kind 30472).
+Implementation: NWC (Nostr Wallet Connect) for bond locking. The bond mechanism is optional — communities that don't require it simply don't set a bond threshold in their policy (kind 30078).
 
 ### Layer 5 — Community Reporting and Revocation
 
-Anyone can publish a **challenge event** (kind 30474) against a verifier, presenting evidence of fraudulent behaviour.
+Anyone can publish a **challenge event** (kind 31000, type: challenge) against a verifier, presenting evidence of fraudulent behaviour.
 
 Challenge flow:
 
 ```
-Reporter ──── publishes kind 30474 ────► challenge event
-                                            │
-                                        includes evidence
-                                        (screenshots, registry status,
-                                         anomaly data, testimony)
-                                            │
-              ◄──── community reviews ──────┘
-                                            │
+Reporter ──── publishes kind 31000 (type: challenge) ────► challenge event
+                                                               │
+                                                           includes evidence
+                                                           (screenshots, registry status,
+                                                            anomaly data, testimony)
+                                                               │
+              ◄──── community reviews ─────────────────────────┘
+                                                               │
               If N trusted accounts (Tier 3+) confirm:
                 │
-                ├─ Verifier's kind 30473 is superseded
-                │  by a revocation event (kind 30475)
+                ├─ Verifier's kind 31000 (type: verifier) is superseded
+                │  by a revocation event (kind 31000, type: revocation)
                 │
                 ├─ Lightning bond is slashed
                 │
@@ -494,7 +494,7 @@ The threshold for revocation (how many confirmations needed) is set per communit
 
 ### Layer 6 — Credential Provenance Trail
 
-Every credential (kind 30470) traces back to its issuer via the `pubkey` field. This is an immutable, public audit trail on Nostr relays.
+Every credential (kind 31000, type: credential) traces back to its issuer via the `pubkey` field. This is an immutable, public audit trail on Nostr relays.
 
 If a verifier is revoked:
 
@@ -519,21 +519,22 @@ Compare this to centralised identity verification: a company scans your ID, stor
 
 ## 8. Event Kinds
 
-**Note:** Kind numbers are placeholders pending NIP allocation.
+All identity attestations use a single NIP-VA kind 31000 event, differentiated by the `type` tag (e.g. `["type", "credential"]`). Community policies use NIP-78 kind 30078. Voting kinds (30482–30484) remain unchanged.
 
-### Kind 30470 — Verification Credential
+### Kind 31000 — Verification Credential (type: credential)
 
-A replaceable event published by a verifier attesting to a subject's verification status.
+A replaceable NIP-VA event published by a verifier attesting to a subject's verification status.
 
 ```jsonc
 {
-  "kind": 30470,
+  "kind": 31000,
   "pubkey": "<verifier_pubkey>",
   "tags": [
     ["d", "<subject_pubkey>"],           // who is being verified
+    ["type", "credential"],              // NIP-VA type tag
     ["p", "<subject_pubkey>"],           // for queryability
     ["tier", "3"],                        // 1, 2, 3, or 4
-    ["type", "professional"],            // "self", "peer", "professional"
+    ["credential-type", "professional"], // "self", "peer", "professional"
     ["scope", "adult"],                  // "adult" or "adult+child"
     ["age-range", "8-12"],              // only for tier 4 (child age range)
     ["method", "in-person-id"],          // verification method
@@ -548,16 +549,17 @@ A replaceable event published by a verifier attesting to a subject's verificatio
 }
 ```
 
-### Kind 30471 — Vouch Attestation
+### Kind 31000 — Vouch Attestation (type: vouch)
 
-A replaceable event published by a peer vouching for another user.
+A replaceable NIP-VA event published by a peer vouching for another user.
 
 ```jsonc
 {
-  "kind": 30471,
+  "kind": 31000,
   "pubkey": "<voucher_pubkey>",
   "tags": [
     ["d", "<subject_pubkey>"],           // who is being vouched for
+    ["type", "vouch"],                   // NIP-VA type tag
     ["p", "<subject_pubkey>"],
     ["method", "in-person"],             // "in-person" or "online"
     ["context", "bitcoin-meetup"],       // optional: where/how they met
@@ -571,13 +573,13 @@ A replaceable event published by a peer vouching for another user.
 }
 ```
 
-### Kind 30472 — Community Verification Policy
+### Kind 30078 — Community Verification Policy (NIP-78)
 
-A replaceable event published by a community operator defining minimum verification requirements.
+A NIP-78 app-specific data event published by a community operator defining minimum verification requirements.
 
 ```jsonc
 {
-  "kind": 30472,
+  "kind": 30078,
   "pubkey": "<community_operator_pubkey>",
   "tags": [
     ["d", "<community_identifier>"],
@@ -596,16 +598,17 @@ A replaceable event published by a community operator defining minimum verificat
 }
 ```
 
-### Kind 30473 — Verifier Credential
+### Kind 31000 — Verifier Credential (type: verifier)
 
-A replaceable event published by a professional declaring their verifier status.
+A replaceable NIP-VA event published by a professional declaring their verifier status.
 
 ```jsonc
 {
-  "kind": 30473,
+  "kind": 31000,
   "pubkey": "<verifier_pubkey>",
   "tags": [
     ["d", "verifier-credential"],
+    ["type", "verifier"],                // NIP-VA type tag
     ["profession", "solicitor"],
     ["jurisdiction", "UK"],
     ["licence", "<encrypted_or_hashed_licence_number>"],
@@ -614,22 +617,23 @@ A replaceable event published by a professional declaring their verifier status.
     ["L", "signet"],
     ["l", "verifier", "signet"]
     // Cross-verification vouches from other professionals
-    // are separate kind 30471 events pointing at this pubkey
+    // are separate kind 31000 (type: vouch) events pointing at this pubkey
   ],
   "content": "<optional: public statement about verification services>"
 }
 ```
 
-### Kind 30474 — Verifier Challenge
+### Kind 31000 — Verifier Challenge (type: challenge)
 
-A regular event published by anyone challenging a verifier's legitimacy. Triggers community review.
+A NIP-VA event published by anyone challenging a verifier's legitimacy. Triggers community review.
 
 ```jsonc
 {
-  "kind": 30474,
+  "kind": 31000,
   "pubkey": "<reporter_pubkey>",
   "tags": [
     ["d", "<verifier_pubkey>"],            // who is being challenged
+    ["type", "challenge"],                 // NIP-VA type tag
     ["p", "<verifier_pubkey>"],
     ["reason", "anomalous-volume"],        // "anomalous-volume", "registry-mismatch",
                                            // "fraudulent-attestation", "licence-revoked",
@@ -644,18 +648,19 @@ A regular event published by anyone challenging a verifier's legitimacy. Trigger
 }
 ```
 
-### Kind 30475 — Verifier Revocation
+### Kind 31000 — Verifier Revocation (type: revocation)
 
-A replaceable event published when a community confirms a challenge. Supersedes the verifier's kind 30473 credential.
+A replaceable NIP-VA event published when a community confirms a challenge. Supersedes the verifier's kind 31000 (type: verifier) credential.
 
 ```jsonc
 {
-  "kind": 30475,
+  "kind": 31000,
   "pubkey": "<revoking_authority_pubkey>",  // community operator or threshold of Tier 3+ accounts
   "tags": [
     ["d", "<verifier_pubkey>"],             // whose credential is revoked
+    ["type", "revocation"],                 // NIP-VA type tag
     ["p", "<verifier_pubkey>"],
-    ["challenge", "<kind_30474_event_id>"], // the challenge that triggered this
+    ["challenge", "<challenge_event_id>"],  // the kind 31000 (type: challenge) that triggered this
     ["confirmations", "7"],                 // number of Tier 3+ accounts that confirmed
     ["bond-action", "slashed"],             // "slashed", "returned", "held"
     ["scope", "full"],                      // "full" = all credentials flagged,
@@ -669,25 +674,26 @@ A replaceable event published when a community confirms a challenge. Supersedes 
 }
 ```
 
-**Client behaviour on kind 30475:**
+**Client behaviour on a revocation (kind 31000, type: revocation):**
 
-1. Display a warning on all kind 30470 credentials issued by the revoked verifier
+1. Display a warning on all kind 31000 (type: credential) events issued by the revoked verifier
 2. Reduce the Signet IQ contribution of those credentials to zero
 3. Notify affected users that re-verification is recommended
 4. Do not automatically invalidate credentials — the community policy decides whether to require re-verification or grandfather existing ones
 
-### Kind 30476 — Identity Bridge
+### Kind 31000 — Identity Bridge (type: identity-bridge)
 
-A replaceable event published by an anonymous account to prove it is controlled by a verified identity, without revealing which one. Uses SAG ring signatures over secp256k1.
+A replaceable NIP-VA event published by an anonymous account to prove it is controlled by a verified identity, without revealing which one. Uses SAG ring signatures over secp256k1.
 
 **Use case:** A user has a real-name account (verified at Tier 3 by a professional) and an anonymous account. The identity bridge lets the anonymous account prove "I am a real verified person" without revealing which verified person. This enables anonymous participation with trust.
 
 ```jsonc
 {
-  "kind": 30476,
+  "kind": 31000,
   "pubkey": "<anon_pubkey>",              // the anonymous account publishing this
   "tags": [
     ["d", "identity-bridge"],
+    ["type", "identity-bridge"],           // NIP-VA type tag
     ["ring-min-tier", "3"],                // minimum verification tier of ring members
     ["ring-size", "10"],                   // number of pubkeys in the ring
     ["algo", "secp256k1"],               // cryptographic algorithm (§9.5)
@@ -741,7 +747,7 @@ The protocol design (tiers, scores, event kinds, policies) is specified independ
 Layer 1: Schnorr — the base (zero new dependencies)
 │
 ├─ Credential issuance & verification
-│   Verifier signs kind 30470 event with their Nostr key.
+│   Verifier signs kind 31000 (type: credential) event with their Nostr key.
 │   Any client verifies with schnorr.verify().
 │
 ├─ Selective disclosure via Merkle trees
@@ -822,7 +828,7 @@ Every Signet event carries an `["algo", "secp256k1"]` tag identifying the asymme
 
 | Rule | Detail |
 |------|--------|
-| **MUST be present** on all Signet events (kinds 30470-30477) | Builders set it to `DEFAULT_CRYPTO_ALGORITHM` (`secp256k1`) |
+| **MUST be present** on all Signet events (kind 31000 and kind 30078) | Builders set it to `DEFAULT_CRYPTO_ALGORITHM` (`secp256k1`) |
 | **Parsers MUST default** to `secp256k1` if absent | Ensures backward compatibility with legacy events created before this tag was introduced |
 | **Value is a free-form string** | Allows future algorithms without a protocol revision — just publish events with the new value |
 | **One algorithm per event** | An event is signed under a single algorithm; hybrid constructions would use two separate events |
@@ -835,7 +841,7 @@ Every Signet event carries an `["algo", "secp256k1"]` tag identifying the asymme
 2. **Bulletproofs library choice.** Pure JS (slower, easier to audit) vs WASM (faster, harder to audit the C layer).
 3. **Ring size.** How many professional verifiers form the anonymity set? Target: 20-50 verifiers per profession per jurisdiction.
 4. **Credential expiry.** Verification credentials should expire (recommended: 1-2 years) and be renewable.
-5. **Revocation propagation.** NIP-09 deletion requests are advisory only. The kind 30474/30475 challenge-revocation mechanism handles this at the protocol level.
+5. **Revocation propagation.** NIP-09 deletion requests are advisory only. The kind 31000 (type: challenge) / kind 31000 (type: revocation) challenge-revocation mechanism handles this at the protocol level.
 
 ---
 
@@ -1058,7 +1064,7 @@ Alice's phone                          Bob's phone
 
 This data is stored **locally only** — never published to relays. The QR exchange happens entirely in person.
 
-**Automatic vouch:** The connection optionally triggers a mutual in-person vouch (kind 30471), contributing to both users' Tier 2 web-of-trust and Signet IQ.
+**Automatic vouch:** The connection optionally triggers a mutual in-person vouch (kind 31000, type: vouch), contributing to both users' Tier 2 web-of-trust and Signet IQ.
 
 ### 15.4 Signet Verification Words ("Signet Me")
 
@@ -1187,7 +1193,7 @@ The identity bridge allows users to maintain separate anonymous and real-name ac
 1. Alice has a real-name account verified at Tier 3 by her solicitor.
 2. Alice creates an anonymous account for participating in communities where she wants privacy.
 3. Alice creates an identity bridge: her real account signs a ring signature (among 10 other verified accounts) proving "one of these 11 people also controls this anon account."
-4. The bridge event (kind 30476) is published from Alice's anon account.
+4. The bridge event (kind 31000, type: identity-bridge) is published from Alice's anon account.
 5. Community members see Alice's anon account has a Signet IQ of ~38 (from the bridge alone), indicating a verified person is behind it.
 6. When other bridged anonymous accounts vouch for Alice's anon account, trust compounds naturally.
 
@@ -1196,7 +1202,7 @@ The identity bridge allows users to maintain separate anonymous and real-name ac
 The ring must contain at least 5 verified pubkeys (the `MIN_BRIDGE_RING_SIZE` constant). The user's real pubkey is placed at a random position among decoys selected from the pool of verified accounts on the relay.
 
 Decoy selection:
-- Query the relay for pubkeys with kind 30470 credentials at or above the desired minimum tier.
+- Query the relay for pubkeys with kind 31000 (type: credential) events at or above the desired minimum tier.
 - Exclude the user's real pubkey from the candidate pool.
 - Randomly select `ringSize - 1` decoys.
 - Insert the real pubkey at a random index.
@@ -1282,19 +1288,19 @@ Entity type is defined by the cryptographic linkage that connects an account to 
 
 | Entity Type | Linkage Mechanism | Event Kind |
 |---|---|---|
-| Natural Person | Professional credential | 30470 (Tier 3/4) |
-| Persona | Identity bridge (ring signature) from a Natural Person | 30476 |
-| Personal Agent | Delegation event from a Natural Person | 30477 |
-| Free Personal Agent | Delegation event from a Persona | 30477 |
-| Juridical Person | Professional credential + multi-sig attestation | 30470 |
-| Juridical Persona | Identity bridge (ring signature) from a Juridical Person | 30476 |
-| Organised Agent | Delegation event from a Juridical Person | 30477 |
-| Free Organised Agent | Delegation event from a Juridical Persona | 30477 |
+| Natural Person | Professional credential | 31000, type: credential (Tier 3/4) |
+| Persona | Identity bridge (ring signature) from a Natural Person | 31000, type: identity-bridge |
+| Personal Agent | Delegation event from a Natural Person | 31000, type: delegation |
+| Free Personal Agent | Delegation event from a Persona | 31000, type: delegation |
+| Juridical Person | Professional credential + multi-sig attestation | 31000, type: credential |
+| Juridical Persona | Identity bridge (ring signature) from a Juridical Person | 31000, type: identity-bridge |
+| Organised Agent | Delegation event from a Juridical Person | 31000, type: delegation |
+| Free Organised Agent | Delegation event from a Juridical Persona | 31000, type: delegation |
 | Free Agent | None | — |
 
 ### 17.5 Credential Tag
 
-The existing credential event (kind 30470) gains a new tag:
+The credential event (kind 31000, type: credential) includes the following tag:
 
 ```jsonc
 ["entity-type", "<type_code>"]
@@ -1304,16 +1310,17 @@ Where `<type_code>` is one of: `natural_person`, `persona`, `personal_agent`, `f
 
 This tag is derived from the verification mechanism used but is included explicitly for relay and client queryability.
 
-### 17.6 Agent Delegation Event (Kind 30477)
+### 17.6 Agent Delegation Event (Kind 31000, type: delegation)
 
-A replaceable event published by an account owner to delegate authority to an agent (bot).
+A replaceable NIP-VA event published by an account owner to delegate authority to an agent (bot).
 
 ```jsonc
 {
-  "kind": 30477,
+  "kind": 31000,
   "pubkey": "<owner_pubkey>",
   "tags": [
     ["d", "<unique_delegation_id>"],
+    ["type", "delegation"],               // NIP-VA type tag
     ["p", "<agent_pubkey>"],              // the bot/agent being delegated
     ["entity-type", "<agent_type>"],      // personal_agent, free_personal_agent,
                                           // organised_agent, free_organised_agent
@@ -1335,13 +1342,13 @@ A replaceable event published by an account owner to delegate authority to an ag
 
 Any other owner→agent type combination is invalid and MUST be rejected by clients and relays.
 
-**Revocation:** Delegations are revoked using the existing kind 30475 revocation event, with the `["d", "<agent_pubkey>"]` tag pointing to the agent being revoked.
+**Revocation:** Delegations are revoked using a kind 31000 (type: revocation) event, with the `["d", "<agent_pubkey>"]` tag pointing to the agent being revoked.
 
 ### 17.7 Juridical Person Verification
 
 A Juridical Person (organisation) requires dual verification:
 
-1. **Professional verification:** A Tier 3+ professional verifies the organisation's legal registration documents (articles of incorporation, registration certificate, etc.) and issues a kind 30470 credential.
+1. **Professional verification:** A Tier 3+ professional verifies the organisation's legal registration documents (articles of incorporation, registration certificate, etc.) and issues a kind 31000 (type: credential) event.
 2. **Multi-sig attestation:** N-of-M verified Natural Persons co-sign a credential attesting they represent the organisation (e.g., 3 of 5 board members). Each co-signer must themselves be a verified Natural Person.
 
 Both proofs must be present for an account to achieve Juridical Person status.
@@ -1384,7 +1391,7 @@ This pattern applies to any remote-operated system: telepresence robots, drone o
 
 ### 17.10 Relay Policy Extensions
 
-Community verification policies (kind 30472) may include entity type requirements:
+Community verification policies (kind 30078) may include entity type requirements:
 
 ```jsonc
 ["allowed-entity-types", "natural_person,persona,juridical_person"]
@@ -1456,7 +1463,7 @@ These properties are non-negotiable. Any proposed protocol change that weakens a
 
 ### 19.1 Government as Verifier
 
-Governments are simply another class of verifier in the Signet model. A government issues kind 30470 credentials to citizens, just as a professional verifier issues credentials to individuals. The critical difference from traditional national ID:
+Governments are simply another class of verifier in the Signet model. A government issues kind 31000 (type: credential) attestations to citizens, just as a professional verifier issues credentials to individuals. The critical difference from traditional national ID:
 
 | Aspect | Traditional National ID | Signet ID |
 |---|---|---|
@@ -1467,7 +1474,7 @@ Governments are simply another class of verifier in the Signet model. A governme
 | Revocation power | Government can cancel your identity | Government can revoke their attestation; your key still works with other verifiers |
 | Surveillance capability | Full — they hold all your data | Limited — they hold a public key |
 
-No new event kinds are required. Governments use existing kinds: 30470 (credential issuance), 30475 (revocation), and 30476 (identity bridge) where applicable.
+No new event kinds are required. Governments use existing NIP-VA kinds: 31000, type: credential (issuance), 31000, type: revocation (revocation), and 31000, type: identity-bridge (identity bridge) where applicable.
 
 ### 19.2 Verification Flow
 
@@ -1476,21 +1483,21 @@ Citizen verification follows a six-step process using existing protocol mechanis
 1. **Key generation** — Citizen generates a Nostr keypair from a 12-word BIP-39 mnemonic
 2. **In-person appearance** — Citizen visits a government office (analogous to passport issuance)
 3. **Document verification** — Government official verifies identity documents in person
-4. **Credential issuance** — Government issues a kind 30470 Signet credential to the citizen's pubkey: "This pubkey belongs to a verified citizen"
+4. **Credential issuance** — Government issues a kind 31000 (type: credential) Signet attestation to the citizen's pubkey: "This pubkey belongs to a verified citizen"
 5. **Connection establishment** — Citizen and government official establish a verified connection (QR exchange, shared secret, or Signet words)
 6. **Ongoing verification** — For future interactions, either party can verify the other using "Signet me" time-based word verification
 
 ### 19.3 Good Standing Credentials
 
-A government may issue a "good standing" credential — a kind 30470 attestation that indicates the citizen has no outstanding warrants or court orders requiring action.
+A government may issue a "good standing" credential — a kind 31000 (type: credential) attestation that indicates the citizen has no outstanding warrants or court orders requiring action.
 
 **Revocation as warrant mechanism:**
-- When a court issues a warrant, the good standing credential is revoked via kind 30475
+- When a court issues a warrant, the good standing credential is revoked via kind 31000 (type: revocation)
 - The citizen's ZKP can prove non-membership in the revocation set (i.e., "I am not on any warrant list")
 - Ring signatures anonymise which specific credential is being proven
 - The credential can be re-issued when the warrant is resolved
 
-**Privacy guarantee:** The revocation set is public (as all kind 30475 events are), but ring signatures prevent observers from linking a specific proof of good standing to a specific citizen.
+**Privacy guarantee:** The revocation set is public (as all kind 31000, type: revocation events are), but ring signatures prevent observers from linking a specific proof of good standing to a specific citizen.
 
 ### 19.4 Privacy-Preserving Police Interaction
 
@@ -1794,7 +1801,7 @@ Three distinct layers handle the complexity of real families:
 Guardian tags reflect legal parental responsibility. Only changeable via court order + new credential from a professional.
 
 **Layer 2 — Delegation level (flexible, set by guardian):**
-Guardians delegate specific permissions to step-parents, grandparents, teachers, or other trusted adults via kind 30477 guardian delegation events. Delegations are:
+Guardians delegate specific permissions to step-parents, grandparents, teachers, or other trusted adults via kind 31000 (type: delegation) guardian delegation events. Delegations are:
 - Time-limited (expiry tag)
 - Scope-limited: `full`, `activity-approval`, `content-management`, `contact-approval`
 - Revocable by the guardian at any time
@@ -1812,7 +1819,7 @@ When a document expires and is renewed (new passport number):
 
 ### 21.6 Death, Key Compromise, Incapacitation
 
-**Death:** A professional issues a kind 30475 revocation with reason "death." All credentials for the pubkey are considered revoked.
+**Death:** A professional issues a kind 31000 (type: revocation) with reason "death." All credentials for the pubkey are considered revoked.
 
 **Key compromise:** Subject visits a professional with identity documents. Professional revokes all old credentials and issues new ones on a new keypair. Existing vouches are lost (deliberate security measure — prevents an attacker who compromised the key from retaining social trust).
 
@@ -1826,7 +1833,7 @@ Existing Nostr users can integrate with Signet without losing their established 
 The user's existing npub becomes their Natural Person identity. They visit a professional for verification. All followers, NIP-05, zaps, and reputation are preserved.
 
 **Path 2 — Existing npub becomes Persona:**
-The user creates a new keypair for their Natural Person identity and uses their existing npub as their Persona. An identity bridge (kind 30476) links them with ring-signature privacy.
+The user creates a new keypair for their Natural Person identity and uses their existing npub as their Persona. An identity bridge (kind 31000, type: identity-bridge) links them with ring-signature privacy.
 
 Both paths use existing mechanisms (NIP-05, identity bridges, credential chains). No automatic trust transfer between keypairs (prevents impersonation).
 
@@ -1934,7 +1941,7 @@ The system never requires documents as a prerequisite for basic participation. D
 
 Communities choose their own verification thresholds. A community for casual conversation might accept Tier 1. A community for financial advice might require Tier 3. A community for children requires Tier 4.
 
-This is not gatekeeping — it is informed choice. Each community publishes its policy (kind 30472). Users can see what is required before joining. No central authority decides who can participate where.
+This is not gatekeeping — it is informed choice. Each community publishes its policy (kind 30078). Users can see what is required before joining. No central authority decides who can participate where.
 
 The goal is that every person, regardless of documentation status, has a path to meaningful participation — while communities retain the right to set appropriate safety standards for their members.
 
@@ -1989,7 +1996,7 @@ Protocol complexity should not prevent partial adoption. Signet defines three pr
 
 ### 25.2 Level 1 — Read Trust Badges
 
-**Effort:** A weekend. **Event kinds:** 30470 (credential), 30471 (vouch).
+**Effort:** A weekend. **Event kinds:** 31000, type: credential and 31000, type: vouch.
 
 Read credentials and vouches for a pubkey, compute a basic trust tier and score, display a badge. No new cryptography beyond Schnorr signature verification (which Nostr clients already implement). This is the NIP-05 equivalent — minimal effort, immediate value.
 
@@ -1997,13 +2004,13 @@ The reference implementation provides `src/badge.ts` with `computeBadge()`, `bui
 
 ### 25.3 Level 2 — Issue Vouches
 
-**Effort:** A few days. **Event kinds:** 30470, 30471, 30472 (policy).
+**Effort:** A few days. **Event kinds:** 31000 (credential, vouch), 30078 (policy).
 
-Level 1 + users can vouch for each other (create kind 30471 events) and communities can set policies (kind 30472). This is the viral layer — peer vouching creates Tier 2 network effects without requiring professional verifiers.
+Level 1 + users can vouch for each other (create kind 31000, type: vouch events) and communities can set policies (kind 30078). This is the viral layer — peer vouching creates Tier 2 network effects without requiring professional verifiers.
 
 ### 25.4 Level 3 — Full Protocol
 
-**Effort:** Weeks to months. **Event kinds:** All 11 (30470-30480).
+**Effort:** Weeks to months. **Event kinds:** All (31000 with all types, 30078, 30482–30484).
 
 All event kinds, full cryptographic stack: Merkle trees for selective disclosure, Bulletproofs for age range proofs, ring signatures for issuer privacy, two-credential ceremony, nullifier computation, guardian delegation, anomaly detection, and the voting extension.
 
@@ -2042,7 +2049,7 @@ Guardian delegation tags (`["guardian", "<parent_pubkey>"]`) on child Persona cr
 
 ### 26.3 Ring Intersection Attacks on Identity Bridges
 
-Identity bridge events (kind 30476) embed the full ring of public keys used for the ring signature. If a Persona issues multiple identity bridges over time with different randomly selected decoy members, an observer can intersect the ring sets to identify the common member — the actual signer.
+Identity bridge events (kind 31000, type: identity-bridge) embed the full ring of public keys used for the ring signature. If a Persona issues multiple identity bridges over time with different randomly selected decoy members, an observer can intersect the ring sets to identify the common member — the actual signer.
 
 With a ring of size `n` and `k` independent bridge events, the expected intersection size is approximately `1 + (n-1) * (1/pool_size)^(k-1)`, which rapidly approaches 1 (the signer) as `k` increases.
 
@@ -2434,7 +2441,7 @@ These threats require national-scale mechanisms (see §11).
 A political party (e.g., Restore Britain) wants members to vote on policy positions:
 
 1. Party establishes itself as a Juridical Person (verified organisation) with Signet credentials
-2. Members are verified Natural Persons who hold party membership credentials (kind 30470)
+2. Members are verified Natural Persons who hold party membership credentials (kind 31000, type: credential)
 3. Party leadership publishes a kind 30482 election: "Should the party support policy X?"
    - `eligible-entity-types`: `natural_person`
    - `eligible-min-tier`: `2` (web-of-trust verified)
@@ -2449,7 +2456,7 @@ A political party (e.g., Restore Britain) wants members to vote on policy positi
 
 A Nostr relay community votes on moderation policy:
 
-1. Relay operator publishes community verification policy (kind 30472) requiring Tier 2+
+1. Relay operator publishes community verification policy (kind 30078) requiring Tier 2+
 2. Operator publishes a kind 30482 election for policy change
    - `scale`: `community`
    - `eligible-entity-types`: `natural_person,persona`
@@ -2475,7 +2482,7 @@ A company board votes on a resolution:
 
 Using civic identity from the Signet protocol spec (§19):
 
-1. Government issues citizen credentials (kind 30470) as described in protocol spec §19.2
+1. Government issues citizen credentials (kind 31000, type: credential) as described in protocol spec §19.2
 2. Election authority publishes kind 30482 referencing citizenship credentials
    - `eligible-entity-types`: `natural_person`
    - `eligible-min-tier`: `3` (government-verified)
@@ -2638,15 +2645,15 @@ authority. Trust accumulates as a continuous Signet IQ score (0–200, where 100
 ```
   Person
     |
-    | signs a kind 30470 self-declaration
+    | signs a kind 31000 (type: credential) self-declaration
     v
   Tier 1 — Self-declared
     |
-    | three or more peers sign kind 30471 vouches
+    | three or more peers sign kind 31000 (type: vouch) vouches
     v
   Tier 2 — Web-of-trust
     |
-    | licensed professional issues kind 30470 credential
+    | licensed professional issues kind 31000 (type: credential) attestation
     | with zero-knowledge age proof and document nullifier
     v
   Tier 3 — Professionally verified (adult)
@@ -2671,11 +2678,11 @@ authority. Trust accumulates as a continuous Signet IQ score (0–200, where 100
 | Tier | Name                        | Who issues                              | What it proves                                      | Score contribution |
 |------|-----------------------------|-----------------------------------------|-----------------------------------------------------|--------------------|
 | 1    | Self-declared               | Subject themselves                      | "I exist and I own this key"                        | —                  |
-| 2    | Web-of-trust                | Peers (kind 30471 vouches)              | Enough known people can vouch for this identity     | +2–8 per vouch     |
-| 3    | Professionally verified     | Licensed professional (kind 30470)      | Government document seen; adult age confirmed       | +40               |
-| 4    | Professional + child safety | Licensed professional (kind 30470)      | Tier 3 plus authorisation to interact with minors   | +40               |
+| 2    | Web-of-trust                | Peers (kind 31000, type: vouch)         | Enough known people can vouch for this identity     | +2–8 per vouch     |
+| 3    | Professionally verified     | Licensed professional (kind 31000, type: credential) | Government document seen; adult age confirmed | +40 |
+| 4    | Professional + child safety | Licensed professional (kind 31000, type: credential) | Tier 3 plus authorisation to interact with minors | +40 |
 
-Tier 2 requires at least 3 vouches from Tier 2+ peers (configurable per community via kind 30472 policy).
+Tier 2 requires at least 3 vouches from Tier 2+ peers (configurable per community via kind 30078 policy).
 Tiers 3 and 4 are issued in a two-credential ceremony: one Natural Person credential (carries document
 nullifier and Merkle root) and one anonymous Persona credential (carries age range only, no identifying data).
 
@@ -2684,19 +2691,19 @@ nullifier and Merkle root) and one anonymous Persona credential (carries age ran
 
 ### Level 1 — Display badges (a weekend)
 
-Read kinds 30470 and 30471 from relays, call `computeBadge`, show a label.
+Read kind 31000 (type: credential) and kind 31000 (type: vouch) from relays, call `computeBadge`, show a label.
 No cryptography required beyond Schnorr signature verification (optional).
 
 ### Level 2 — Issue vouches (a few days)
 
-Add kind 30471 vouch issuance. Requires Schnorr signing, relay write access, and basic
-kind 30472 policy parsing so your client respects community verification thresholds.
+Add kind 31000 (type: vouch) issuance. Requires Schnorr signing, relay write access, and basic
+kind 30078 policy parsing so your client respects community verification thresholds.
 
 ### Level 3 — Full protocol (weeks)
 
-Issue professional credentials, manage verifier lifecycle (kinds 30473–30475), build
-guardian delegation (kind 30477), support credential chains (supersedes / superseded-by),
-and integrate the voting extension (kinds 30478–30480).
+Issue professional credentials, manage verifier lifecycle (kind 31000, types: verifier / challenge / revocation), build
+guardian delegation (kind 31000, type: delegation), support credential chains (supersedes / superseded-by),
+and integrate the voting extension (kinds 30482–30484).
 
 
 ## How Verification Works (Tier 3 / 4)
@@ -2718,33 +2725,33 @@ and integrate the voting extension (kinds 30478–30480).
     |        (proves "subject is 18+" without revealing birth date)
     |                        |
     |        Two credentials signed and published:
-    |          kind 30470 Natural Person  (nullifier + Merkle root)
-    |          kind 30470 Persona         (age range only, anonymous)
+    |          kind 31000 (type: credential) Natural Person  (nullifier + Merkle root)
+    |          kind 31000 (type: credential) Persona         (age range only, anonymous)
     |                        |
     v                        v
                Both events published to Nostr relays
 ```
 
-Professional verifiers are themselves credentialed (kind 30473) and require cross-verification
+Professional verifiers are themselves credentialed (kind 31000, type: verifier) and require cross-verification
 by two other licensed professionals before becoming active. A challenge / revocation mechanism
-(kinds 30474–30475) allows the community to remove a fraudulent verifier.
+(kind 31000, type: challenge / type: revocation) allows the community to remove a fraudulent verifier.
 
 
 ## Event Kinds Reference
 
-| Kind  | Name              | Purpose                                            |
+| Kind  | Type tag          | Purpose                                            |
 |-------|-------------------|----------------------------------------------------|
-| 30470 | Credential        | Verification credential for any tier               |
-| 30471 | Vouch             | Peer attestation (Tier 2 building block)           |
-| 30472 | Policy            | Community verification requirements                |
-| 30473 | Verifier          | Professional verifier credential                   |
-| 30474 | Challenge         | Report a suspected fraudulent verifier             |
-| 30475 | Revocation        | Remove a verifier after threshold confirmations    |
-| 30476 | Identity bridge   | Link two keypairs via ring signature               |
-| 30477 | Delegation        | Guardian / agent delegation with scoped permission |
-| 30478 | Election          | Voting extension: define an election               |
-| 30479 | Ballot            | Voting extension: cast an anonymous ballot         |
-| 30480 | Election result   | Voting extension: publish tallied result           |
+| 31000 | credential        | Verification credential for any tier (NIP-VA)      |
+| 31000 | vouch             | Peer attestation (Tier 2 building block) (NIP-VA)  |
+| 31000 | verifier          | Professional verifier credential (NIP-VA)          |
+| 31000 | challenge         | Report a suspected fraudulent verifier (NIP-VA)    |
+| 31000 | revocation        | Remove a verifier after threshold confirmations (NIP-VA) |
+| 31000 | identity-bridge   | Link two keypairs via ring signature (NIP-VA)      |
+| 31000 | delegation        | Guardian / agent delegation with scoped permission (NIP-VA) |
+| 30078 | —                 | Community verification policy (NIP-78)             |
+| 30482 | —                 | Voting extension: define an election               |
+| 30483 | —                 | Voting extension: cast an anonymous ballot         |
+| 30484 | —                 | Voting extension: publish tallied result           |
 
 
 ## Integrating at Level 1
@@ -2764,7 +2771,7 @@ import type { NostrEvent } from 'signet-protocol';
 // 1. Build relay filters for one or more pubkeys
 const pubkeys = ['<hex-pubkey>'];
 const filters = buildBadgeFilters(pubkeys);
-// filters = [{ kinds: [30470, 30471], '#d': ['<hex-pubkey>'] }]
+// filters = [{ kinds: [31000], '#d': ['<hex-pubkey>'] }]
 
 // 2. Fetch events from your relay (using whatever WebSocket client you prefer)
 const events: NostrEvent[] = await fetchFromRelay(filters);
@@ -2783,7 +2790,7 @@ if (meetsMinimumTier(badge, 2)) {
 }
 ```
 
-`computeBadge` accepts any mix of kind 30470 and 30471 events. It handles expiry, deduplication
+`computeBadge` accepts kind 31000 events (credential and vouch types). It handles expiry, deduplication
 (one vouch counted per voucher pubkey), and optional Schnorr signature verification. The result is
 a plain object — no rendering assumptions are made.
 
@@ -2812,23 +2819,23 @@ A guide for Nostr client developers integrating the Signet identity protocol. Th
 
 | Level | Effort | Event Kinds | New Crypto | What Users Get |
 |-------|--------|-------------|------------|----------------|
-| 1 — Read Trust Badges | ~1 weekend | 30470, 30471 | None | Tier badges and Signet IQ on profiles |
-| 2 — Issue Vouches | A few days | 30470–30472 | None | Peer vouching, Tier 2 networks, policy checks |
-| 3 — Full Protocol | Weeks to months | 30470–30480 | Merkle, Bulletproofs, ring signatures | Professional verification, ZK proofs, elections |
+| 1 — Read Trust Badges | ~1 weekend | 31000 (credential, vouch) | None | Tier badges and Signet IQ on profiles |
+| 2 — Issue Vouches | A few days | 31000 (credential, vouch), 30078 | None | Peer vouching, Tier 2 networks, policy checks |
+| 3 — Full Protocol | Weeks to months | 31000 (all types), 30078, 30482–30484 | Merkle, Bulletproofs, ring signatures | Professional verification, ZK proofs, elections |
 
 ---
 
 ## Level 1 — Read Trust Badges
 
 **Effort:** A weekend
-**Event kinds:** 30470 (credential), 30471 (vouch)
+**Event kinds:** 31000, type: credential and 31000, type: vouch
 **New crypto required:** None — Nostr already verifies Schnorr signatures
 
-This is the NIP-05 equivalent of Signet integration. You read two event kinds, call one function, and display a badge. No cryptographic work on your part beyond what your Nostr client already does.
+This is the NIP-05 equivalent of Signet integration. You read kind 31000 events, filter by type, call one function, and display a badge. No cryptographic work on your part beyond what your Nostr client already does.
 
 ### What to build
 
-1. Subscribe to kind `30470` (credentials) and kind `30471` (vouches) for the pubkeys you want to display.
+1. Subscribe to kind `31000` (credentials and vouches) for the pubkeys you want to display.
 2. Pass the events to `computeBadge()`.
 3. Show the result on the user's profile.
 
@@ -2846,7 +2853,7 @@ import { computeBadge, buildBadgeFilters } from 'signet-protocol';
 // 1. Fetch events from relay
 const filters = buildBadgeFilters([pubkey]);
 // Send a REQ message to your relay with these filters.
-// The filters include both 30470 and 30471 kinds automatically.
+// The filters include kind 31000 (credentials and vouches) automatically.
 
 // 2. Compute badge from the events you receive
 const badge = computeBadge(pubkey, events);
@@ -2885,7 +2892,7 @@ The `badge` object includes:
 ## Level 2 — Issue Vouches
 
 **Effort:** A few days
-**Event kinds:** 30470 (credential), 30471 (vouch), 30472 (policy)
+**Event kinds:** 31000 (credential, vouch), 30078 (policy)
 **New crypto required:** None
 
 Level 2 adds the ability for your users to vouch for each other and for your client to respect community policies. This is the viral layer of the protocol — peer vouching is what builds Tier 2 trust networks and creates network effects across clients.
@@ -2894,8 +2901,8 @@ Level 2 adds the ability for your users to vouch for each other and for your cli
 
 Everything from Level 1, plus:
 
-1. UI for a user to select a contact and publish a kind `30471` vouch event.
-2. Read kind `30472` (policies) from community relays and check whether a pubkey meets the policy threshold before allowing sensitive actions.
+1. UI for a user to select a contact and publish a kind `31000` (type: vouch) event.
+2. Read kind `30078` (policies) from community relays and check whether a pubkey meets the policy threshold before allowing sensitive actions.
 
 ### Creating a vouch
 
@@ -2935,7 +2942,7 @@ Reference: `src/vouches.ts`
 
 ### Checking policy compliance
 
-Policies (kind `30472`) let community operators define trust thresholds for specific actions — for example, requiring a minimum score of 40 before a user can post to a paid relay, or requiring Tier 2 before joining a group.
+Policies (kind `30078`) let community operators define trust thresholds for specific actions — for example, requiring a minimum score of 40 before a user can post to a paid relay, or requiring Tier 2 before joining a group.
 
 ```typescript
 import { parsePolicy, checkPolicyCompliance, PolicyChecker } from 'signet-protocol';
@@ -2968,21 +2975,21 @@ Reference: `src/policies.ts`
 ## Level 3 — Full Protocol
 
 **Effort:** Weeks to months
-**Event kinds:** 30470–30480 (all 11 kinds)
+**Event kinds:** 31000 (all types), 30078, 30482–30484
 **New crypto required:** Merkle trees, Bulletproofs (age range proofs), linkable ring signatures
 
 Level 3 is full reference implementation. This is appropriate for clients that want to act as professional verifiers, run elections, or issue and receive Tier 3/4 credentials with zero-knowledge proofs.
 
 ### What to build (beyond Level 2)
 
-- **Two-credential ceremony:** Professional verifiers issue a Natural Person credential (kind `30470`, with nullifier and Merkle root) and an anonymous Persona credential simultaneously. The Natural Person credential binds to a document-based nullifier (`SHA-256(docType || country || docNumber || salt)`) to prevent duplicate identity claims. The Persona credential reveals only an age range, not the full identity.
+- **Two-credential ceremony:** Professional verifiers issue a Natural Person credential (kind `31000`, type: credential, with nullifier and Merkle root) and an anonymous Persona credential simultaneously. The Natural Person credential binds to a document-based nullifier (`SHA-256(docType || country || docNumber || salt)`) to prevent duplicate identity claims. The Persona credential reveals only an age range, not the full identity.
 - **Merkle selective disclosure:** Verified attributes are stored as private leaves of a Merkle tree. Only the root is published on-chain. Users disclose individual leaves with inclusion proofs when required.
 - **Age range proofs:** Bulletproofs prove that a user is within an age range without revealing their exact date of birth.
-- **Professional verifier onboarding:** Verifier accounts (kind `30473`) are backed by recognised professional bodies (law societies, medical boards, notary commissions). The protocol has no central authority — trust anchors are these external bodies.
-- **Ring signatures and elections:** The voting extension (kinds `30478`–`30480`) uses linkable ring signatures for anonymous voting with double-spend prevention.
-- **Guardian delegation:** Kind `30477` delegation events with scopes (`full`, `activity-approval`, `content-management`, `contact-approval`) support family structures and guardian-linked sub-accounts.
-- **Revocation and lifecycle:** Kind `30475` revocation events and credential chains using `supersedes`/`superseded-by` tags handle name changes, document renewal, and tier upgrades.
-- **Identity bridging:** Kind `30476` identity bridge events link verified identities across protocols or jurisdictions.
+- **Professional verifier onboarding:** Verifier accounts (kind `31000`, type: verifier) are backed by recognised professional bodies (law societies, medical boards, notary commissions). The protocol has no central authority — trust anchors are these external bodies.
+- **Ring signatures and elections:** The voting extension (kinds `30482`–`30484`) uses linkable ring signatures for anonymous voting with double-spend prevention.
+- **Guardian delegation:** Kind `31000` (type: delegation) events with scopes (`full`, `activity-approval`, `content-management`, `contact-approval`) support family structures and guardian-linked sub-accounts.
+- **Revocation and lifecycle:** Kind `31000` (type: revocation) events and credential chains using `supersedes`/`superseded-by` tags handle name changes, document renewal, and tier upgrades.
+- **Identity bridging:** Kind `31000` (type: identity-bridge) events link verified identities across protocols or jurisdictions.
 - **Anomaly detection:** The library includes heuristics for detecting suspicious vouching patterns (e.g. vouch rings, rapid bulk vouching).
 
 ### Key modules in signet-protocol
@@ -2991,7 +2998,7 @@ All modules are re-exported from the package root. You can also import them dire
 
 | Module | Source | Responsibility |
 |--------|--------|----------------|
-| Credentials | `src/credentials.ts` | Issue, parse, verify kind 30470 credentials including Merkle roots and nullifiers |
+| Credentials | `src/credentials.ts` | Issue, parse, verify kind 31000 (type: credential) attestations including Merkle roots and nullifiers |
 | Ring signatures | `src/ring-signature.ts` | Linkable ring signature generation and verification for voting |
 | Range proofs | `src/range-proof.ts` | Bulletproof-based age range proofs |
 | Merkle trees | `src/merkle.ts` | Build attribute trees, generate and verify inclusion proofs |
@@ -3003,19 +3010,19 @@ All modules are re-exported from the package root (`signet-protocol`). Import fr
 
 ### Full event kind reference
 
-| Kind | Name | Description |
-|------|------|-------------|
-| 30470 | Credential | Identity claim with optional Merkle root and nullifier |
-| 30471 | Vouch | Peer attestation of another pubkey's identity |
-| 30472 | Policy | Community trust threshold definitions |
-| 30473 | Verifier | Professional verifier registration |
-| 30474 | Challenge | Verifier-issued identity challenge |
-| 30475 | Revocation | Credential or vouch revocation |
-| 30476 | Identity bridge | Cross-protocol or cross-jurisdiction identity link |
-| 30477 | Delegation | Guardian or organisational delegation with scopes |
-| 30478 | Election | Voting election definition (ring signature voting) |
-| 30479 | Ballot | Anonymous signed ballot |
-| 30480 | Election result | Tallied election result |
+| Kind | Type tag | Description |
+|------|----------|-------------|
+| 31000 | credential | Identity claim with optional Merkle root and nullifier (NIP-VA) |
+| 31000 | vouch | Peer attestation of another pubkey's identity (NIP-VA) |
+| 31000 | verifier | Professional verifier registration (NIP-VA) |
+| 31000 | challenge | Report a suspected fraudulent verifier (NIP-VA) |
+| 31000 | revocation | Credential or verifier revocation (NIP-VA) |
+| 31000 | identity-bridge | Cross-protocol or cross-jurisdiction identity link (NIP-VA) |
+| 31000 | delegation | Guardian or organisational delegation with scopes (NIP-VA) |
+| 30078 | — | Community trust threshold definitions (NIP-78) |
+| 30482 | — | Voting election definition (ring signature voting) |
+| 30483 | — | Anonymous signed ballot |
+| 30484 | — | Tallied election result |
 
 ### Where to start
 

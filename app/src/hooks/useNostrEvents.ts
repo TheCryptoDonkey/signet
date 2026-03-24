@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { SIGNET_KINDS, type NostrEvent } from 'signet-protocol';
+import { ATTESTATION_KIND, type NostrEvent } from 'signet-protocol';
 import { getRelayClient, getRelayState } from '../lib/relay-service';
 
 interface NostrEvents {
@@ -28,21 +28,21 @@ export function useNostrEvents(pubkey: string | undefined): NostrEvents {
     try {
       const client = getRelayClient();
 
-      // Fetch credentials (kind 30470) where this pubkey is the subject
+      // Fetch credentials (kind 31000, type: credential) where this pubkey is the subject
       const creds = await client.fetch([
-        { kinds: [SIGNET_KINDS.CREDENTIAL], '#d': [pubkey] },
+        { kinds: [ATTESTATION_KIND], '#d': [pubkey] },
       ]);
       setCredentials(creds);
 
-      // Fetch vouches (kind 30471) for this pubkey
+      // Fetch vouches (kind 31000, type: vouch) for this pubkey
       const vs = await client.fetch([
-        { kinds: [SIGNET_KINDS.VOUCH], '#d': [pubkey] },
+        { kinds: [ATTESTATION_KIND], '#d': [pubkey] },
       ]);
       setVouches(vs);
 
-      // Fetch identity bridges (kind 30476) published by this pubkey
+      // Fetch identity bridges (kind 31000, type: identity-bridge) published by this pubkey
       const br = await client.fetch([
-        { kinds: [SIGNET_KINDS.IDENTITY_BRIDGE], authors: [pubkey] },
+        { kinds: [ATTESTATION_KIND], authors: [pubkey] },
       ]);
       setBridges(br);
     } catch (err) {

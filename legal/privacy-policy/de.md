@@ -45,18 +45,18 @@ Das Signet-Protokoll ist so konzipiert, dass die Datenerhebung minimiert wird. D
 | Kategorie | Beschreibung | Quelle | Speicherort |
 |----------|-------------|--------|-----------------|
 | **Nostr-Public-Keys** | secp256k1-Public-Keys (npub) für Protokollinteraktionen | Benutzergeneriert | Nostr-Relays (dezentralisiert) |
-| **Nachweis-Metadaten** | Nostr-Ereignisarten 30470–30477 mit Verifizierungsstufe, Ausstellungszeitstempel, Ablaufdaten, Altersbereich und Entitätstyp-Identifikatoren | Während der Nachweisausstellung generiert | Nostr-Relays (dezentralisiert) |
+| **Nachweis-Metadaten** | Nostr-Ereignisarten 31000–31000 mit Verifizierungsstufe, Ausstellungszeitstempel, Ablaufdaten, Altersbereich und Entitätstyp-Identifikatoren | Während der Nachweisausstellung generiert | Nostr-Relays (dezentralisiert) |
 | **Zero-Knowledge-Beweise** | Bulletproofs für Altersbereichsverifizierung | Lokal vom Benutzer generiert | In Nachweis-Ereignissen auf Nostr-Relays eingebettet |
 | **Ringsignaturen** | Kryptografische Signaturen, die die Mitgliedschaft in einer Gruppe beweisen, ohne preiszugeben, welches Mitglied unterzeichnet hat | Lokal vom Benutzer generiert | Nostr-Relays (dezentralisiert) |
 | **Nullifier-Hashes** | SHA-256-Hash von längenvorzeichenbehaftetem Dokumenttyp, Ländercode, Dokumentnummer und Domänen-Tag „signet-nullifier-v2" — verhindert doppelte Identitätserstellung; kann nicht zur Wiederherstellung von Dokumentdetails umgekehrt werden | Lokal während der Zwei-Nachweis-Zeremonie berechnet | In Natural-Person-Nachweis-Ereignissen eingebettet |
 | **Merkle-Roots** | Hash-Verpflichtung gegenüber verifizierten Attributen, die selektive Offenlegung ermöglicht. Blätter umfassen Name, Nationalität, documentType, dateOfBirth, documentNumber, documentExpiry, photoHash und Nullifier. Nur der Root-Hash wird veröffentlicht — einzelne Blattwerte werden nie veröffentlicht | Lokal während der Zwei-Nachweis-Zeremonie berechnet | In Natural-Person-Nachweis-Ereignissen eingebettet |
-| **Bürgschaftsaufzeichnungen** | Art-30471-Ereignisse, die Web-of-Trust-Empfehlungen darstellen | Von bürgenden Parteien erstellt | Nostr-Relays (dezentralisiert) |
-| **Richtlinienereignisse** | Art-30472-Ereignisse, die Anforderungen vertrauender Parteien festlegen | Von vertrauenden Parteien erstellt | Nostr-Relays (dezentralisiert) |
-| **Verifizierer-Registrierung** | Art-30473-Ereignisse zur Identifizierung professioneller Verifizierer, einschließlich professionellem Signatur-Pubkey und Jurisdiktionsinformationen | Von Verifizierern erstellt | Nostr-Relays (dezentralisiert) |
-| **Challenge-/Response-Daten** | Art-30474-Ereignisse für Verifizierer-Legitimitäts-Challenges | Während der Verifizierung generiert | Nostr-Relays (dezentralisiert) |
-| **Widerrufsaufzeichnungen** | Art-30475-Ereignisse für Nachweis-Widerrufe | Erstellt, wenn Nachweise widerrufen werden | Nostr-Relays (dezentralisiert) |
-| **Identitätsbrücken-Ereignisse** | Art-30476-Ereignisse, die Natural-Person- und Persona-Schlüsselpaare über Ringsignaturen verknüpfen | Vom Benutzer erstellt | Nostr-Relays (dezentralisiert) |
-| **Delegierungsereignisse** | Art-30477-Ereignisse für Agenten- oder Vormund-Delegierung mit bereichsgebundenen Berechtigungen | Vom Delegierenden erstellt | Nostr-Relays (dezentralisiert) |
+| **Bürgschaftsaufzeichnungen** | Art-31000-Ereignisse, die Web-of-Trust-Empfehlungen darstellen | Von bürgenden Parteien erstellt | Nostr-Relays (dezentralisiert) |
+| **Richtlinienereignisse** | Art-30078-Ereignisse, die Anforderungen vertrauender Parteien festlegen | Von vertrauenden Parteien erstellt | Nostr-Relays (dezentralisiert) |
+| **Verifizierer-Registrierung** | Art-31000-Ereignisse zur Identifizierung professioneller Verifizierer, einschließlich professionellem Signatur-Pubkey und Jurisdiktionsinformationen | Von Verifizierern erstellt | Nostr-Relays (dezentralisiert) |
+| **Challenge-/Response-Daten** | Art-31000-Ereignisse für Verifizierer-Legitimitäts-Challenges | Während der Verifizierung generiert | Nostr-Relays (dezentralisiert) |
+| **Widerrufsaufzeichnungen** | Art-31000-Ereignisse für Nachweis-Widerrufe | Erstellt, wenn Nachweise widerrufen werden | Nostr-Relays (dezentralisiert) |
+| **Identitätsbrücken-Ereignisse** | Art-31000-Ereignisse, die Natural-Person- und Persona-Schlüsselpaare über Ringsignaturen verknüpfen | Vom Benutzer erstellt | Nostr-Relays (dezentralisiert) |
+| **Delegierungsereignisse** | Art-31000-Ereignisse für Agenten- oder Vormund-Delegierung mit bereichsgebundenen Berechtigungen | Vom Delegierenden erstellt | Nostr-Relays (dezentralisiert) |
 | **Verschlüsseltes Schlüsselmaterial** | Private Schlüssel verschlüsselt mit AES-256-GCM (Schlüssel abgeleitet via PBKDF2, 600.000 Iterationen, SHA-256) | Lokal auf dem Gerät gespeichert | Nur lokaler Gerätespeicher — niemals übermittelt |
 
 ### 3.2 Was auf Ihrem Gerät verbleibt
@@ -114,7 +114,7 @@ Dieser Abschnitt erläutert den professionellen Verifizierungsprozess im Detail,
 
 2. **Der Verifizierer prüft Ihre physischen Dokumente.** Ein Stufe-3- oder Stufe-4-Verifizierer (ein lizenzierter Fachmann wie ein Solicitor, Notar oder Mediziner) prüft Ihre physischen Identitätsdokumente persönlich. Der Verifizierer bestätigt, dass die von Ihnen eingegebenen Daten mit Ihren Dokumenten übereinstimmen. Der Verifizierer gibt Ihre Daten nicht unabhängig in das System ein.
 
-3. **Der Verifizierer unterzeichnet den Nachweis.** Der Verifizierer unterzeichnet zwei Nachweis-Ereignisse: einen Natural-Person-Nachweis (Art 30470, unterzeichnet mit dem professionellen Nostr-Schlüsselpaar des Verifizierers) und einen Persona-Nachweis (anonym, nur Altersbereich, ebenfalls vom Verifizierer unterzeichnet). Beide werden auf Nostr-Relays veröffentlicht.
+3. **Der Verifizierer unterzeichnet den Nachweis.** Der Verifizierer unterzeichnet zwei Nachweis-Ereignisse: einen Natural-Person-Nachweis (Art 31000, unterzeichnet mit dem professionellen Nostr-Schlüsselpaar des Verifizierers) und einen Persona-Nachweis (anonym, nur Altersbereich, ebenfalls vom Verifizierer unterzeichnet). Beide werden auf Nostr-Relays veröffentlicht.
 
 4. **Was veröffentlicht wird.** Die veröffentlichten Nachweis-Ereignisse enthalten: den Public Key des Verifizierers, Ihren Persona-Public-Key (Subjekt-Pubkey), Nachweis-Metadaten (Stufe, Daten, Entitätstyp, Altersbereich), den Zero-Knowledge-Altersbereichsnachweis, den Nullifier-Hash (ein Einweg-Hash; kann nicht umgekehrt werden) und die Merkle-Root (eine Hash-Verpflichtung; einzelne Blattwerte werden nicht veröffentlicht). Kein Name, kein Geburtsdatum, keine Dokumentnummer oder andere identifizierende Informationen werden veröffentlicht.
 
@@ -145,10 +145,10 @@ wobei `len16(x)` die UTF-8-Byte-Länge von `x` als 2-Byte-Big-Endian-uint16 kodi
 
 Jeder Signet-Benutzer hat zwei Schlüsselpaare, die von einer einzigen 12-Wort-BIP-39-Mnemonic abgeleitet werden:
 
-- **Natural-Person-Schlüsselpaar** — abgeleitet über NIP-06-Pfad `m/44'/1237'/0'/0/0`. Für den Natural-Person-Nachweis (Art 30470) verwendet. Dieses Schlüsselpaar ist über den Nachweis mit Ihrer verifizierten realen Identität verbunden, das Schlüsselpaar selbst trägt jedoch keine inhärente Verbindung zu Ihren Dokumenten.
+- **Natural-Person-Schlüsselpaar** — abgeleitet über NIP-06-Pfad `m/44'/1237'/0'/0/0`. Für den Natural-Person-Nachweis (Art 31000) verwendet. Dieses Schlüsselpaar ist über den Nachweis mit Ihrer verifizierten realen Identität verbunden, das Schlüsselpaar selbst trägt jedoch keine inhärente Verbindung zu Ihren Dokumenten.
 - **Persona-Schlüsselpaar** — über BIP-32-HD-Pfad an einem separaten Konto-Index abgeleitet. Für den Persona-Nachweis (anonym, nur Altersbereich) verwendet. Dieses Schlüsselpaar trägt keine direkte Verbindung zu Ihrer realen Identität. Ihre Online-Sozialaktivität verwendet dieses Schlüsselpaar.
 
-**Datenschutzimplikation:** Da beide Schlüsselpaare von derselben Mnemonic abgeleitet werden, können Sie die Verbindung zwischen ihnen beweisen (über Art-30476-Identitätsbrücken-Ereignisse) oder sie vollständig getrennt halten. Ein Identitätsbrücken-Ereignis schafft nach der Veröffentlichung eine öffentliche kryptografische Verbindung. Sie sollten ein Brücken-Ereignis nur veröffentlichen, wenn Sie Ihre anonyme Persona mit Ihrem verifizierten Natural-Person-Status in Verbindung bringen möchten.
+**Datenschutzimplikation:** Da beide Schlüsselpaare von derselben Mnemonic abgeleitet werden, können Sie die Verbindung zwischen ihnen beweisen (über Art-31000-Identitätsbrücken-Ereignisse) oder sie vollständig getrennt halten. Ein Identitätsbrücken-Ereignis schafft nach der Veröffentlichung eine öffentliche kryptografische Verbindung. Sie sollten ein Brücken-Ereignis nur veröffentlichen, wenn Sie Ihre anonyme Persona mit Ihrem verifizierten Natural-Person-Status in Verbindung bringen möchten.
 
 **Schlüsselverwaltung und Rechte der betroffenen Personen:** Ihre privaten Schlüssel werden deterministisch aus Ihrer Mnemonic abgeleitet. Signet besitzt oder übermittelt Ihre privaten Schlüssel nie. Wenn Sie die App löschen und Ihre Mnemonic (und etwaige Shamir-Backups) verlieren, sind Ihre Schlüssel nicht wiederherstellbar. Signet kann bei der Schlüsselwiederherstellung nicht helfen, da wir keine Kopien besitzen.
 
@@ -219,7 +219,7 @@ Wir verarbeiten Daten auf folgenden Rechtsgrundlagen, abhängig von Ihrer Rechts
 
 Hinweis: Biometrische Daten werden ausschließlich on-device via WebAuthn verarbeitet. Signet verarbeitet keine biometrischen Daten gemäß Artikel 9(1). Falls eine biometrische Verarbeitung durch Signet später festgestellt werden sollte, wäre die Rechtsgrundlage ausdrückliche Einwilligung gemäß Art. 9(2)(a).
 
-**eIDAS 2.0:** Die EU-Verordnung über digitale Identitätsbrieftaschen (eIDAS 2.0) verpflichtet Mitgliedstaaten, ihren Bürgern bis Dezember 2026 digitale Identitätsbrieftaschen auszustellen. Die Architektur von Signet ist darauf ausgelegt, mit eIDAS-2.0-ausgestellten Nachweisen über den Art-30476-Identitätsbrücken-Mechanismus kompatibel zu sein.
+**eIDAS 2.0:** Die EU-Verordnung über digitale Identitätsbrieftaschen (eIDAS 2.0) verpflichtet Mitgliedstaaten, ihren Bürgern bis Dezember 2026 digitale Identitätsbrieftaschen auszustellen. Die Architektur von Signet ist darauf ausgelegt, mit eIDAS-2.0-ausgestellten Nachweisen über den Art-31000-Identitätsbrücken-Mechanismus kompatibel zu sein.
 
 ### 8.2 Vereinigtes Königreich (UK DSGVO / Data Protection Act 2018)
 
@@ -278,7 +278,7 @@ Die durch das Signet-Protokoll verarbeiteten Daten werden ausschließlich verwen
 6. **Protokollintegrität** — Aufrechterhaltung der kryptografischen Integrität und Sicherheit des Protokolls.
 7. **Rechtliche Compliance** — Einhaltung anwendbarer Gesetze und Vorschriften.
 8. **Zwei-Nachweis-Zeremonie** — Ausstellung gepaarter Natural-Person- und Persona-Nachweise während der professionellen Verifizierung, einschließlich Berechnung von Merkle-Bäumen, Nullifiern und Altersbereichsnachweisen.
-9. **Vormund-Verwaltung** — Verarbeitung von Vormund-Delegierungsereignissen (Art 30477) für die Verwaltung von Kinderkonten.
+9. **Vormund-Verwaltung** — Verarbeitung von Vormund-Delegierungsereignissen (Art 31000) für die Verwaltung von Kinderkonten.
 10. **Selektive Offenlegung** — Benutzern zu ermöglichen, einzelne Merkle-Blatt-Attribute (einschließlich Dokumentnummer und Dokumentablaufdatum) gegenüber vertrauenden Parteien nachzuweisen, die diese benötigen, ohne nicht betroffene Attribute preiszugeben.
 11. **Nachweis-Lebenszyklus** — Verarbeitung von Nachweis-Ketten (ersetzt/ersetzt-durch-Tags) für Namensänderungen, Dokumenterneuerungen und Stufenaufrüstungen.
 
@@ -303,9 +303,9 @@ Wir können Informationen offenlegen, wenn dies durch eine gültige Gerichtsanor
 
 ### 10.4 Verifizierer-Datenweitergabe
 
-Professionelle Verifizierer (Stufe 3 und Stufe 4) veröffentlichen Verifizierer-Registrierungsereignisse (Art 30473) im Nostr-Netzwerk. Diese Ereignisse enthalten den professionellen Nostr-Pubkey des Verifizierers und Jurisdiktionsinformationen. Verifizierer stimmen dieser Veröffentlichung im Rahmen der Verifizierer-Vereinbarung zu.
+Professionelle Verifizierer (Stufe 3 und Stufe 4) veröffentlichen Verifizierer-Registrierungsereignisse (Art 31000) im Nostr-Netzwerk. Diese Ereignisse enthalten den professionellen Nostr-Pubkey des Verifizierers und Jurisdiktionsinformationen. Verifizierer stimmen dieser Veröffentlichung im Rahmen der Verifizierer-Vereinbarung zu.
 
-Die einzigen Daten, die zwischen dem Verifizierer und dem Protokoll über veröffentlichte Ereignisse ausgetauscht werden, sind das Nachweis-Ereignis (Art 30470), das den Public Key des Verifizierers, den Persona-Public-Key des Subjekts, Nachweis-Metadaten (Stufe, Daten, Entitätstyp, Altersbereich), den Zero-Knowledge-Altersbereichsnachweis, den Nullifier-Hash und die Merkle-Root enthält.
+Die einzigen Daten, die zwischen dem Verifizierer und dem Protokoll über veröffentlichte Ereignisse ausgetauscht werden, sind das Nachweis-Ereignis (Art 31000), das den Public Key des Verifizierers, den Persona-Public-Key des Subjekts, Nachweis-Metadaten (Stufe, Daten, Entitätstyp, Altersbereich), den Zero-Knowledge-Altersbereichsnachweis, den Nullifier-Hash und die Merkle-Root enthält.
 
 Keine personenbezogenen Identifikationsdaten (Name, Geburtsdatum, Dokumentnummern, Nationalität) erscheinen in veröffentlichten Ereignissen.
 
@@ -475,7 +475,7 @@ Das Protokoll verwendet auf Bulletproofs basierende Zero-Knowledge-Beweise für 
 Wo elterliche Einwilligung erforderlich ist, unterstützt das Protokoll:
 - Nachweisbare elterliche Einwilligung durch Stufe-3- oder Stufe-4-verifizierte Elternteil-/Vormund-Nachweise
 - Alters-Gating durch ZK-Nachweis-Verifizierung auf Ebene der vertrauenden Partei
-- Vormund-Delegierungsereignisse (Art 30477), die Eltern die Verwaltung der Signet-Aktivität ihrer Kinder ermöglichen
+- Vormund-Delegierungsereignisse (Art 31000), die Eltern die Verwaltung der Signet-Aktivität ihrer Kinder ermöglichen
 - Mechanismen für Eltern, Delegierung und Einwilligung zu widerrufen
 
 ### 14.5 COPPA-Compliance (Vereinigte Staaten)

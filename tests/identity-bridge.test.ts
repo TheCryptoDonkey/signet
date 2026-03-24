@@ -157,7 +157,7 @@ describe('verifyIdentityBridge', () => {
       3
     );
 
-    const wrongKind = { ...event, kind: 30470 };
+    const wrongKind = { ...event, kind: 1 };
     const valid = await verifyIdentityBridge(wrongKind);
     expect(valid).toBe(false);
   });
@@ -188,7 +188,7 @@ describe('parseIdentityBridge', () => {
 
   it('returns null for wrong kind', () => {
     const fakeEvent = {
-      kind: 30470,
+      kind: 1,
       pubkey: 'abc',
       created_at: 0,
       tags: [],

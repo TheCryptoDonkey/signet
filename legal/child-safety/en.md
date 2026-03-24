@@ -158,7 +158,7 @@ The Protocol supports the following parental consent mechanisms:
    - Parent's identity verified by professional verifier (two-credential ceremony)
    - Parent's consent cryptographically signed with their Nostr key
    - Child's credential linked to parent via immutable guardian tags on both Natural Person and Persona credentials
-   - Guardian delegation events (kind 30477) allow the parent to delegate specific permissions to other trusted adults
+   - Guardian delegation events (kind 31000) allow the parent to delegate specific permissions to other trusted adults
 
 2. **Co-Verification:**
    The parent/guardian and child attend a Tier 4 verification session together. The professional verifier:
@@ -175,7 +175,7 @@ The Protocol supports the following parental consent mechanisms:
 ### 6.3 Consent Withdrawal
 
 Parents/guardians may withdraw consent at any time by:
-1. Publishing a revocation event (kind 30475) from the parent/guardian's Nostr key, revoking the consent event.
+1. Publishing a revocation event (kind 31000) from the parent/guardian's Nostr key, revoking the consent event.
 2. Contacting the Signet Protocol support team to request revocation assistance.
 3. Through any Nostr client implementing the Protocol's consent management features.
 
@@ -486,7 +486,7 @@ The Protocol implements a three-layer family structure model:
 Guardian tags (`["guardian", "<parent_pubkey>"]`) are set by the professional verifier and reflect legal parental responsibility. They can only be changed by a new credential issued by a professional with appropriate legal documentation (e.g., court order).
 
 **Layer 2 — Delegation level (flexible):**
-Guardians may delegate specific permissions to trusted adults (step-parents, grandparents, teachers) via kind 30477 guardian delegation events. Delegations are:
+Guardians may delegate specific permissions to trusted adults (step-parents, grandparents, teachers) via kind 31000 guardian delegation events. Delegations are:
 - Time-limited (with expiry)
 - Scope-limited: `full`, `activity-approval`, `content-management`, `contact-approval`
 - Revocable by the guardian at any time

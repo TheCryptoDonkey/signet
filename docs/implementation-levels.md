@@ -6,23 +6,23 @@ A guide for Nostr client developers integrating the Signet identity protocol. Th
 
 | Level | Effort | Event Kinds | New Crypto | What Users Get |
 |-------|--------|-------------|------------|----------------|
-| 1 — Read Trust Badges | ~1 weekend | 30999 (credential, vouch) | None | Tier badges and Signet Score on profiles |
-| 2 — Issue Vouches | A few days | 30999, 30078 | None | Peer vouching, Tier 2 networks, policy checks |
-| 3 — Full Protocol | Weeks to months | 30999, 30078, 30482-30484 | Merkle, Pedersen range proofs, ring signatures | Professional verification, ZK proofs, elections |
+| 1 — Read Trust Badges | ~1 weekend | 31000 (credential, vouch) | None | Tier badges and Signet Score on profiles |
+| 2 — Issue Vouches | A few days | 31000, 30078 | None | Peer vouching, Tier 2 networks, policy checks |
+| 3 — Full Protocol | Weeks to months | 31000, 30078, 30482-30484 | Merkle, Pedersen range proofs, ring signatures | Professional verification, ZK proofs, elections |
 
 ---
 
 ## Level 1 — Read Trust Badges
 
 **Effort:** A weekend
-**Event kinds:** 30999 (attestation — filter by `type` tag: `credential`, `vouch`)
+**Event kinds:** 31000 (attestation — filter by `type` tag: `credential`, `vouch`)
 **New crypto required:** None — Nostr already verifies Schnorr signatures
 
 This is the NIP-05 equivalent of Signet integration. You read one event kind (filtered by type tag), call one function, and display a badge. No cryptographic work on your part beyond what your Nostr client already does.
 
 ### What to build
 
-1. Subscribe to kind `30999` events with `type` tags `credential` and `vouch` for the pubkeys you want to display.
+1. Subscribe to kind `31000` events with `type` tags `credential` and `vouch` for the pubkeys you want to display.
 2. Pass the events to `computeBadge()`.
 3. Show the result on the user's profile.
 
@@ -40,7 +40,7 @@ import { computeBadge, buildBadgeFilters } from 'signet-protocol';
 // 1. Fetch events from relay
 const filters = buildBadgeFilters([pubkey]);
 // Send a REQ message to your relay with these filters.
-// The filters request kind 30999 with credential and vouch type tags.
+// The filters request kind 31000 with credential and vouch type tags.
 
 // 2. Compute badge from the events you receive
 const badge = computeBadge(pubkey, events);
@@ -79,7 +79,7 @@ The `badge` object includes:
 ## Level 2 — Issue Vouches
 
 **Effort:** A few days
-**Event kinds:** 30999 (attestation — credential, vouch types), 30078 (policy)
+**Event kinds:** 31000 (attestation — credential, vouch types), 30078 (policy)
 **New crypto required:** None
 
 Level 2 adds the ability for your users to vouch for each other and for your client to respect community policies. This is the viral layer of the protocol — peer vouching is what builds Tier 2 trust networks and creates network effects across clients.
@@ -88,7 +88,7 @@ Level 2 adds the ability for your users to vouch for each other and for your cli
 
 Everything from Level 1, plus:
 
-1. UI for a user to select a contact and publish a kind `30999` vouch attestation (with `['type', 'vouch']` tag).
+1. UI for a user to select a contact and publish a kind `31000` vouch attestation (with `['type', 'vouch']` tag).
 2. Read kind `30078` (NIP-78 app-specific data) policies from community relays and check whether a pubkey meets the policy threshold before allowing sensitive actions.
 
 ### Creating a vouch
@@ -162,21 +162,21 @@ Reference: `src/policies.ts`
 ## Level 3 — Full Protocol
 
 **Effort:** Weeks to months
-**Event kinds:** 30999 (all attestation types), 30078 (policies), 30482-30484 (voting)
+**Event kinds:** 31000 (all attestation types), 30078 (policies), 30482-30484 (voting)
 **New crypto required:** Merkle trees, Pedersen range proofs (age range proofs), linkable ring signatures
 
 Level 3 is full reference implementation. This is appropriate for clients that want to act as professional verifiers, run elections, or issue and receive Tier 3/4 credentials with zero-knowledge proofs.
 
 ### What to build (beyond Level 2)
 
-- **Two-credential ceremony:** Professional verifiers issue a Natural Person credential (kind `30999` with `type: credential`, nullifier and Merkle root) and an anonymous Persona credential simultaneously. The Natural Person credential binds to a document-based nullifier (`SHA-256(docType || country || docNumber || salt)`) to prevent duplicate identity claims. The Persona credential reveals only an age range, not the full identity.
+- **Two-credential ceremony:** Professional verifiers issue a Natural Person credential (kind `31000` with `type: credential`, nullifier and Merkle root) and an anonymous Persona credential simultaneously. The Natural Person credential binds to a document-based nullifier (`SHA-256(docType || country || docNumber || salt)`) to prevent duplicate identity claims. The Persona credential reveals only an age range, not the full identity.
 - **Merkle selective disclosure:** Verified attributes are stored as private leaves of a Merkle tree. Only the root is published on-chain. Users disclose individual leaves with inclusion proofs when required.
 - **Age range proofs:** Pedersen range proofs prove that a user is within an age range without revealing their exact date of birth.
-- **Professional verifier onboarding:** Verifier accounts (kind `30999` with `type: verifier`) are backed by recognised professional bodies (law societies, medical boards, notary commissions). The protocol has no central authority — trust anchors are these external bodies.
+- **Professional verifier onboarding:** Verifier accounts (kind `31000` with `type: verifier`) are backed by recognised professional bodies (law societies, medical boards, notary commissions). The protocol has no central authority — trust anchors are these external bodies.
 - **Ring signatures and elections:** The voting extension (kinds `30482`–`30484`) uses linkable ring signatures for anonymous voting with double-spend prevention.
-- **Guardian delegation:** Delegation attestations (kind `30999` with `type: delegation`) with scopes (`full`, `activity-approval`, `content-management`, `contact-approval`) support family structures and guardian-linked sub-accounts.
-- **Revocation and lifecycle:** Revocation attestations (kind `30999` with `type: revocation`) and credential chains using `supersedes`/`superseded-by` tags handle name changes, document renewal, and tier upgrades.
-- **Identity bridging:** Identity bridge attestations (kind `30999` with `type: identity-bridge`) link verified identities across protocols or jurisdictions.
+- **Guardian delegation:** Delegation attestations (kind `31000` with `type: delegation`) with scopes (`full`, `activity-approval`, `content-management`, `contact-approval`) support family structures and guardian-linked sub-accounts.
+- **Revocation and lifecycle:** Revocation attestations (kind `31000` with `type: revocation`) and credential chains using `supersedes`/`superseded-by` tags handle name changes, document renewal, and tier upgrades.
+- **Identity bridging:** Identity bridge attestations (kind `31000` with `type: identity-bridge`) link verified identities across protocols or jurisdictions.
 - **Anomaly detection:** The library includes heuristics for detecting suspicious vouching patterns (e.g. vouch rings, rapid bulk vouching).
 
 ### Key modules in signet-protocol
@@ -201,19 +201,19 @@ All Signet identity attestations use a single generic kind, differentiated by `t
 
 | Kind | Type Tag | Name | Description |
 |------|----------|------|-------------|
-| 30999 | `credential` | Credential | Identity claim with optional Merkle root and nullifier |
-| 30999 | `vouch` | Vouch | Peer attestation of another pubkey's identity |
-| 30999 | `verifier` | Verifier | Professional verifier registration |
-| 30999 | `challenge` | Challenge | Challenge against a verifier's legitimacy |
-| 30999 | `revocation` | Revocation | Credential or vouch revocation |
-| 30999 | `identity-bridge` | Identity Bridge | Cross-protocol or cross-jurisdiction identity link |
-| 30999 | `delegation` | Delegation | Guardian or organisational delegation with scopes |
+| 31000 | `credential` | Credential | Identity claim with optional Merkle root and nullifier |
+| 31000 | `vouch` | Vouch | Peer attestation of another pubkey's identity |
+| 31000 | `verifier` | Verifier | Professional verifier registration |
+| 31000 | `challenge` | Challenge | Challenge against a verifier's legitimacy |
+| 31000 | `revocation` | Revocation | Credential or vouch revocation |
+| 31000 | `identity-bridge` | Identity Bridge | Cross-protocol or cross-jurisdiction identity link |
+| 31000 | `delegation` | Delegation | Guardian or organisational delegation with scopes |
 | 30078 | — | Policy | Community trust threshold definitions (NIP-78) |
 | 30482 | — | Election | Voting election definition (separate NIP) |
 | 30483 | — | Ballot | Anonymous signed ballot |
 | 30484 | — | Election Result | Tallied election result |
 
-**Note:** Kind 30999 is a placeholder pending NIP assignment. The `type` tag differentiates attestation types within the single kind.
+**Note:** Kind 31000 is the NIP-VA (Verifiable Attestations) kind. The `type` tag differentiates attestation types within the single kind.
 
 ### Where to start
 

@@ -48,19 +48,21 @@ The full specification is at [`spec/protocol.md`](spec/protocol.md).
 
 ### Event Kinds
 
-| Kind | Name | Purpose |
-|------|------|---------|
-| 30470 | Verification Credential | Attests to a subject's verification tier |
-| 30471 | Vouch Attestation | Peer vouch for another user |
-| 30472 | Community Verification Policy | Minimum verification requirements |
-| 30473 | Verifier Credential | Professional declares verifier status |
-| 30474 | Verifier Challenge | Challenge a verifier's legitimacy |
-| 30475 | Verifier Revocation | Community confirms challenge, revokes verifier |
-| 30476 | Identity Bridge | Link two keypairs via ring signature |
-| 30477 | Delegation | Guardian or agent delegation with scoped permission |
-| 30482 | Election | Voting extension: define an election |
-| 30483 | Ballot | Voting extension: cast an anonymous ballot |
-| 30484 | Election Result | Voting extension: publish tallied result |
+All identity attestations use a single NIP-VA kind (31000), differentiated by `type` tag:
+
+| Kind | Type Tag | Name | Purpose |
+|------|----------|------|---------|
+| 31000 | `credential` | Verification Credential | Attests to a subject's verification tier |
+| 31000 | `vouch` | Vouch Attestation | Peer vouch for another user |
+| 30078 | — | Community Verification Policy | Minimum verification requirements (NIP-78) |
+| 31000 | `verifier` | Verifier Credential | Professional declares verifier status |
+| 31000 | `challenge` | Verifier Challenge | Challenge a verifier's legitimacy |
+| 31000 | `revocation` | Verifier Revocation | Community confirms challenge, revokes verifier |
+| 31000 | `identity-bridge` | Identity Bridge | Link two keypairs via ring signature |
+| 31000 | `delegation` | Delegation | Guardian or agent delegation with scoped permission |
+| 30482 | — | Election | Voting extension: define an election |
+| 30483 | — | Ballot | Voting extension: cast an anonymous ballot |
+| 30484 | — | Election Result | Voting extension: publish tallied result |
 
 ### Crypto Stack
 

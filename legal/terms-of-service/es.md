@@ -47,7 +47,7 @@ Si no está de acuerdo con estos Términos, no debe utilizar el Protocolo.
 
 Si utiliza el Protocolo en nombre de una organización, declara que tiene autoridad para vincular a dicha organización, y "usted" incluye a esa organización.
 
-**Verificadores:** Al publicar un evento de credencial de verificador kind 30473 en la red Nostr, o al realizar una ceremonia de verificación Signet, usted acepta la Sección 8 (Obligaciones del Verificador) como condición jurídicamente vinculante de su participación. No es necesario que firme un documento separado. El acto de realizar una verificación constituye su aceptación.
+**Verificadores:** Al publicar un evento de credencial de verificador kind 31000 en la red Nostr, o al realizar una ceremonia de verificación Signet, usted acepta la Sección 8 (Obligaciones del Verificador) como condición jurídicamente vinculante de su participación. No es necesario que firme un documento separado. El acto de realizar una verificación constituye su aceptación.
 
 ---
 
@@ -112,14 +112,14 @@ El Protocolo utiliza los siguientes tipos de eventos Nostr:
 
 | Tipo | Propósito |
 |---|---|
-| 30470 | Eventos de credencial |
-| 30471 | Atestaciones de aval |
-| 30472 | Políticas de verificación comunitaria |
-| 30473 | Credenciales de registro de verificador |
-| 30474 | Eventos de desafío |
-| 30475 | Eventos de revocación |
-| 30476 | Eventos de puente de identidad |
-| 30477 | Eventos de delegación (tutor y agente) |
+| 31000 | Eventos de credencial |
+| 31000 | Atestaciones de aval |
+| 30078 | Políticas de verificación comunitaria |
+| 31000 | Credenciales de registro de verificador |
+| 31000 | Eventos de desafío |
+| 31000 | Eventos de revocación |
+| 31000 | Eventos de puente de identidad |
+| 31000 | Eventos de delegación (tutor y agente) |
 | 30482–30484 | Extensión de votación (elección, voto, resultado) |
 
 Los números de tipo de evento están pendientes de asignación final de NIP.
@@ -153,7 +153,7 @@ Durante el proceso de incorporación, usted elige qué keypair es su cuenta prin
 
 ### 4.2 Modo de Keypair Único (Importación de nsec)
 
-Si es un usuario existente de Nostr, puede importar su clave privada existente (nsec). En el modo de keypair único, su npub existente se convierte en su identidad de Persona Natural, y puede crear un puente de identidad (evento kind 30476) para vincularlo a una cuenta de Persona. Todos sus seguidores existentes, NIP-05, zaps y reputación se preservan.
+Si es un usuario existente de Nostr, puede importar su clave privada existente (nsec). En el modo de keypair único, su npub existente se convierte en su identidad de Persona Natural, y puede crear un puente de identidad (evento kind 31000) para vincularlo a una cuenta de Persona. Todos sus seguidores existentes, NIP-05, zaps y reputación se preservan.
 
 ### 4.3 Generación y Copia de Seguridad de Claves
 
@@ -194,7 +194,7 @@ Las credenciales de Nivel 3 y Nivel 4 se emiten a través de la ceremonia de dob
 
 3. **El verificador confirma o rechaza.** El verificador inspecciona sus documentos, verifica que usted es la persona descrita en ellos, y confirma o rechaza los datos que usted introdujo. El verificador no escribe sus datos personales — solo confirma lo que usted ha introducido.
 
-4. **Se emiten dos credenciales.** Si el verificador confirma los datos, publica dos eventos de credencial kind 30470 — uno para su keypair de Persona Natural (con su raíz Merkle y nullifier) y otro para su keypair de Persona (solo con su prueba de rango de edad). Ambas credenciales están firmadas con la clave Nostr profesional del verificador.
+4. **Se emiten dos credenciales.** Si el verificador confirma los datos, publica dos eventos de credencial kind 31000 — uno para su keypair de Persona Natural (con su raíz Merkle y nullifier) y otro para su keypair de Persona (solo con su prueba de rango de edad). Ambas credenciales están firmadas con la clave Nostr profesional del verificador.
 
 5. **El número de documento se descarta.** Después de calcular el nullifier, el número de documento no es retenido por el Protocolo, la Aplicación ni (a menos que sus obligaciones profesionales lo requieran independientemente) el verificador.
 
@@ -253,7 +253,7 @@ Si el documento subyacente de una credencial vence antes que la propia credencia
 
 ### 6.2 Revocación de Credenciales
 
-Las credenciales pueden ser revocadas publicando un evento kind 30475. La revocación puede ser iniciada por:
+Las credenciales pueden ser revocadas publicando un evento kind 31000. La revocación puede ser iniciada por:
 
 - Usted (autorrevocación — por ejemplo, en caso de compromiso de la clave o cambio de nombre)
 - El verificador emisor (por causa, como fraude descubierto)
@@ -276,7 +276,7 @@ Cuando sus atributos del mundo real cambian (cambio de nombre, renovación de do
 
 ### 6.5 Delegación de Tutela
 
-Un tutor (padre o tutor legal verificado) puede delegar permisos específicos a adultos de confianza mediante eventos de delegación kind 30477. Los alcances de delegación incluyen:
+Un tutor (padre o tutor legal verificado) puede delegar permisos específicos a adultos de confianza mediante eventos de delegación kind 31000. Los alcances de delegación incluyen:
 
 - `full` — delegación completa (por ejemplo, copadre)
 - `activity-approval` — aprobar actividades que requieren consentimiento parental
@@ -300,12 +300,12 @@ Una Persona es un alias anónimo:
 
 - Una Persona no lleva ninguna información de identificación personal — sin nombre, sin nullifier, sin raíz Merkle
 - Una Persona hereda la prueba de rango de edad de la ceremonia de doble credencial
-- Una Persona puede estar vinculada a una Persona Natural mediante un puente de identidad (kind 30476) usando firmas en anillo, permitiendo que la Persona demuestre "Soy una persona real y verificada" sin revelar quién es esa persona
+- Una Persona puede estar vinculada a una Persona Natural mediante un puente de identidad (kind 31000) usando firmas en anillo, permitiendo que la Persona demuestre "Soy una persona real y verificada" sin revelar quién es esa persona
 - Usted es responsable de toda la actividad realizada a través de sus cuentas de Persona
 
 ### 6.8 Sin Garantía de Aceptación
 
-No garantizamos que ninguna credencial sea aceptada por ninguna parte confiante. Las comunidades establecen sus propias políticas de aceptación mediante eventos de política kind 30472.
+No garantizamos que ninguna credencial sea aceptada por ninguna parte confiante. Las comunidades establecen sus propias políticas de aceptación mediante eventos de política kind 30078.
 
 ### 6.9 Cartera de Documentos
 
@@ -342,7 +342,7 @@ Usted no debe:
 
 ### 7.3 Obligaciones de Avalista (Nivel 2)
 
-Al avalar a otro usuario (evento kind 30471):
+Al avalar a otro usuario (evento kind 31000):
 
 - Debe tener una base personal y genuina para el aval
 - No debe aceptar pagos u otras compensaciones a cambio de proporcionar avales
@@ -355,7 +355,7 @@ Al avalar a otro usuario (evento kind 30471):
 
 ### 8.1 Por Qué No Hay un Acuerdo Separado
 
-Hemos incorporado el acuerdo de verificador en estos Términos porque las personas que más probablemente verificarán a menores —maestros en reuniones de padres, médicos de cabecera, trabajadores sociales— no deberían tener que navegar por un segundo documento legal. Al actuar como verificador Signet (publicando un evento kind 30473 o realizando una ceremonia), usted acepta las obligaciones de esta sección. Estas obligaciones se suman a sus deberes profesionales existentes y no los reemplazan.
+Hemos incorporado el acuerdo de verificador en estos Términos porque las personas que más probablemente verificarán a menores —maestros en reuniones de padres, médicos de cabecera, trabajadores sociales— no deberían tener que navegar por un segundo documento legal. Al actuar como verificador Signet (publicando un evento kind 31000 o realizando una ceremonia), usted acepta las obligaciones de esta sección. Estas obligaciones se suman a sus deberes profesionales existentes y no los reemplazan.
 
 ### 8.2 Profesiones Elegibles
 
@@ -383,7 +383,7 @@ En todos los casos, debe estar en buen estado (no estar sujeto a suspensión, re
 
 Para registrarse como verificador:
 
-1. Publique un evento de credencial de verificador kind 30473 en Nostr que contenga su categoría profesional, jurisdicción, organismo licenciador y referencia de licencia.
+1. Publique un evento de credencial de verificador kind 31000 en Nostr que contenga su categoría profesional, jurisdicción, organismo licenciador y referencia de licencia.
 2. Obtenga al menos dos avales de otros profesionales Signet verificados de al menos dos profesiones diferentes (el aval entre profesiones previene los anillos de colusión de profesión única).
 3. El registro no implica respaldo de nuestra parte.
 
@@ -396,7 +396,7 @@ Al realizar una verificación de Nivel 3 (Adulto), debe:
 3. Confirmar que la persona ante usted coincide con el documento.
 4. Confirmar (o rechazar) los datos que el sujeto ha introducido previamente en la Aplicación. Está confirmando lo que ve; no está introduciendo datos en nombre del sujeto.
 5. Calcular el nullifier de documento y, cuando se presenten múltiples documentos, la familia de nullifiers.
-6. Emitir la credencial de Persona Natural (kind 30470) y la credencial de Persona (kind 30470) mediante la ceremonia de doble credencial.
+6. Emitir la credencial de Persona Natural (kind 31000) y la credencial de Persona (kind 31000) mediante la ceremonia de doble credencial.
 7. Descartar el número de documento tras el cálculo del nullifier. No lo almacene a menos que sus obligaciones profesionales lo requieran independientemente.
 8. Mantener registros de la verificación (fecha, lugar, identidad del sujeto, documentos inspeccionados, hash del nullifier, ambas claves públicas) durante el período requerido por sus obligaciones profesionales — normalmente al menos seis años.
 
@@ -470,7 +470,7 @@ Su condición de verificador puede ser rescindida:
 
 **Con 30 días de preaviso si:** incumple materialmente estos Términos y no lo subsana en 14 días; ya no cumple los requisitos de elegibilidad; o el Protocolo es descontinuado.
 
-Tras la rescisión, su credencial de verificador kind 30473 es revocada. Las credenciales emitidas anteriormente permanecen válidas a menos que sean revocadas individualmente. Debe conservar los registros de verificación durante el período de retención requerido.
+Tras la rescisión, su credencial de verificador kind 31000 es revocada. Las credenciales emitidas anteriormente permanecen válidas a menos que sean revocadas individualmente. Debe conservar los registros de verificación durante el período de retención requerido.
 
 ---
 
@@ -525,11 +525,11 @@ La integración del SDK no implica respaldo de su sitio web o servicio por parte
 
 ### 10.1 Qué Es
 
-El bot de verificación de Signet ("el Bot") es un servicio automatizado que monitorea la red Nostr en busca de eventos de credencial kind 30470 y proporciona resúmenes de verificación de credenciales a solicitud. El Bot puede publicar respuestas a consultas, publicar resúmenes periódicos o responder a menciones.
+El bot de verificación de Signet ("el Bot") es un servicio automatizado que monitorea la red Nostr en busca de eventos de credencial kind 31000 y proporciona resúmenes de verificación de credenciales a solicitud. El Bot puede publicar respuestas a consultas, publicar resúmenes periódicos o responder a menciones.
 
 ### 10.2 Qué Procesa
 
-El Bot procesa únicamente eventos Nostr públicos. Lee eventos kind 30470, 30471, 30472, 30473, 30475, 30476 y 30477 de relays públicos. No accede a su clave privada, su mnemónico ni a ningún dato almacenado localmente en la Aplicación.
+El Bot procesa únicamente eventos Nostr públicos. Lee eventos kind 31000, 31000, 30078, 31000, 31000, 31000 y 31000 de relays públicos. No accede a su clave privada, su mnemónico ni a ningún dato almacenado localmente en la Aplicación.
 
 El Bot calcula las puntuaciones Signet IQ a partir de datos públicos en cadena. No recopila ni almacena datos personales más allá de lo que se publica en los eventos Nostr públicos.
 
@@ -556,7 +556,7 @@ La puntuación se calcula a partir de contribuciones ponderadas que incluyen:
 - Verificación profesional de Nivel 3 o Nivel 4 (mayor peso)
 - Verificación cruzada por profesionales independientes adicionales
 - Avales presenciales de usuarios con alto IQ
-- Puentes de identidad (kind 30476)
+- Puentes de identidad (kind 31000)
 - Antigüedad y actividad de la cuenta
 - Puntuación de confianza del verificador (véase la Sección 11.3)
 

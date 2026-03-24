@@ -49,15 +49,15 @@
   },
   "dependencies": {
     "@forgesworn/range-proof": "^1.0.0",
-    "@forgesworn/ring-sig": "^1.0.0",
+    "@forgesworn/ring-sig": "^1.0.2",
     "@forgesworn/shamir-words": "^1.0.0",
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",
     "@scure/bip39": "^2.0.1",
     "jurisdiction-kit": "^1.0.0",
     "nostr-attestations": "^2.1.0",
-    "nsec-tree": "^1.2.0",
-    "spoken-token": "^1.0.3"
+    "nsec-tree": "^1.4.1",
+    "spoken-token": "^2.0.3"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",

@@ -59,7 +59,7 @@ function lastWS(): MockWebSocket {
 
 const dummyEvent: NostrEvent = {
   id: 'a'.repeat(64),
-  kind: 30470,
+  kind: 31000,
   pubkey: 'b'.repeat(64),
   created_at: 1700000000,
   tags: [['d', 'subject1']],
@@ -234,7 +234,7 @@ describe('RelayClient', () => {
 
       const events: NostrEvent[] = [];
       const subId = client.subscribe(
-        [{ kinds: [30470] }],
+        [{ kinds: [31000] }],
         (event) => events.push(event)
       );
 
@@ -243,7 +243,7 @@ describe('RelayClient', () => {
       const sent = JSON.parse(lastWS().sent[0]);
       expect(sent[0]).toBe('REQ');
       expect(sent[1]).toBe(subId);
-      expect(sent[2]).toEqual({ kinds: [30470] });
+      expect(sent[2]).toEqual({ kinds: [31000] });
     });
 
     it('delivers events to the callback (verification disabled)', async () => {
@@ -254,7 +254,7 @@ describe('RelayClient', () => {
 
       const events: NostrEvent[] = [];
       const subId = client.subscribe(
-        [{ kinds: [30470] }],
+        [{ kinds: [31000] }],
         (event) => events.push(event)
       );
 
@@ -272,7 +272,7 @@ describe('RelayClient', () => {
 
       let eoseCalled = false;
       const subId = client.subscribe(
-        [{ kinds: [30470] }],
+        [{ kinds: [31000] }],
         () => {},
         () => { eoseCalled = true; }
       );
@@ -292,7 +292,7 @@ describe('RelayClient', () => {
 
       const events: NostrEvent[] = [];
       const subId = client.subscribe(
-        [{ kinds: [30470] }],
+        [{ kinds: [31000] }],
         (event) => events.push(event)
       );
 
@@ -315,7 +315,7 @@ describe('RelayClient', () => {
       lastWS().simulateOpen();
       await p;
 
-      const fetchPromise = client.fetch([{ kinds: [30470] }]);
+      const fetchPromise = client.fetch([{ kinds: [31000] }]);
 
       // Find the subscription ID from the REQ message
       const req = JSON.parse(lastWS().sent[0]);
@@ -409,7 +409,7 @@ describe('RelayClient', () => {
       await p;
 
       // Create a subscription
-      client.subscribe([{ kinds: [30470] }], () => {});
+      client.subscribe([{ kinds: [31000] }], () => {});
 
       // Disconnect and reconnect
       lastWS().simulateClose();
@@ -455,7 +455,7 @@ describe('RelayClient', () => {
       await p;
 
       const received: NostrEvent[] = [];
-      client.subscribe([{ kinds: [30470] }], (event) => received.push(event));
+      client.subscribe([{ kinds: [31000] }], (event) => received.push(event));
 
       // Send a message exceeding 1 MB — should be silently dropped
       const oversized = 'x'.repeat(1_048_577);
@@ -485,7 +485,7 @@ describe('RelayClient', () => {
       // Create a properly signed event
       const kp = generateKeyPair();
       const unsigned: UnsignedEvent = {
-        kind: 30470,
+        kind: 31000,
         pubkey: kp.publicKey,
         created_at: Math.floor(Date.now() / 1000),
         tags: [['d', 'test']],
@@ -495,7 +495,7 @@ describe('RelayClient', () => {
 
       const events: NostrEvent[] = [];
       const subId = client.subscribe(
-        [{ kinds: [30470] }],
+        [{ kinds: [31000] }],
         (event) => events.push(event)
       );
 
@@ -520,7 +520,7 @@ describe('RelayClient', () => {
 
       const events: NostrEvent[] = [];
       const subId = client.subscribe(
-        [{ kinds: [30470] }],
+        [{ kinds: [31000] }],
         (event) => events.push(event)
       );
 
@@ -544,7 +544,7 @@ describe('RelayClient', () => {
       // Create a valid event then tamper with it
       const kp = generateKeyPair();
       const unsigned: UnsignedEvent = {
-        kind: 30470,
+        kind: 31000,
         pubkey: kp.publicKey,
         created_at: Math.floor(Date.now() / 1000),
         tags: [['d', 'test']],
@@ -555,7 +555,7 @@ describe('RelayClient', () => {
 
       const events: NostrEvent[] = [];
       const subId = client.subscribe(
-        [{ kinds: [30470] }],
+        [{ kinds: [31000] }],
         (event) => events.push(event)
       );
 
@@ -574,7 +574,7 @@ describe('RelayClient', () => {
 
       const events: NostrEvent[] = [];
       const subId = client.subscribe(
-        [{ kinds: [30470] }],
+        [{ kinds: [31000] }],
         (event) => events.push(event)
       );
 

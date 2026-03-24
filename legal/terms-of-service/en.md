@@ -43,7 +43,7 @@ If you do not agree to these Terms, you must not use the Protocol.
 
 If you use the Protocol on behalf of an organisation, you represent that you have authority to bind that organisation, and "you" includes that organisation.
 
-**Verifiers:** By publishing a kind 30473 verifier credential event on the Nostr network, or by performing a Signet verification ceremony, you accept Section 8 (Verifier Obligations) as a legally binding condition of your participation. You do not need to sign a separate document. The act of performing a verification is your acceptance.
+**Verifiers:** By publishing a kind 31000 verifier credential event on the Nostr network, or by performing a Signet verification ceremony, you accept Section 8 (Verifier Obligations) as a legally binding condition of your participation. You do not need to sign a separate document. The act of performing a verification is your acceptance.
 
 ---
 
@@ -108,14 +108,14 @@ The Protocol uses the following Nostr event kinds:
 
 | Kind | Purpose |
 |---|---|
-| 30470 | Credential events |
-| 30471 | Vouch attestations |
-| 30472 | Community verification policies |
-| 30473 | Verifier registration credentials |
-| 30474 | Challenge events |
-| 30475 | Revocation events |
-| 30476 | Identity bridge events |
-| 30477 | Delegation events (guardian and agent) |
+| 31000 | Credential events |
+| 31000 | Vouch attestations |
+| 30078 | Community verification policies |
+| 31000 | Verifier registration credentials |
+| 31000 | Challenge events |
+| 31000 | Revocation events |
+| 31000 | Identity bridge events |
+| 31000 | Delegation events (guardian and agent) |
 | 30482–30484 | Voting extension (election, ballot, result) |
 
 Event kind numbers are pending final NIP allocation.
@@ -149,7 +149,7 @@ During onboarding, you choose which keypair is your primary account for that dev
 
 ### 4.2 Single-Keypair Mode (nsec Import)
 
-If you are an existing Nostr user, you may import your existing private key (nsec). In single-keypair mode, your existing npub becomes your Natural Person identity, and you can create an identity bridge (kind 30476 event) to link it to a Persona account. All your existing followers, NIP-05, zaps, and reputation are preserved.
+If you are an existing Nostr user, you may import your existing private key (nsec). In single-keypair mode, your existing npub becomes your Natural Person identity, and you can create an identity bridge (kind 31000 event) to link it to a Persona account. All your existing followers, NIP-05, zaps, and reputation are preserved.
 
 ### 4.3 Key Generation and Backup
 
@@ -190,7 +190,7 @@ Tier 3 and Tier 4 credentials are issued through the two-credential ceremony:
 
 3. **The verifier confirms or rejects.** The verifier inspects your documents, verifies that you are the person described in them, and confirms or rejects the data you entered. The verifier does not type your personal data — they only confirm what you have entered.
 
-4. **Two credentials are issued.** If the verifier confirms the data, they publish two kind 30470 credential events — one for your Natural Person keypair (with your Merkle root and nullifier) and one for your Persona keypair (with only your age-range proof). Both credentials are signed with the verifier's professional Nostr key.
+4. **Two credentials are issued.** If the verifier confirms the data, they publish two kind 31000 credential events — one for your Natural Person keypair (with your Merkle root and nullifier) and one for your Persona keypair (with only your age-range proof). Both credentials are signed with the verifier's professional Nostr key.
 
 5. **The document number is discarded.** After the nullifier is computed, the document number is not retained by the Protocol, the App, or (unless required by their professional obligations) the verifier.
 
@@ -249,7 +249,7 @@ If the document underlying a credential expires before the credential itself, th
 
 ### 6.2 Credential Revocation
 
-Credentials may be revoked by publishing a kind 30475 event. Revocation may be initiated by:
+Credentials may be revoked by publishing a kind 31000 event. Revocation may be initiated by:
 
 - You (self-revocation — e.g., on key compromise or name change)
 - The issuing verifier (for cause, such as discovered fraud)
@@ -272,7 +272,7 @@ When your real-world attributes change (name change, document renewal, tier upgr
 
 ### 6.5 Guardian Delegation
 
-A guardian (verified parent or legal guardian) may delegate specific permissions to trusted adults via kind 30477 delegation events. Delegation scopes include:
+A guardian (verified parent or legal guardian) may delegate specific permissions to trusted adults via kind 31000 delegation events. Delegation scopes include:
 
 - `full` — full delegation (e.g., co-parent)
 - `activity-approval` — approve activities requiring parental consent
@@ -296,12 +296,12 @@ A Persona is an anonymous alias:
 
 - A Persona carries no personally identifying information — no name, no nullifier, no Merkle root
 - A Persona inherits the age-range proof from the two-credential ceremony
-- A Persona may be linked to a Natural Person via an identity bridge (kind 30476) using ring signatures, allowing the Persona to prove "I am a real, verified person" without revealing which person
+- A Persona may be linked to a Natural Person via an identity bridge (kind 31000) using ring signatures, allowing the Persona to prove "I am a real, verified person" without revealing which person
 - You are responsible for all activity conducted through your Persona accounts
 
 ### 6.8 No Guarantee of Acceptance
 
-We do not guarantee that any credential will be accepted by any relying party. Communities set their own acceptance policies through kind 30472 policy events.
+We do not guarantee that any credential will be accepted by any relying party. Communities set their own acceptance policies through kind 30078 policy events.
 
 ### 6.9 Document Wallet
 
@@ -338,7 +338,7 @@ You must not:
 
 ### 7.3 Vouching Obligations (Tier 2)
 
-When vouching for another user (kind 30471 event):
+When vouching for another user (kind 31000 event):
 
 - You must have a genuine, personal basis for the vouch
 - You must not accept payment or other consideration for providing vouches
@@ -351,7 +351,7 @@ When vouching for another user (kind 30471 event):
 
 ### 8.1 Why There Is No Separate Agreement
 
-We have absorbed the verifier agreement into these Terms because the people most likely to verify children — teachers at parents' evenings, GPs, social workers — should not need to navigate a second legal document. By acting as a Signet verifier (publishing a kind 30473 event or performing a ceremony), you accept the obligations in this section. These obligations are in addition to, and do not replace, your existing professional duties.
+We have absorbed the verifier agreement into these Terms because the people most likely to verify children — teachers at parents' evenings, GPs, social workers — should not need to navigate a second legal document. By acting as a Signet verifier (publishing a kind 31000 event or performing a ceremony), you accept the obligations in this section. These obligations are in addition to, and do not replace, your existing professional duties.
 
 ### 8.2 Eligible Professions
 
@@ -379,7 +379,7 @@ In all cases, you must be in good standing (not subject to suspension, restricti
 
 To register as a verifier:
 
-1. Publish a kind 30473 verifier credential event on Nostr containing your professional category, jurisdiction, licensing body, and licence reference.
+1. Publish a kind 31000 verifier credential event on Nostr containing your professional category, jurisdiction, licensing body, and licence reference.
 2. Obtain at least two vouches from other verified Signet professionals from at least two different professions (cross-profession vouching prevents single-profession collusion rings).
 3. Registration does not imply endorsement by us.
 
@@ -392,7 +392,7 @@ When performing a Tier 3 (Adult) verification, you must:
 3. Confirm that the person before you matches the document.
 4. Confirm (or reject) the data the subject has pre-entered in the App. You are confirming what you see; you are not entering data on behalf of the subject.
 5. Compute the document nullifier and, where multiple documents are presented, the nullifier family.
-6. Issue the Natural Person credential (kind 30470) and the Persona credential (kind 30470) via the two-credential ceremony.
+6. Issue the Natural Person credential (kind 31000) and the Persona credential (kind 31000) via the two-credential ceremony.
 7. Discard the document number after nullifier computation. Do not store it unless your professional obligations independently require you to.
 8. Maintain records of the verification (date, location, identity of the subject, documents inspected, nullifier hash, both pubkeys) for the period required by your professional obligations — typically at least six years.
 
@@ -466,7 +466,7 @@ Your verifier status may be terminated:
 
 **With 30 days' notice if:** you materially breach these Terms and fail to cure within 14 days; you no longer meet eligibility requirements; or the Protocol is discontinued.
 
-Upon termination, your kind 30473 verifier credential is revoked. Previously issued credentials remain valid unless individually revoked. You must retain verification records for the required retention period.
+Upon termination, your kind 31000 verifier credential is revoked. Previously issued credentials remain valid unless individually revoked. You must retain verification records for the required retention period.
 
 ---
 
@@ -521,11 +521,11 @@ Integration of the SDK does not imply endorsement of your website or service by 
 
 ### 10.1 What It Is
 
-The Signet verification bot ("the Bot") is an automated service that monitors the Nostr network for kind 30470 credential events and provides credential verification summaries on request. The Bot may post replies to queries, publish periodic digests, or respond to mentions.
+The Signet verification bot ("the Bot") is an automated service that monitors the Nostr network for kind 31000 credential events and provides credential verification summaries on request. The Bot may post replies to queries, publish periodic digests, or respond to mentions.
 
 ### 10.2 What It Processes
 
-The Bot processes public Nostr events only. It reads kind 30470, 30471, 30472, 30473, 30475, 30476, and 30477 events from public relays. It does not access your private key, your mnemonic, or any data stored locally in the App.
+The Bot processes public Nostr events only. It reads kind 31000, 31000, 30078, 31000, 31000, 31000, and 31000 events from public relays. It does not access your private key, your mnemonic, or any data stored locally in the App.
 
 The Bot computes Signet IQ scores from public on-chain data. It does not collect or store personal data beyond what is published in public Nostr events.
 
@@ -552,7 +552,7 @@ The score is computed from weighted contributions including:
 - Tier 3 or Tier 4 professional verification (highest weight)
 - Cross-verification by additional independent professionals
 - In-person peer vouches from high-IQ users
-- Identity bridges (kind 30476)
+- Identity bridges (kind 31000)
 - Account age and activity
 - Verifier trust score (see Section 11.3)
 

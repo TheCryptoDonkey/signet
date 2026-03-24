@@ -28,7 +28,7 @@ export async function fetchBadge(
     // Extract entity type from credential events
     let entityType: EntityType | undefined;
     for (const event of events) {
-      if (event.kind !== 30470) continue;
+      if (event.kind !== 31000) continue;
       const d = event.tags.find(t => t[0] === 'd')?.[1];
       if (d !== pubkey) continue;
       const et = event.tags.find(t => t[0] === 'entity-type')?.[1];
@@ -72,7 +72,7 @@ export async function fetchBadges(
 
       let entityType: EntityType | undefined;
       for (const event of events) {
-        if (event.kind !== 30470) continue;
+        if (event.kind !== 31000) continue;
         const d = event.tags.find(t => t[0] === 'd')?.[1];
         if (d !== pubkey) continue;
         const et = event.tags.find(t => t[0] === 'entity-type')?.[1];

@@ -59,6 +59,7 @@ export function buildCredentialEvent(
     identifier: params.subjectPubkey,
     subject: params.subjectPubkey,
     expiration: params.expiresAt,
+    occurredAt: params.occurredAt,
     summary: `${params.type} verification (tier ${params.tier}) for ${params.subjectPubkey.slice(0, 8)}...`,
     content: params.content || '',
     tags: signetTags,
@@ -116,6 +117,7 @@ export async function createProfessionalCredential(
     profession: string;
     jurisdiction: string;
     expiresAt?: number;
+    occurredAt?: number;
     proofBlob?: string;
   }
 ): Promise<NostrEvent> {
@@ -129,6 +131,7 @@ export async function createProfessionalCredential(
     profession: opts.profession,
     jurisdiction: opts.jurisdiction,
     expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
+    occurredAt: opts.occurredAt,
     content: opts.proofBlob,
   });
   return signEvent(event, verifierPrivateKey);
@@ -143,6 +146,7 @@ export async function createChildSafetyCredential(
     jurisdiction: string;
     ageRange: string;
     expiresAt?: number;
+    occurredAt?: number;
     proofBlob?: string;
   }
 ): Promise<NostrEvent> {
@@ -157,6 +161,7 @@ export async function createChildSafetyCredential(
     jurisdiction: opts.jurisdiction,
     ageRange: opts.ageRange,
     expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
+    occurredAt: opts.occurredAt,
     content: opts.proofBlob,
   });
   return signEvent(event, verifierPrivateKey);
@@ -222,6 +227,7 @@ export function parseCredential(event: NostrEvent): ParsedCredential | null {
     guardianPubkeys: guardianValues.length > 0 ? guardianValues : undefined,
     supersedes: getTagValue(event, 'supersedes'),
     supersededBy: getTagValue(event, 'superseded-by'),
+    occurredAt: (() => { const s = getTagValue(event, 'occurred_at'); const n = s ? parseInt(s, 10) : undefined; return (n !== undefined && !isNaN(n)) ? n : undefined; })(),
     algorithm,
   };
 }
@@ -485,6 +491,7 @@ export async function createTwoCredentialCeremony(
     ageRange?: string;
     guardianPubkeys?: string[];
     expiresAt?: number;
+    occurredAt?: number;
   }
 ): Promise<TwoCredentialResult> {
   const verifierPubkey = getPublicKey(verifierPrivateKey);
@@ -531,6 +538,7 @@ export async function createTwoCredentialCeremony(
     merkleRoot,
     guardianPubkeys: opts.guardianPubkeys,
     expiresAt,
+    occurredAt: opts.occurredAt,
   });
   const naturalPerson = await signEvent(npEvent, verifierPrivateKey);
 
@@ -547,6 +555,7 @@ export async function createTwoCredentialCeremony(
     entityType: 'persona',
     guardianPubkeys: opts.guardianPubkeys,
     expiresAt,
+    occurredAt: opts.occurredAt,
   });
   const persona = await signEvent(personaEvent, verifierPrivateKey);
 

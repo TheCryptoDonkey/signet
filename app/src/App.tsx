@@ -179,7 +179,7 @@ export function App() {
         const e = raw as Record<string, unknown>;
         parsedEvent = {
           id: typeof e.id === 'string' ? e.id : credToUse.id,
-          kind: typeof e.kind === 'number' ? e.kind : 30470,
+          kind: typeof e.kind === 'number' ? e.kind : 31000,
           pubkey: typeof e.pubkey === 'string' ? e.pubkey : '',
           tags: Array.isArray(e.tags) ? (e.tags as string[][]) : [],
           content: typeof e.content === 'string' ? e.content : '',
@@ -191,7 +191,7 @@ export function App() {
       // If event parsing fails, build a minimal object from stored fields
       parsedEvent = {
         id: credToUse.id,
-        kind: 30470,
+        kind: 31000,
         pubkey: '',
         tags: [],
         content: credToUse.event,
@@ -255,7 +255,7 @@ export function App() {
             const e = raw as Record<string, unknown>;
             credential = {
               id: typeof e.id === 'string' ? e.id : personaCred.id,
-              kind: typeof e.kind === 'number' ? e.kind : 30470,
+              kind: typeof e.kind === 'number' ? e.kind : 31000,
               pubkey: typeof e.pubkey === 'string' ? e.pubkey : '',
               tags: Array.isArray(e.tags) ? (e.tags as string[][]) : [],
               content: typeof e.content === 'string' ? e.content : '',

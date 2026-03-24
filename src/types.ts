@@ -75,6 +75,7 @@ export interface CredentialParams {
   merkleRoot?: string;
   guardianPubkeys?: string[];
   supersedes?: string; // event ID of superseded credential
+  occurredAt?: number; // unix timestamp for when verification occurred (distinct from publication time)
 }
 
 // --- Vouch Attestation (type: vouch) ---
@@ -194,6 +195,7 @@ export interface ParsedCredential {
   guardianPubkeys?: string[];
   supersedes?: string;
   supersededBy?: string;
+  occurredAt?: number;
   algorithm: CryptoAlgorithm;
 }
 

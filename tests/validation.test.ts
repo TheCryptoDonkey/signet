@@ -151,7 +151,7 @@ describe('validation', () => {
       validateFieldSizeBounds({
         id: 'a'.repeat(64),
         sig: 'b'.repeat(128),
-        kind: 30470,
+        kind: 31000,
         pubkey: 'c'.repeat(64),
         created_at: 0,
         tags: [['result', 'option-a', longValue]],
@@ -167,7 +167,7 @@ describe('validation', () => {
       validateFieldSizeBounds({
         id: 'a'.repeat(64),
         sig: 'b'.repeat(128),
-        kind: 30470,
+        kind: 31000,
         pubkey: 'c'.repeat(64),
         created_at: 0,
         tags: [['result', okValue, okValue, okValue]],

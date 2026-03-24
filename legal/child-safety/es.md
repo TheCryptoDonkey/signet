@@ -162,7 +162,7 @@ El Protocolo admite los siguientes mecanismos de consentimiento parental:
    - Identidad del padre verificada por verificador profesional (ceremonia de doble credencial)
    - Consentimiento del padre firmado criptográficamente con su clave Nostr
    - Credencial del menor vinculada al padre mediante etiquetas de tutor inmutables en ambas credenciales (Persona Natural y Persona)
-   - Los eventos de delegación de tutor (kind 30477) permiten al padre delegar permisos específicos a otros adultos de confianza
+   - Los eventos de delegación de tutor (kind 31000) permiten al padre delegar permisos específicos a otros adultos de confianza
 
 2. **Co-Verificación:**
    El padre/tutor y el menor asisten juntos a una sesión de verificación de Nivel 4. El verificador profesional:
@@ -179,7 +179,7 @@ El Protocolo admite los siguientes mecanismos de consentimiento parental:
 ### 6.3 Retirada del Consentimiento
 
 Los padres/tutores pueden retirar el consentimiento en cualquier momento mediante:
-1. La publicación de un evento de revocación (kind 30475) desde la clave Nostr del padre/tutor, revocando el evento de consentimiento.
+1. La publicación de un evento de revocación (kind 31000) desde la clave Nostr del padre/tutor, revocando el evento de consentimiento.
 2. El contacto con el equipo de soporte del Protocolo Signet para solicitar asistencia en la revocación.
 3. A través de cualquier cliente Nostr que implemente las funciones de gestión de consentimiento del Protocolo.
 
@@ -490,7 +490,7 @@ El Protocolo implementa un modelo de estructura familiar de tres capas:
 Las etiquetas de tutor (`["guardian", "<parent_pubkey>"]`) son establecidas por el verificador profesional y reflejan la responsabilidad parental legal. Solo pueden modificarse mediante una nueva credencial emitida por un profesional con la documentación legal apropiada (por ejemplo, una orden judicial).
 
 **Capa 2 — Nivel de delegación (flexible):**
-Los tutores pueden delegar permisos específicos a adultos de confianza (padrastros, abuelos, profesores) mediante eventos de delegación de tutor kind 30477. Las delegaciones son:
+Los tutores pueden delegar permisos específicos a adultos de confianza (padrastros, abuelos, profesores) mediante eventos de delegación de tutor kind 31000. Las delegaciones son:
 - Limitadas en el tiempo (con fecha de vencimiento)
 - Limitadas en alcance: `full` (completo), `activity-approval` (aprobación de actividad), `content-management` (gestión de contenido), `contact-approval` (aprobación de contacto)
 - Revocables por el tutor en cualquier momento

@@ -1,10 +1,10 @@
 # Signet Verification Bot
 
 A reference implementation of a Signet verifier-credential checker. It
-periodically fetches Kind 30473 (verifier credential) events from a Nostr
-relay, looks up the stated licence numbers against public professional
-registers, caches results in SQLite, and publishes findings back to the relay
-as Kind 1 notes.
+periodically fetches kind 31000 (NIP-VA) verifier attestation events from a
+Nostr relay, looks up the stated licence numbers against public professional
+registers, caches results in SQLite, and publishes signed findings back to
+the relay as kind 1 notes.
 
 Anyone can run their own instance — the bot is intentionally self-contained
 and has no central authority.
@@ -81,10 +81,8 @@ database is created automatically on first run.
 
 ## Notes
 
-- The bot generates a keypair on first run and stores it in SQLite. Event
-  signing in this reference implementation uses a SHA-256 stub — a production
-  deployment should replace this with a proper secp256k1 Schnorr signature
-  (e.g. using `@noble/secp256k1`).
+- The bot generates a secp256k1 keypair on first run and stores it in SQLite.
+  Events are signed with BIP-340 Schnorr signatures via `@noble/curves`.
 - Registry HTML checks are inherently fragile. If a register changes its
   markup, update the checker or switch to an official API.
 - This is a reference implementation. No warranties; use at your own risk.

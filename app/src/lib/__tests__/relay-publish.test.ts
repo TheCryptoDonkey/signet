@@ -14,7 +14,7 @@ function makeTestResponse(requestId: string): VerifyResponse {
     requestId,
     credential: {
       id: 'a'.repeat(64),
-      kind: 30470,
+      kind: 31000,
       pubkey: 'b'.repeat(64),
       tags: [
         ['age-range', '18+'],

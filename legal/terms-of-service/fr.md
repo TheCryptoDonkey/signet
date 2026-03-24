@@ -50,7 +50,7 @@ Si vous n'acceptez pas les présentes Conditions, vous ne devez pas utiliser le 
 
 Si vous utilisez le Protocole au nom d'une organisation, vous déclarez avoir l'autorité pour lier cette organisation, et « vous » inclut cette organisation.
 
-**Vérificateurs :** En publiant un événement d'attestation de vérificateur de type 30473 sur le réseau Nostr, ou en effectuant une cérémonie de vérification Signet, vous acceptez la Section 8 (Obligations des vérificateurs) comme condition juridiquement contraignante de votre participation. Vous n'avez pas besoin de signer un document séparé. L'acte d'effectuer une vérification constitue votre acceptation.
+**Vérificateurs :** En publiant un événement d'attestation de vérificateur de type 31000 sur le réseau Nostr, ou en effectuant une cérémonie de vérification Signet, vous acceptez la Section 8 (Obligations des vérificateurs) comme condition juridiquement contraignante de votre participation. Vous n'avez pas besoin de signer un document séparé. L'acte d'effectuer une vérification constitue votre acceptation.
 
 ---
 
@@ -115,14 +115,14 @@ Le Protocole utilise les types d'événements Nostr suivants :
 
 | Type | Objectif |
 |---|---|
-| 30470 | Événements d'attestation |
-| 30471 | Attestations de caution |
-| 30472 | Politiques de vérification communautaire |
-| 30473 | Attestations d'enregistrement de vérificateur |
-| 30474 | Événements de défi |
-| 30475 | Événements de révocation |
-| 30476 | Événements de pont d'identité |
-| 30477 | Événements de délégation (tuteur et agent) |
+| 31000 | Événements d'attestation |
+| 31000 | Attestations de caution |
+| 30078 | Politiques de vérification communautaire |
+| 31000 | Attestations d'enregistrement de vérificateur |
+| 31000 | Événements de défi |
+| 31000 | Événements de révocation |
+| 31000 | Événements de pont d'identité |
+| 31000 | Événements de délégation (tuteur et agent) |
 | 30482–30484 | Extension de vote (élection, scrutin, résultat) |
 
 Les numéros de type d'événement sont en attente d'attribution NIP finale.
@@ -156,7 +156,7 @@ Lors de l'intégration, vous choisissez quelle paire de clés est votre compte p
 
 ### 4.2 Mode à paire de clés unique (import nsec)
 
-Si vous êtes un utilisateur Nostr existant, vous pouvez importer votre clé privée existante (nsec). En mode à paire de clés unique, votre npub existant devient votre identité Personne Physique, et vous pouvez créer un pont d'identité (événement de type 30476) pour le lier à un compte Persona. Tous vos abonnés existants, NIP-05, zaps et réputation sont préservés.
+Si vous êtes un utilisateur Nostr existant, vous pouvez importer votre clé privée existante (nsec). En mode à paire de clés unique, votre npub existant devient votre identité Personne Physique, et vous pouvez créer un pont d'identité (événement de type 31000) pour le lier à un compte Persona. Tous vos abonnés existants, NIP-05, zaps et réputation sont préservés.
 
 ### 4.3 Génération et sauvegarde des clés
 
@@ -197,7 +197,7 @@ Les attestations de niveau 3 et 4 sont émises via la cérémonie à deux attest
 
 3. **Le vérificateur confirme ou rejette.** Le vérificateur inspecte vos documents, vérifie que vous êtes la personne qui y est décrite, et confirme ou rejette les données que vous avez saisies. Le vérificateur ne saisit pas vos données personnelles — il confirme seulement ce que vous avez saisi.
 
-4. **Deux attestations sont émises.** Si le vérificateur confirme les données, il publie deux événements d'attestation de type 30470 — un pour votre paire de clés Personne Physique (avec votre racine Merkle et votre nullificateur) et un pour votre paire de clés Persona (avec uniquement votre preuve de tranche d'âge). Les deux attestations sont signées avec la clé Nostr professionnelle du vérificateur.
+4. **Deux attestations sont émises.** Si le vérificateur confirme les données, il publie deux événements d'attestation de type 31000 — un pour votre paire de clés Personne Physique (avec votre racine Merkle et votre nullificateur) et un pour votre paire de clés Persona (avec uniquement votre preuve de tranche d'âge). Les deux attestations sont signées avec la clé Nostr professionnelle du vérificateur.
 
 5. **Le numéro de document est supprimé.** Après le calcul du nullificateur, le numéro de document n'est pas conservé par le Protocole, l'Application, ni (sauf si requis par leurs obligations professionnelles) le vérificateur.
 
@@ -256,7 +256,7 @@ Si le document sous-jacent à une attestation expire avant l'attestation elle-m�
 
 ### 6.2 Révocation des attestations
 
-Les attestations peuvent être révoquées en publiant un événement de type 30475. La révocation peut être initiée par :
+Les attestations peuvent être révoquées en publiant un événement de type 31000. La révocation peut être initiée par :
 
 - Vous (auto-révocation — p. ex. en cas de compromission de clé ou de changement de nom)
 - Le vérificateur émetteur (pour cause, comme une fraude découverte)
@@ -279,7 +279,7 @@ Lorsque vos attributs réels changent (changement de nom, renouvellement de docu
 
 ### 6.5 Délégation de tutelle
 
-Un tuteur (parent vérifié ou tuteur légal) peut déléguer des autorisations spécifiques à des adultes de confiance via des événements de délégation de type 30477. Les portées de délégation incluent :
+Un tuteur (parent vérifié ou tuteur légal) peut déléguer des autorisations spécifiques à des adultes de confiance via des événements de délégation de type 31000. Les portées de délégation incluent :
 
 - `full` — délégation complète (p. ex. co-parent)
 - `activity-approval` — approuver des activités nécessitant le consentement parental
@@ -303,12 +303,12 @@ Une Persona est un alias anonyme :
 
 - Une Persona ne comporte aucune information personnellement identifiable — pas de nom, pas de nullificateur, pas de racine Merkle
 - Une Persona hérite de la preuve de tranche d'âge de la cérémonie à deux attestations
-- Une Persona peut être liée à une Personne Physique via un pont d'identité (type 30476) utilisant des signatures en anneau, permettant à la Persona de prouver « Je suis une vraie personne vérifiée » sans révéler laquelle
+- Une Persona peut être liée à une Personne Physique via un pont d'identité (type 31000) utilisant des signatures en anneau, permettant à la Persona de prouver « Je suis une vraie personne vérifiée » sans révéler laquelle
 - Vous êtes responsable de toute activité menée via vos comptes Persona
 
 ### 6.8 Pas de garantie d'acceptation
 
-Nous ne garantissons pas qu'une attestation sera acceptée par une partie utilisatrice quelconque. Les communautés définissent leurs propres politiques d'acceptation via des événements de politique de type 30472.
+Nous ne garantissons pas qu'une attestation sera acceptée par une partie utilisatrice quelconque. Les communautés définissent leurs propres politiques d'acceptation via des événements de politique de type 30078.
 
 ### 6.9 Portefeuille de documents
 
@@ -345,7 +345,7 @@ Vous ne devez pas :
 
 ### 7.3 Obligations de caution (Niveau 2)
 
-Lors de la caution d'un autre utilisateur (événement de type 30471) :
+Lors de la caution d'un autre utilisateur (événement de type 31000) :
 
 - Vous devez avoir une base authentique et personnelle pour la caution
 - Vous ne devez pas accepter de paiement ou autre contrepartie pour fournir des cautions
@@ -358,7 +358,7 @@ Lors de la caution d'un autre utilisateur (événement de type 30471) :
 
 ### 8.1 Pourquoi il n'y a pas d'accord séparé
 
-Nous avons intégré l'accord du vérificateur dans les présentes Conditions car les personnes les plus susceptibles de vérifier les enfants — les enseignants lors des réunions parents-professeurs, les médecins généralistes, les travailleurs sociaux — ne devraient pas avoir à naviguer dans un second document juridique. En agissant en tant que vérificateur Signet (en publiant un événement de type 30473 ou en effectuant une cérémonie), vous acceptez les obligations de la présente section. Ces obligations s'ajoutent à vos devoirs professionnels existants et ne les remplacent pas.
+Nous avons intégré l'accord du vérificateur dans les présentes Conditions car les personnes les plus susceptibles de vérifier les enfants — les enseignants lors des réunions parents-professeurs, les médecins généralistes, les travailleurs sociaux — ne devraient pas avoir à naviguer dans un second document juridique. En agissant en tant que vérificateur Signet (en publiant un événement de type 31000 ou en effectuant une cérémonie), vous acceptez les obligations de la présente section. Ces obligations s'ajoutent à vos devoirs professionnels existants et ne les remplacent pas.
 
 ### 8.2 Professions éligibles
 
@@ -386,7 +386,7 @@ Dans tous les cas, vous devez être en règle (ne pas faire l'objet d'une suspen
 
 Pour vous inscrire en tant que vérificateur :
 
-1. Publiez un événement d'attestation de vérificateur de type 30473 sur Nostr contenant votre catégorie professionnelle, votre juridiction, votre organisme de licence et votre référence de licence.
+1. Publiez un événement d'attestation de vérificateur de type 31000 sur Nostr contenant votre catégorie professionnelle, votre juridiction, votre organisme de licence et votre référence de licence.
 2. Obtenez au moins deux cautions d'autres professionnels Signet vérifiés d'au moins deux professions différentes (les cautions interprofessionnelles préviennent les anneaux de collusion d'une seule profession).
 3. L'inscription n'implique pas notre approbation.
 
@@ -399,7 +399,7 @@ Lors de l'exécution d'une vérification de niveau 3 (Adulte), vous devez :
 3. Confirmer que la personne devant vous correspond au document.
 4. Confirmer (ou rejeter) les données que le sujet a pré-saisies dans l'Application. Vous confirmez ce que vous voyez ; vous ne saisissez pas de données au nom du sujet.
 5. Calculer le nullificateur de document et, lorsque plusieurs documents sont présentés, la famille de nullificateurs.
-6. Émettre l'attestation de Personne Physique (type 30470) et l'attestation de Persona (type 30470) via la cérémonie à deux attestations.
+6. Émettre l'attestation de Personne Physique (type 31000) et l'attestation de Persona (type 31000) via la cérémonie à deux attestations.
 7. Supprimer le numéro de document après le calcul du nullificateur. Ne le stockez pas sauf si vos obligations professionnelles l'exigent indépendamment.
 8. Conserver les enregistrements de la vérification (date, lieu, identité du sujet, documents inspectés, hash nullificateur, les deux clés publiques) pour la période requise par vos obligations professionnelles — généralement au moins six ans.
 
@@ -473,7 +473,7 @@ Votre statut de vérificateur peut être résilié :
 
 **Avec un préavis de 30 jours si :** vous violez substantiellement les présentes Conditions et ne remédiez pas dans les 14 jours ; vous ne remplissez plus les conditions d'éligibilité ; ou le Protocole est abandonné.
 
-À la résiliation, votre attestation de vérificateur de type 30473 est révoquée. Les attestations précédemment émises restent valides sauf révocation individuelle. Vous devez conserver les dossiers de vérification pendant la période de conservation requise.
+À la résiliation, votre attestation de vérificateur de type 31000 est révoquée. Les attestations précédemment émises restent valides sauf révocation individuelle. Vous devez conserver les dossiers de vérification pendant la période de conservation requise.
 
 ---
 
@@ -528,11 +528,11 @@ L'intégration du SDK n'implique pas notre approbation de votre site web ou serv
 
 ### 10.1 Ce qu'il est
 
-Le bot de vérification Signet (« le Bot ») est un service automatisé qui surveille le réseau Nostr pour les événements d'attestation de type 30470 et fournit des résumés de vérification d'attestation sur demande. Le Bot peut publier des réponses aux requêtes, des résumés périodiques ou répondre à des mentions.
+Le bot de vérification Signet (« le Bot ») est un service automatisé qui surveille le réseau Nostr pour les événements d'attestation de type 31000 et fournit des résumés de vérification d'attestation sur demande. Le Bot peut publier des réponses aux requêtes, des résumés périodiques ou répondre à des mentions.
 
 ### 10.2 Ce qu'il traite
 
-Le Bot traite uniquement les événements Nostr publics. Il lit les événements de types 30470, 30471, 30472, 30473, 30475, 30476 et 30477 depuis les relais publics. Il n'accède pas à votre clé privée, votre mnémonique ou les données stockées localement dans l'Application.
+Le Bot traite uniquement les événements Nostr publics. Il lit les événements de types 31000, 31000, 30078, 31000, 31000, 31000 et 31000 depuis les relais publics. Il n'accède pas à votre clé privée, votre mnémonique ou les données stockées localement dans l'Application.
 
 Le Bot calcule les scores Signet IQ à partir des données publiques en chaîne. Il ne collecte ni ne stocke de données personnelles au-delà de ce qui est publié dans les événements Nostr publics.
 
@@ -559,7 +559,7 @@ Le score est calculé à partir de contributions pondérées incluant :
 - Vérification professionnelle de niveau 3 ou 4 (pondération la plus élevée)
 - Vérification croisée par des professionnels indépendants supplémentaires
 - Cautions de pairs en personne d'utilisateurs à IQ élevé
-- Ponts d'identité (type 30476)
+- Ponts d'identité (type 31000)
 - Ancienneté et activité du compte
 - Score de confiance du vérificateur (voir Section 11.3)
 

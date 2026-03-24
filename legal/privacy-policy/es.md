@@ -42,18 +42,18 @@ El Protocolo Signet está diseñado para minimizar la recopilación de datos. Da
 | Categoría | Descripción | Fuente | Ubicación de Almacenamiento |
 |-----------|-------------|--------|----------------------------|
 | **Claves Públicas Nostr** | Claves públicas secp256k1 (npub) utilizadas para las interacciones del Protocolo | Generadas por el usuario | Relays Nostr (descentralizados) |
-| **Metadatos de Credenciales** | Eventos Nostr de kinds 30470–30477 que contienen el nivel de verificación, marcas de tiempo de emisión, fechas de vencimiento, rango de edad e identificadores de tipo de entidad | Generados durante la emisión de credenciales | Relays Nostr (descentralizados) |
+| **Metadatos de Credenciales** | Eventos Nostr de kinds 31000–31000 que contienen el nivel de verificación, marcas de tiempo de emisión, fechas de vencimiento, rango de edad e identificadores de tipo de entidad | Generados durante la emisión de credenciales | Relays Nostr (descentralizados) |
 | **Pruebas de Conocimiento Cero** | Bulletproofs para la verificación de rango de edad | Generadas localmente por el usuario | Integradas en eventos de credenciales en relays Nostr |
 | **Firmas en Anillo** | Firmas criptográficas que prueban la pertenencia a un grupo sin revelar qué miembro firmó | Generadas localmente por el usuario | Relays Nostr (descentralizados) |
 | **Hashes de Nullifier** | Hash SHA-256 del tipo de documento con longitud prefijada, código de país, número de documento y etiqueta de dominio "signet-nullifier-v2" — previene la creación de identidades duplicadas; no se puede invertir para recuperar los datos del documento | Calculados localmente durante la ceremonia de doble credencial | Integrados en eventos de credenciales de Persona Natural |
 | **Raíces Merkle** | Compromiso de hash con los atributos verificados que permite la divulgación selectiva. Las hojas incluyen nombre, nacionalidad, documentType, dateOfBirth, documentNumber, documentExpiry, photoHash y nullifier. Solo se publica el hash raíz — los valores individuales de las hojas nunca se publican | Calculadas localmente durante la ceremonia de doble credencial | Integradas en eventos de credenciales de Persona Natural |
-| **Registros de Aval** | Eventos kind 30471 que representan respaldos de la red de confianza | Creados por las partes avalantes | Relays Nostr (descentralizados) |
-| **Eventos de Política** | Eventos kind 30472 que especifican los requisitos de las partes confiantes | Creados por las partes confiantes | Relays Nostr (descentralizados) |
-| **Registro de Verificadores** | Eventos kind 30473 que identifican a los verificadores profesionales, incluida la clave pública de firma profesional e información jurisdiccional | Creados por los verificadores | Relays Nostr (descentralizados) |
-| **Datos de Desafío/Respuesta** | Eventos kind 30474 para desafíos de legitimidad del verificador | Generados durante la verificación | Relays Nostr (descentralizados) |
-| **Registros de Revocación** | Eventos kind 30475 para la revocación de credenciales | Creados cuando se revocan credenciales | Relays Nostr (descentralizados) |
-| **Eventos de Puente de Identidad** | Eventos kind 30476 que vinculan los keypairs de Persona Natural y Persona mediante firmas en anillo | Creados por el usuario | Relays Nostr (descentralizados) |
-| **Eventos de Delegación** | Eventos kind 30477 para la delegación de agente o tutor con permisos delimitados | Creados por el delegante | Relays Nostr (descentralizados) |
+| **Registros de Aval** | Eventos kind 31000 que representan respaldos de la red de confianza | Creados por las partes avalantes | Relays Nostr (descentralizados) |
+| **Eventos de Política** | Eventos kind 30078 que especifican los requisitos de las partes confiantes | Creados por las partes confiantes | Relays Nostr (descentralizados) |
+| **Registro de Verificadores** | Eventos kind 31000 que identifican a los verificadores profesionales, incluida la clave pública de firma profesional e información jurisdiccional | Creados por los verificadores | Relays Nostr (descentralizados) |
+| **Datos de Desafío/Respuesta** | Eventos kind 31000 para desafíos de legitimidad del verificador | Generados durante la verificación | Relays Nostr (descentralizados) |
+| **Registros de Revocación** | Eventos kind 31000 para la revocación de credenciales | Creados cuando se revocan credenciales | Relays Nostr (descentralizados) |
+| **Eventos de Puente de Identidad** | Eventos kind 31000 que vinculan los keypairs de Persona Natural y Persona mediante firmas en anillo | Creados por el usuario | Relays Nostr (descentralizados) |
+| **Eventos de Delegación** | Eventos kind 31000 para la delegación de agente o tutor con permisos delimitados | Creados por el delegante | Relays Nostr (descentralizados) |
 | **Material de Clave Cifrado** | Claves privadas cifradas con AES-256-GCM (clave derivada mediante PBKDF2, 600.000 iteraciones, SHA-256) | Almacenado localmente en el dispositivo | Solo almacenamiento local en el dispositivo — nunca transmitido |
 
 ### 3.2 Qué Permanece en su Dispositivo
@@ -111,7 +111,7 @@ Esta sección explica el proceso de verificación profesional en detalle, ya que
 
 2. **El verificador inspecciona sus documentos físicos.** Un verificador de Nivel 3 o Nivel 4 (un profesional autorizado como un abogado, notario o médico) examina sus documentos de identidad físicos en persona. El verificador confirma que los datos que ha introducido coinciden con sus documentos. El verificador no introduce sus datos en el sistema de forma independiente.
 
-3. **El verificador firma la credencial.** El verificador firma dos eventos de credencial: una credencial de Persona Natural (kind 30470, firmada por el keypair Nostr profesional del verificador) y una credencial de Persona (anónima, solo rango de edad, también firmada por el verificador). Ambas se publican en los relays Nostr.
+3. **El verificador firma la credencial.** El verificador firma dos eventos de credencial: una credencial de Persona Natural (kind 31000, firmada por el keypair Nostr profesional del verificador) y una credencial de Persona (anónima, solo rango de edad, también firmada por el verificador). Ambas se publican en los relays Nostr.
 
 4. **Qué se publica.** Los eventos de credencial publicados contienen: la clave pública del verificador, su clave pública de Persona (clave pública del sujeto), metadatos de credencial (nivel, fechas, tipo de entidad, rango de edad), la prueba de rango de edad de conocimiento cero, el hash del nullifier (un hash unidireccional; no se puede invertir) y la raíz Merkle (un compromiso de hash; los valores individuales de las hojas no se publican). No se publica ningún nombre, fecha de nacimiento, número de documento ni otra información de identificación.
 
@@ -142,10 +142,10 @@ donde `len16(x)` es la longitud en bytes UTF-8 de `x` codificada como un uint16 
 
 Cada usuario de Signet tiene dos keypairs derivados de un único mnemónico BIP-39 de 12 palabras:
 
-- **Keypair de Persona Natural** — derivado mediante la ruta NIP-06 `m/44'/1237'/0'/0/0`. Utilizado para la credencial de Persona Natural (kind 30470). Este keypair está asociado con su identidad real verificada en el mundo real a través de la credencial, pero el keypair en sí no lleva ningún vínculo inherente con sus documentos.
+- **Keypair de Persona Natural** — derivado mediante la ruta NIP-06 `m/44'/1237'/0'/0/0`. Utilizado para la credencial de Persona Natural (kind 31000). Este keypair está asociado con su identidad real verificada en el mundo real a través de la credencial, pero el keypair en sí no lleva ningún vínculo inherente con sus documentos.
 - **Keypair de Persona** — derivado mediante la ruta HD BIP-32 en un índice de cuenta separado. Utilizado para la credencial de Persona (anónima, solo rango de edad). Este keypair no lleva ningún vínculo directo con su identidad real. Su actividad social en línea utiliza este keypair.
 
-**Implicación para la privacidad:** Dado que ambos keypairs se derivan del mismo mnemónico, usted puede demostrar el vínculo entre ellos (mediante eventos de puente de identidad kind 30476) o mantenerlos completamente separados. Un evento de puente de identidad, una vez publicado, crea un vínculo criptográfico público. Solo debe publicar un evento de puente si desea asociar su Persona anónima con su estado de Persona Natural verificada.
+**Implicación para la privacidad:** Dado que ambos keypairs se derivan del mismo mnemónico, usted puede demostrar el vínculo entre ellos (mediante eventos de puente de identidad kind 31000) o mantenerlos completamente separados. Un evento de puente de identidad, una vez publicado, crea un vínculo criptográfico público. Solo debe publicar un evento de puente si desea asociar su Persona anónima con su estado de Persona Natural verificada.
 
 **Gestión de claves y derechos de los interesados:** Sus claves privadas se derivan de forma determinista de su mnemónico. Signet nunca posee ni transmite sus claves privadas. Si elimina la aplicación y pierde su mnemónico (y cualquier copia de seguridad Shamir), sus claves son irrecuperables. Signet no puede ayudar con la recuperación de claves porque no tenemos copias.
 
@@ -216,7 +216,7 @@ Tratamos los datos bajo las siguientes bases jurídicas, según su jurisdicción
 
 Nota: Los datos biométricos se tratan exclusivamente en el dispositivo mediante WebAuthn. Signet no trata datos biométricos bajo el Artículo 9(1). Si en el futuro se estableciera algún tratamiento biométrico por parte de Signet, la base jurídica sería el consentimiento explícito bajo el Art. 9(2)(a).
 
-**eIDAS 2.0:** El Reglamento de Cartera de Identidad Digital de la UE (eIDAS 2.0) exige que los Estados miembros emitan carteras de identidad digital a los ciudadanos antes de diciembre de 2026. La arquitectura de Signet está diseñada para ser compatible con las credenciales emitidas por eIDAS 2.0 mediante el mecanismo de puente de identidad kind 30476.
+**eIDAS 2.0:** El Reglamento de Cartera de Identidad Digital de la UE (eIDAS 2.0) exige que los Estados miembros emitan carteras de identidad digital a los ciudadanos antes de diciembre de 2026. La arquitectura de Signet está diseñada para ser compatible con las credenciales emitidas por eIDAS 2.0 mediante el mecanismo de puente de identidad kind 31000.
 
 ### 8.2 Reino Unido (UK GDPR / Ley de Protección de Datos de 2018)
 
@@ -275,7 +275,7 @@ Los datos tratados a través del Protocolo Signet se utilizan exclusivamente par
 6. **Integridad del Protocolo** — Mantener la integridad criptográfica y la seguridad del Protocolo.
 7. **Cumplimiento Legal** — Cumplir con las leyes y reglamentos aplicables.
 8. **Ceremonia de Doble Credencial** — Emitir credenciales pareadas de Persona Natural y Persona durante la verificación profesional, incluido el cálculo de árboles Merkle, nullifiers y pruebas de rango de edad.
-9. **Gestión de Tutela** — Tratar los eventos de delegación de tutor (kind 30477) para la gestión de cuentas de menores.
+9. **Gestión de Tutela** — Tratar los eventos de delegación de tutor (kind 31000) para la gestión de cuentas de menores.
 10. **Divulgación Selectiva** — Permitir a los usuarios demostrar atributos individuales de hojas Merkle (incluidos el número de documento y la fecha de vencimiento del documento) a partes confiantes que los requieran, sin revelar atributos no relacionados.
 11. **Ciclo de Vida de Credenciales** — Tratar las cadenas de credenciales (etiquetas supersedes/superseded-by) para cambios de nombre, renovación de documentos y actualizaciones de nivel.
 
@@ -300,9 +300,9 @@ Podemos divulgar información si así lo requiere una orden judicial válida, un
 
 ### 10.4 Compartir Datos de Verificadores
 
-Los verificadores profesionales (Nivel 3 y Nivel 4) publican eventos de registro de verificador (kind 30473) en la red Nostr. Estos eventos incluyen la clave pública Nostr profesional del verificador e información jurisdiccional. Los verificadores dan su consentimiento a esta publicación como parte del Acuerdo de Verificador.
+Los verificadores profesionales (Nivel 3 y Nivel 4) publican eventos de registro de verificador (kind 31000) en la red Nostr. Estos eventos incluyen la clave pública Nostr profesional del verificador e información jurisdiccional. Los verificadores dan su consentimiento a esta publicación como parte del Acuerdo de Verificador.
 
-Los únicos datos compartidos entre el verificador y el Protocolo mediante eventos publicados son el evento de credencial (kind 30470), que contiene la clave pública del verificador, la clave pública de Persona del sujeto, metadatos de credencial (nivel, fechas, tipo de entidad, rango de edad), la prueba de rango de edad de conocimiento cero, el hash del nullifier y la raíz Merkle.
+Los únicos datos compartidos entre el verificador y el Protocolo mediante eventos publicados son el evento de credencial (kind 31000), que contiene la clave pública del verificador, la clave pública de Persona del sujeto, metadatos de credencial (nivel, fechas, tipo de entidad, rango de edad), la prueba de rango de edad de conocimiento cero, el hash del nullifier y la raíz Merkle.
 
 Ningún dato de identificación personal (nombre, fecha de nacimiento, números de documento, nacionalidad) aparece en ningún evento publicado.
 
@@ -472,7 +472,7 @@ El Protocolo utiliza pruebas de conocimiento cero basadas en Bulletproofs para l
 Cuando se requiere consentimiento parental, el Protocolo admite:
 - Consentimiento parental verificable mediante credenciales verificadas de Nivel 3 o Nivel 4 del padre/tutor
 - Verificación de acceso por edad mediante verificación de prueba ZK en el nivel de la parte confiante
-- Eventos de delegación de tutor (kind 30477) que permiten a los padres gestionar la actividad Signet de sus hijos
+- Eventos de delegación de tutor (kind 31000) que permiten a los padres gestionar la actividad Signet de sus hijos
 - Mecanismos para que los padres revoquen la delegación y el consentimiento
 
 ### 14.5 Cumplimiento de COPPA (Estados Unidos)

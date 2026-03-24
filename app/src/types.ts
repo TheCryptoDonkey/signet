@@ -53,7 +53,7 @@ export interface StoredCredential {
   documentId: string;
   /** Which keypair (NP or Persona) */
   keypairType: 'natural-person' | 'persona';
-  /** The signed Nostr event (Kind 30470) */
+  /** The signed Nostr event (kind 31000, type: credential) */
   event: string;
   /** Private Merkle leaves */
   merkleLeaves?: Record<string, string>;
@@ -62,7 +62,7 @@ export interface StoredCredential {
   /** Verifier's pubkey */
   verifierPubkey: string;
   verifiedAt: number;
-  /** Whether verifier's Kind 30473 has been confirmed */
+  /** Whether verifier's kind 31000 (type: verifier) has been confirmed */
   verifierStatus: 'confirmed' | 'pending';
 }
 

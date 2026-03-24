@@ -45,18 +45,18 @@ Le Protocole Signet est conçu pour minimiser la collecte de données. Étant do
 | Catégorie | Description | Source | Lieu de stockage |
 |----------|-------------|--------|-----------------|
 | **Clés publiques Nostr** | Clés publiques secp256k1 (npub) utilisées pour les interactions avec le Protocole | Générées par l'utilisateur | Relais Nostr (décentralisés) |
-| **Métadonnées des attestations** | Types d'événements Nostr 30470–30477 contenant le niveau de vérification, les horodatages d'émission, les dates d'expiration, la tranche d'âge et les identifiants de type d'entité | Générées lors de l'émission de l'attestation | Relais Nostr (décentralisés) |
+| **Métadonnées des attestations** | Types d'événements Nostr 31000–31000 contenant le niveau de vérification, les horodatages d'émission, les dates d'expiration, la tranche d'âge et les identifiants de type d'entité | Générées lors de l'émission de l'attestation | Relais Nostr (décentralisés) |
 | **Preuves à divulgation nulle de connaissance** | Bulletproofs pour la vérification de la tranche d'âge | Générées localement par l'utilisateur | Intégrées dans les événements d'attestation sur les relais Nostr |
 | **Signatures en anneau** | Signatures cryptographiques prouvant l'appartenance à un groupe sans révéler quel membre a signé | Générées localement par l'utilisateur | Relais Nostr (décentralisés) |
 | **Hashes nullificateurs** | Hash SHA-256 du type de document préfixé par la longueur, du code pays, du numéro de document et de la balise de domaine « signet-nullifier-v2 » — prévient la création d'identités dupliquées ; ne peut pas être inversé pour récupérer les détails du document | Calculés localement lors de la cérémonie à deux attestations | Intégrés dans les événements d'attestation de Personne Physique |
 | **Racines Merkle** | Engagement de hash sur les attributs vérifiés permettant la divulgation sélective. Les feuilles incluent le nom, la nationalité, le documentType, la dateOfBirth, le documentNumber, le documentExpiry, le photoHash et le nullificateur. Seul le hash de la racine est publié — les valeurs individuelles des feuilles ne sont jamais publiées | Calculées localement lors de la cérémonie à deux attestations | Intégrées dans les événements d'attestation de Personne Physique |
-| **Enregistrements de caution** | Événements de type 30471 représentant des recommandations de réseau de confiance | Créés par les parties cautionnant | Relais Nostr (décentralisés) |
-| **Événements de politique** | Événements de type 30472 spécifiant les exigences des parties utilisatrices | Créés par les parties utilisatrices | Relais Nostr (décentralisés) |
-| **Enregistrement du vérificateur** | Événements de type 30473 identifiant les vérificateurs professionnels, incluant la clé publique de signature professionnelle et les informations juridictionnelles | Créés par les vérificateurs | Relais Nostr (décentralisés) |
-| **Données de défi/réponse** | Événements de type 30474 pour les défis de légitimité des vérificateurs | Générés lors de la vérification | Relais Nostr (décentralisés) |
-| **Enregistrements de révocation** | Événements de type 30475 pour la révocation des attestations | Créés lors de la révocation des attestations | Relais Nostr (décentralisés) |
-| **Événements de pont d'identité** | Événements de type 30476 liant les paires de clés Personne Physique et Persona via des signatures en anneau | Créés par l'utilisateur | Relais Nostr (décentralisés) |
-| **Événements de délégation** | Événements de type 30477 pour la délégation d'agent ou de tuteur avec des autorisations délimitées | Créés par le délégant | Relais Nostr (décentralisés) |
+| **Enregistrements de caution** | Événements de type 31000 représentant des recommandations de réseau de confiance | Créés par les parties cautionnant | Relais Nostr (décentralisés) |
+| **Événements de politique** | Événements de type 30078 spécifiant les exigences des parties utilisatrices | Créés par les parties utilisatrices | Relais Nostr (décentralisés) |
+| **Enregistrement du vérificateur** | Événements de type 31000 identifiant les vérificateurs professionnels, incluant la clé publique de signature professionnelle et les informations juridictionnelles | Créés par les vérificateurs | Relais Nostr (décentralisés) |
+| **Données de défi/réponse** | Événements de type 31000 pour les défis de légitimité des vérificateurs | Générés lors de la vérification | Relais Nostr (décentralisés) |
+| **Enregistrements de révocation** | Événements de type 31000 pour la révocation des attestations | Créés lors de la révocation des attestations | Relais Nostr (décentralisés) |
+| **Événements de pont d'identité** | Événements de type 31000 liant les paires de clés Personne Physique et Persona via des signatures en anneau | Créés par l'utilisateur | Relais Nostr (décentralisés) |
+| **Événements de délégation** | Événements de type 31000 pour la délégation d'agent ou de tuteur avec des autorisations délimitées | Créés par le délégant | Relais Nostr (décentralisés) |
 | **Matériel de clé chiffré** | Clés privées chiffrées avec AES-256-GCM (clé dérivée via PBKDF2, 600 000 itérations, SHA-256) | Stockées localement sur l'appareil | Stockage local de l'appareil uniquement — jamais transmis |
 
 ### 3.2 Ce qui reste sur votre appareil
@@ -114,7 +114,7 @@ Cette section explique le processus de vérification professionnelle en détail,
 
 2. **Le vérificateur inspecte vos documents physiques.** Un vérificateur de niveau 3 ou 4 (un professionnel agréé tel qu'un solicitor, notaire ou médecin) examine vos documents d'identité physiques en personne. Le vérificateur confirme que les données que vous avez saisies correspondent à vos documents. Le vérificateur ne saisit pas vos données de manière indépendante dans le système.
 
-3. **Le vérificateur signe l'attestation.** Le vérificateur signe deux événements d'attestation : une attestation de Personne Physique (type 30470, signée par la paire de clés Nostr professionnelle du vérificateur) et une attestation de Persona (anonyme, tranche d'âge uniquement, également signée par le vérificateur). Les deux sont publiés sur les relais Nostr.
+3. **Le vérificateur signe l'attestation.** Le vérificateur signe deux événements d'attestation : une attestation de Personne Physique (type 31000, signée par la paire de clés Nostr professionnelle du vérificateur) et une attestation de Persona (anonyme, tranche d'âge uniquement, également signée par le vérificateur). Les deux sont publiés sur les relais Nostr.
 
 4. **Ce qui est publié.** Les événements d'attestation publiés contiennent : la clé publique du vérificateur, votre clé publique de Persona (clé publique du sujet), les métadonnées de l'attestation (niveau, dates, type d'entité, tranche d'âge), la preuve de tranche d'âge à divulgation nulle de connaissance, le hash nullificateur (un hash à sens unique ; ne peut pas être inversé) et la racine Merkle (un engagement de hash ; les valeurs individuelles des feuilles ne sont pas publiées). Aucun nom, date de naissance, numéro de document ou autre information d'identification n'est publié.
 
@@ -145,10 +145,10 @@ où `len16(x)` est la longueur en octets UTF-8 de `x` encodée comme un uint16 b
 
 Chaque utilisateur Signet possède deux paires de clés dérivées d'une seule mnémonique BIP-39 de 12 mots :
 
-- **Paire de clés Personne Physique** — dérivée via le chemin NIP-06 `m/44'/1237'/0'/0/0`. Utilisée pour l'attestation de Personne Physique (type 30470). Cette paire de clés est associée à votre identité réelle vérifiée via l'attestation, mais la paire de clés elle-même ne comporte aucun lien inhérent à vos documents.
+- **Paire de clés Personne Physique** — dérivée via le chemin NIP-06 `m/44'/1237'/0'/0/0`. Utilisée pour l'attestation de Personne Physique (type 31000). Cette paire de clés est associée à votre identité réelle vérifiée via l'attestation, mais la paire de clés elle-même ne comporte aucun lien inhérent à vos documents.
 - **Paire de clés Persona** — dérivée via le chemin HD BIP-32 à un index de compte séparé. Utilisée pour l'attestation de Persona (anonyme, tranche d'âge uniquement). Cette paire de clés ne comporte aucun lien direct avec votre identité réelle. Votre activité sociale en ligne utilise cette paire de clés.
 
-**Implication pour la vie privée :** Étant donné que les deux paires de clés dérivent de la même mnémonique, vous pouvez prouver le lien entre elles (via des événements de pont d'identité de type 30476) ou les garder entièrement séparées. Un événement de pont d'identité, une fois publié, crée un lien cryptographique public. Vous ne devriez publier un événement de pont que si vous souhaitez associer votre Persona anonyme à votre statut de Personne Physique vérifiée.
+**Implication pour la vie privée :** Étant donné que les deux paires de clés dérivent de la même mnémonique, vous pouvez prouver le lien entre elles (via des événements de pont d'identité de type 31000) ou les garder entièrement séparées. Un événement de pont d'identité, une fois publié, crée un lien cryptographique public. Vous ne devriez publier un événement de pont que si vous souhaitez associer votre Persona anonyme à votre statut de Personne Physique vérifiée.
 
 **Gestion des clés et droits des personnes concernées :** Vos clés privées sont dérivées de manière déterministe à partir de votre mnémonique. Signet ne possède ni ne transmet jamais vos clés privées. Si vous supprimez l'application et perdez votre mnémonique (et tout backup Shamir), vos clés sont irrécupérables. Signet ne peut pas aider à la récupération des clés car nous ne détenons pas de copies.
 
@@ -219,7 +219,7 @@ Nous traitons les données sur les bases juridiques suivantes, selon votre jurid
 
 Note : Les données biométriques sont traitées exclusivement sur l'appareil via WebAuthn. Signet ne traite pas de données biométriques en vertu de l'Article 9(1). Si un traitement biométrique par Signet était ultérieurement établi, la base juridique serait le consentement explicite en vertu de l'Art. 9(2)(a).
 
-**eIDAS 2.0 :** Le Règlement sur le portefeuille d'identité numérique de l'UE (eIDAS 2.0) impose aux États membres d'émettre des portefeuilles d'identité numérique aux citoyens d'ici décembre 2026. L'architecture de Signet est conçue pour être compatible avec les attestations émises par eIDAS 2.0 via le mécanisme de pont d'identité de type 30476.
+**eIDAS 2.0 :** Le Règlement sur le portefeuille d'identité numérique de l'UE (eIDAS 2.0) impose aux États membres d'émettre des portefeuilles d'identité numérique aux citoyens d'ici décembre 2026. L'architecture de Signet est conçue pour être compatible avec les attestations émises par eIDAS 2.0 via le mécanisme de pont d'identité de type 31000.
 
 ### 8.2 Royaume-Uni (UK RGPD / Data Protection Act 2018)
 
@@ -278,7 +278,7 @@ Les données traitées via le Protocole Signet sont utilisées exclusivement pou
 6. **Intégrité du Protocole** — Maintenir l'intégrité cryptographique et la sécurité du Protocole.
 7. **Conformité légale** — Se conformer aux lois et réglementations applicables.
 8. **Cérémonie à deux attestations** — Émettre des paires d'attestations de Personne Physique et de Persona lors de la vérification professionnelle, notamment le calcul des arbres Merkle, des nullificateurs et des preuves de tranche d'âge.
-9. **Gestion de la tutelle** — Traiter les événements de délégation de tuteur (type 30477) pour la gestion des comptes d'enfants.
+9. **Gestion de la tutelle** — Traiter les événements de délégation de tuteur (type 31000) pour la gestion des comptes d'enfants.
 10. **Divulgation sélective** — Permettre aux utilisateurs de prouver des attributs de feuilles Merkle individuels (notamment le numéro de document et la date d'expiration du document) aux parties utilisatrices qui en ont besoin, sans révéler les attributs non liés.
 11. **Cycle de vie de l'attestation** — Traiter les chaînes d'attestations (balises remplace/remplacé-par) pour les changements de nom, le renouvellement des documents et les mises à niveau de niveau.
 
@@ -303,9 +303,9 @@ Nous pouvons divulguer des informations si requis par une ordonnance judiciaire 
 
 ### 10.4 Partage de données des vérificateurs
 
-Les vérificateurs professionnels (niveaux 3 et 4) publient des événements d'enregistrement de vérificateur (type 30473) sur le réseau Nostr. Ces événements incluent la clé publique Nostr professionnelle du vérificateur et les informations juridictionnelles. Les vérificateurs consentent à cette publication dans le cadre de l'Accord du vérificateur.
+Les vérificateurs professionnels (niveaux 3 et 4) publient des événements d'enregistrement de vérificateur (type 31000) sur le réseau Nostr. Ces événements incluent la clé publique Nostr professionnelle du vérificateur et les informations juridictionnelles. Les vérificateurs consentent à cette publication dans le cadre de l'Accord du vérificateur.
 
-Les seules données partagées entre le vérificateur et le Protocole via les événements publiés sont l'événement d'attestation (type 30470), qui contient la clé publique du vérificateur, la clé publique de Persona du sujet, les métadonnées de l'attestation (niveau, dates, type d'entité, tranche d'âge), la preuve de tranche d'âge à divulgation nulle de connaissance, le hash nullificateur et la racine Merkle.
+Les seules données partagées entre le vérificateur et le Protocole via les événements publiés sont l'événement d'attestation (type 31000), qui contient la clé publique du vérificateur, la clé publique de Persona du sujet, les métadonnées de l'attestation (niveau, dates, type d'entité, tranche d'âge), la preuve de tranche d'âge à divulgation nulle de connaissance, le hash nullificateur et la racine Merkle.
 
 Aucune donnée d'identification personnelle (nom, date de naissance, numéros de document, nationalité) n'apparaît dans les événements publiés.
 
@@ -475,7 +475,7 @@ Le Protocole utilise des preuves à divulgation nulle de connaissance basées su
 Lorsque le consentement parental est requis, le Protocole prend en charge :
 - Le consentement parental vérifiable via les attestations vérifiées de niveau 3 ou 4 du parent/tuteur
 - La limitation par l'âge via la vérification des preuves ZK au niveau des parties utilisatrices
-- Les événements de délégation de tuteur (type 30477) permettant aux parents de gérer l'activité Signet de leurs enfants
+- Les événements de délégation de tuteur (type 31000) permettant aux parents de gérer l'activité Signet de leurs enfants
 - Les mécanismes permettant aux parents de révoquer la délégation et le consentement
 
 ### 14.5 Conformité COPPA (États-Unis)

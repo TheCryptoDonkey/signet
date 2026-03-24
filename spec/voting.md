@@ -373,7 +373,7 @@ These threats require national-scale mechanisms (see §11).
 A political party (e.g., Restore Britain) wants members to vote on policy positions:
 
 1. Party establishes itself as a Juridical Person (verified organisation) with Signet credentials
-2. Members are verified Natural Persons who hold party membership credentials (kind 30999, `type: credential`)
+2. Members are verified Natural Persons who hold party membership credentials (kind 31000, `type: credential`)
 3. Party leadership publishes a kind 30482 election: "Should the party support policy X?"
    - `eligible-entity-types`: `natural_person`
    - `eligible-min-tier`: `2` (web-of-trust verified)
@@ -414,7 +414,7 @@ A company board votes on a resolution:
 
 Using civic identity from the Signet protocol spec (§19):
 
-1. Government issues citizen credentials (kind 30999, `type: credential`) as described in protocol spec §19.2
+1. Government issues citizen credentials (kind 31000, `type: credential`) as described in protocol spec §19.2
 2. Election authority publishes kind 30482 referencing citizenship credentials
    - `eligible-entity-types`: `natural_person`
    - `eligible-min-tier`: `3` (government-verified)

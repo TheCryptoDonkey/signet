@@ -82,7 +82,7 @@ The Verifier agrees to:
 ### 1.3 Registration
 
 Upon acceptance, the Verifier will:
-1. Publish a verifier registration event (kind 30473) on the Nostr network.
+1. Publish a verifier registration event (kind 31000) on the Nostr network.
 2. The registration event will include: the Verifier's public key, professional category, jurisdiction, licensing body, and licence verification reference.
 3. Registration does not imply endorsement by the Operator.
 
@@ -110,8 +110,8 @@ When performing Tier 3 (Adult) verifications, the Verifier shall:
 5. **Perform the two-credential ceremony** — the subject presents two Nostr pubkeys (Natural Person and Persona). The Verifier:
    - Builds a Merkle tree from verified attributes (name, nationality, document type, DOB, nullifier)
    - Computes a document-based nullifier: `SHA-256(document_type || country_code || document_number || "signet-uniqueness-v1")`
-   - Issues a Natural Person credential (kind 30470) with entity-type, merkle-root, nullifier, and age-range tags
-   - Issues a Persona credential (kind 30470) with entity-type=persona and age-range tags only (NO nullifier, NO merkle-root)
+   - Issues a Natural Person credential (kind 31000) with entity-type, merkle-root, nullifier, and age-range tags
+   - Issues a Persona credential (kind 31000) with entity-type=persona and age-range tags only (NO nullifier, NO merkle-root)
    - Discards document number after nullifier computation — it is NOT stored or published
 6. **Maintain records** — keep records of the verification as required by the Verifier's professional obligations (see Section 2.5), including both pubkeys and document details (but NOT the document number after nullifier computation, unless required by professional regulations).
 
@@ -220,7 +220,7 @@ The Operator shall:
 3. **Maintain the Protocol** — maintain the Protocol specification and reference implementations.
 4. **Support Verifiers** — provide reasonable technical support for verification-related issues.
 5. **Investigate complaints** — investigate complaints about Verifier conduct and take appropriate action.
-6. **Publish Verifier directory** — maintain a registry of active, verified Verifiers through kind 30473 events.
+6. **Publish Verifier directory** — maintain a registry of active, verified Verifiers through kind 31000 events.
 7. **Notify of changes** — provide reasonable notice of changes to the Protocol, this Agreement, or verification requirements.
 
 ---
@@ -297,7 +297,7 @@ The Verifier shall:
 
 ### 7.3 Data Sharing
 
-The only data shared between the Verifier and the Protocol is the published credential event (kind 30470), which contains:
+The only data shared between the Verifier and the Protocol is the published credential event (kind 31000), which contains:
 - The Verifier's public key (as the signing key)
 - The subject's public key
 - Credential metadata (tier, dates, type)
@@ -362,7 +362,7 @@ The Verifier is not entitled to any share of revenue from the Protocol or the Op
 
 The Verifier may terminate this Agreement at any time by:
 1. Providing 30 days' written notice to the Operator.
-2. Publishing a revocation of their verifier registration event (kind 30473).
+2. Publishing a revocation of their verifier registration event (kind 31000).
 
 ### 10.2 Termination by the Operator
 
@@ -384,7 +384,7 @@ The Operator may terminate this Agreement:
 ### 10.3 Effect of Termination
 
 Upon termination:
-1. The Verifier's registration event (kind 30473) is revoked.
+1. The Verifier's registration event (kind 31000) is revoked.
 2. The Verifier must cease performing verifications under the Protocol.
 3. Previously issued credentials remain valid unless individually revoked.
 4. The Verifier must retain verification records for the required retention period.
