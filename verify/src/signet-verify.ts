@@ -86,19 +86,19 @@ interface PresentationResponse {
 }
 
 // Escape HTML special characters to prevent XSS in innerHTML
-function escapeHtml(str: string): string {
+export function escapeHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // Generate a random request ID
-function generateRequestId(): string {
+export function generateRequestId(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // Extract a tag value from a Nostr event
-function getTagValue(tags: string[][], key: string): string | undefined {
+export function getTagValue(tags: string[][], key: string): string | undefined {
   const tag = tags.find(t => t[0] === key);
   return tag ? tag[1] : undefined;
 }
@@ -121,7 +121,7 @@ function hexToBytes(hex: string): Uint8Array {
  * Verify a Nostr event's Schnorr signature (BIP-340).
  * Checks: structural validity, event ID hash, and cryptographic signature.
  */
-async function verifyEventSignature(event: PresentationResponse['credential']): Promise<boolean> {
+export async function verifyEventSignature(event: PresentationResponse['credential']): Promise<boolean> {
   // Structural validation: check field formats
   if (!event.id || !event.pubkey || !event.sig || !event.tags || event.kind !== 31000) {
     return false;
@@ -163,7 +163,7 @@ async function verifyEventSignature(event: PresentationResponse['credential']): 
 }
 
 // Check if the credential's age range satisfies the required range
-function ageRangeSatisfies(credentialRange: string, requiredRange: string): boolean {
+export function ageRangeSatisfies(credentialRange: string, requiredRange: string): boolean {
   // Simple range matching
   if (credentialRange === requiredRange) return true;
   // '18+' satisfies any adult requirement
@@ -191,7 +191,7 @@ interface VerifierStatus {
  * Check a verifier's status against the verification bot.
  * Returns { confirmed, method } or null if the check fails/is skipped.
  */
-async function checkVerifierStatus(
+export async function checkVerifierStatus(
   verifierPubkey: string,
   checkUrl: string | null | undefined,
 ): Promise<VerifierStatus | null> {
