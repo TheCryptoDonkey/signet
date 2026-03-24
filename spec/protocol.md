@@ -1381,6 +1381,184 @@ A Juridical Person (organisation) requires dual verification:
 
 Both proofs must be present for an account to achieve Juridical Person status.
 
+#### 17.7.1 Domain Proof via `.well-known/signet.json`
+
+An institution MAY publish its Signet identity and staff roster via `https://<domain>/.well-known/signet.json`. This extends the schema defined in §27.1 (Cold-Call Verification) with fields for entity type, registry cross-referencing, and staff pubkeys.
+
+```json
+{
+  "version": 2,
+  "name": "Baker & Co Solicitors",
+  "entity": "juridical_person",
+  "registry": {
+    "authority": "sra",
+    "id": "654321",
+    "url": "https://www.sra.org.uk/consumers/register/organisation/?sraNumber=654321"
+  },
+  "pubkeys": [
+    {
+      "id": "firm-key-2026",
+      "pubkey": "<64-char hex secp256k1 x-only pubkey>",
+      "label": "Firm Verification Key",
+      "created": "2026-01-15T00:00:00Z"
+    }
+  ],
+  "staff": [
+    {
+      "pubkey": "<64-char hex>",
+      "name": "Jane Smith",
+      "role": "solicitor",
+      "registry": { "authority": "sra", "id": "123456" }
+    },
+    {
+      "pubkey": "<64-char hex>",
+      "name": "John Davies",
+      "role": "solicitor",
+      "registry": { "authority": "sra", "id": "789012" }
+    }
+  ],
+  "relay": "wss://relay.example.com",
+  "policy": {
+    "rotation": "annual",
+    "contact": "compliance@bakerco.co.uk"
+  }
+}
+```
+
+**Version 2 fields (all optional — version 1 documents remain valid):**
+
+| Field | Type | Description |
+|---|---|---|
+| `entity` | string | Entity type code: `juridical_person` or `juridical_persona` |
+| `registry` | object | Regulatory body and registration ID for the institution |
+| `registry.authority` | string | Registry identifier: `sra`, `gmc`, `gdc`, `arb`, `ofsted`, `companies-house`, etc. |
+| `registry.id` | string | The institution's registration ID on that registry |
+| `registry.url` | string | Optional: direct URL to the institution's public registry entry |
+| `staff` | array | Array of verified individuals at this institution |
+| `staff[].pubkey` | string | 64-char hex secp256k1 x-only pubkey of the staff member |
+| `staff[].name` | string | Display name (for human cross-referencing) |
+| `staff[].role` | string | Role at the institution (e.g., `solicitor`, `gp`, `head-teacher`) |
+| `staff[].registry` | object | Optional: the individual's own registry entry (e.g., their personal SRA ID) |
+
+**Validation rules (extending §27.1 rules):**
+
+- `version` MUST be `1` or `2`. Clients MUST accept version 1 documents (which lack `entity`, `registry`, `staff`).
+- `entity`, if present, MUST be `juridical_person` or `juridical_persona`.
+- `staff`, if present, MUST be an array with at most 500 entries.
+- Each `staff[].pubkey` MUST be a 64-character lowercase hexadecimal string.
+- `registry.authority` values SHOULD use the lowercase identifiers defined in the Signet registry authority table (see §17.7.4).
+- The document MUST NOT exceed 102,400 bytes (100 KB) to accommodate large staff rosters.
+
+#### 17.7.2 Juridical Person Onboarding Flow
+
+The recommended onboarding flow for an institution (e.g., a law firm):
+
+**Step 1: Create the institution's Signet identity.**
+
+The managing partner (or designated compliance officer) generates a BIP-39 mnemonic for the institution. This mnemonic is the institution's master key. It SHOULD be:
+- Generated on a secure device (hardware wallet or air-gapped machine)
+- Backed up via Shamir Secret Sharing (e.g., 2-of-3 split across partners) using `@forgesworn/shamir-words`
+- Never stored on a general-purpose computer or cloud service
+
+The mnemonic derives the institution's `juridical_person` identity via `createSignetIdentity()`.
+
+**Step 2: Professional verification of the institution.**
+
+A Tier 3+ verified professional (who is NOT an employee of the institution) verifies:
+- The institution's legal registration documents (e.g., Companies House certificate, SRA firm registration)
+- That the persons claiming to represent the institution match their registry records
+
+The professional issues a credential attestation (kind 31000, `type: credential`, `entity-type: juridical_person`) against the institution's pubkey.
+
+**Step 3: Multi-sig attestation by directors/partners.**
+
+N-of-M verified Natural Persons at the institution co-sign a credential attesting they represent the organisation. For example, for a law firm with 5 equity partners, a 3-of-5 attestation. Each co-signer must themselves be a verified Natural Person (Tier 3+).
+
+**Step 4: Publish `.well-known/signet.json`.**
+
+The institution publishes the domain proof file on its website. This anchors the institution's pubkey to its domain. For institutions on restricted domains (`.sch.uk`, `.nhs.uk`, `.ac.uk`, `.gov.uk`), the domain itself provides infrastructure-level anti-Sybil — the domain registrar has already verified the institution's legitimacy.
+
+**Step 5: Staff verification.**
+
+The institution (via its `juridical_person` identity) issues credentials to individual staff members. Each staff credential:
+- Is issued by the institution's pubkey (not by the individual professional's own verification chain)
+- Includes the `entity-type: natural_person` tag on the staff member's pubkey
+- Includes a `["delegator", "<institution_pubkey>"]` tag linking the credential to the institution
+- Can be cross-referenced against the staff member's individual registry entry (e.g., their personal SRA ID)
+
+This means a solicitor at the firm has TWO credential paths:
+1. **Via the institution:** SRA register → firm's domain → `.well-known/signet.json` → firm credential → individual
+2. **Via personal verification:** Another verified professional vouches for them in person
+
+Either path is valid. Both together are stronger.
+
+**Step 6: Staff are listed in `.well-known/signet.json`.**
+
+The institution adds each verified staff member's pubkey to the `staff` array. This creates a single machine-readable file that lists every verified person at the institution, cross-referenceable against the relevant professional register.
+
+#### 17.7.3 Staff Verification by the Institution
+
+When an institution issues a credential to a staff member, the credential event includes tags linking it to the institution:
+
+```jsonc
+{
+  "kind": 31000,
+  "pubkey": "<institution_pubkey>",
+  "tags": [
+    ["d", "<unique_credential_id>"],
+    ["type", "credential"],
+    ["p", "<staff_member_pubkey>"],
+    ["entity-type", "natural_person"],
+    ["delegator", "<institution_pubkey>"],
+    ["delegator-entity", "juridical_person"],
+    ["registry", "sra", "<staff_member_sra_id>"],
+    ["algo", "secp256k1"],
+    ["L", "signet"],
+    ["l", "credential", "signet"]
+  ],
+  "content": ""
+}
+```
+
+The `["registry", "<authority>", "<id>"]` tag enables automated cross-referencing. A verifying client can:
+
+1. Find the credential issued by `<institution_pubkey>`
+2. Fetch `https://<institution-domain>/.well-known/signet.json`
+3. Confirm `<institution_pubkey>` matches a pubkey in the file
+4. Confirm `<staff_member_pubkey>` appears in the `staff` array
+5. Look up the `registry` tag value against the relevant professional register (e.g., SRA API)
+6. Confirm the named person at the named registry ID works at the named firm
+
+All six checks must pass for full verification. Steps 1–4 are automatable. Step 5 requires registry integration (API or web scrape). Step 6 is a human-readable cross-check.
+
+#### 17.7.4 Registry Authority Identifiers
+
+The protocol defines the following registry authority identifiers for use in `registry.authority` fields and `["registry"]` tags:
+
+| Identifier | Registry | Country | Profession |
+|---|---|---|---|
+| `sra` | Solicitors Regulation Authority | UK | Solicitors |
+| `bsb` | Bar Standards Board | UK | Barristers |
+| `gmc` | General Medical Council | UK | Doctors/GPs |
+| `gdc` | General Dental Council | UK | Dentists |
+| `gphc` | General Pharmaceutical Council | UK | Pharmacists |
+| `nmc` | Nursing and Midwifery Council | UK | Nurses, midwives |
+| `goc` | General Optical Council | UK | Opticians, optometrists |
+| `hcpc` | Health and Care Professions Council | UK | Physios, paramedics, psychologists, etc. |
+| `swe` | Social Work England | UK (England) | Social workers |
+| `arb` | Architects Registration Board | UK | Architects |
+| `rcvs` | Royal College of Veterinary Surgeons | UK | Veterinarians |
+| `icaew` | Institute of Chartered Accountants | UK | Chartered accountants |
+| `acca` | Assoc. of Chartered Certified Accountants | UK | Chartered certified accountants |
+| `rics` | Royal Institution of Chartered Surveyors | UK | Chartered surveyors |
+| `engc` | Engineering Council | UK | Chartered engineers |
+| `gtcs` | General Teaching Council for Scotland | UK (Scotland) | Teachers |
+| `ofsted` | Office for Standards in Education | UK (England) | Schools, childminders, nurseries |
+| `companies-house` | Companies House | UK | Companies, LLPs |
+| `faculty-office` | Faculty Office of the Archbishop of Canterbury | UK | Notaries public |
+
+This table is non-exhaustive. Implementations SHOULD accept any `registry.authority` value — unknown authorities are not invalid, merely unverifiable by that particular client. International registries may be added by any implementation.
+
 ### 17.8 Application Label Mapping
 
 Client applications SHOULD map protocol entity types to user-friendly labels:
@@ -2190,8 +2368,8 @@ Institutions publish a JSON document at `https://<domain>/.well-known/signet.jso
 **Validation rules for clients fetching this document:**
 
 - MUST use HTTPS — HTTP is rejected.
-- Response body MUST NOT exceed 10,240 bytes (10 KB).
-- `version` MUST equal `1` — unknown versions are rejected.
+- Response body MUST NOT exceed 10,240 bytes (10 KB) for version 1 documents, or 102,400 bytes (100 KB) for version 2 documents (see §17.7.1 for the extended schema).
+- `version` MUST be `1` or `2`. Version 2 documents may include `entity`, `registry`, and `staff` fields as defined in §17.7.1.
 - `name` MUST be a non-empty string.
 - `pubkeys` MUST be a non-empty array with at most 20 entries.
 - Each `pubkey` value MUST be a 64-character lowercase hexadecimal string (x-only secp256k1).
