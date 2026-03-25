@@ -26,7 +26,7 @@ Any Nostr client can implement Signet. Any community can set verification polici
 1. [Motivation](#1-motivation)
 2. [Design Principles](#2-design-principles)
 3. [Credential Tiers](#3-credential-tiers)
-4. [Signet Score](#4-signet-score)
+4. [Signet IQ](#4-signet-iq)
 5. [Service Policies](#5-service-policies)
 6. [Verifier Network](#6-verifier-network)
 7. [Anti-Corruption Framework](#7-anti-corruption-framework)
@@ -167,9 +167,11 @@ A predator who is a verified real adult (Tier 3) could still create a fake child
 
 ---
 
-## 4. Signet Score (Identification Quotient)
+## 4. Signet IQ (Identification Quotient)
 
-On top of discrete tiers, a continuous Signet Score score (0-200) provides nuanced reputation. A score of 100 represents the current UK/US standard that governments deem acceptable. Scores above 100 indicate multiple verifications, strong peer trust, bridges, and time on the network.
+On top of discrete tiers, a continuous Signet IQ (0-200) measures identity quality — the statistical confidence that an identity is real, not fabricated. It is not a reputation score. A high IQ means independent, verifiable sources confirm this entity exists. What the entity does with that identity is a separate concern.
+
+A score of 100 represents the confidence level equivalent to a human checking a passport face-to-face — the standard that governments deem acceptable. Scores above 100 indicate that the identity is harder to fabricate than a government-issued passport, because more independent sources confirm it.
 
 ### Score Components
 
@@ -197,7 +199,7 @@ Clients MUST respect this ordering. A single professional verification always ou
 ```
 ┌───────────────────────────────────┐
 │  Alice ✓✓               Tier 3   │
-│  Signet Score: 106                   │
+│  Signet IQ: 106                      │
 │                                   │
 │  ● Prof verified (lawyer)         │
 │  ● 4 in-person vouches            │
@@ -207,7 +209,7 @@ Clients MUST respect this ordering. A single professional verification always ou
 ```
 
 - **Tier** = the gate (can you enter this space?)
-- **Signet Score** = the reputation (how much should I trust this person?)
+- **Signet IQ** = the identity quality (how confident are we that this identity is real?)
 - End users see a simple tier badge. Power users can drill into the score breakdown.
 
 ---
@@ -786,7 +788,7 @@ They can still build trust through:
 - Account age and consistent behaviour
 - Online vouches from high-IQ accounts
 
-This gives them a visible Signet Score score and a checkmark — weaker than professional verification, but more than nothing. And nothing is what everyone on Nostr has today.
+This gives them a visible Signet IQ and a checkmark — weaker than professional verification, but more than nothing. And nothing is what everyone on Nostr has today.
 
 ### For Public Figures
 
@@ -804,7 +806,7 @@ A verified creator can prove they're real without revealing their legal name. Co
 | ✓ | Web-of-trust vouched (Tier 2) |
 | ✓✓ | Professional verified, adult (Tier 3) |
 | ✓✓✓ | Professional verified, adult + child (Tier 4) |
-| Signet Score | Continuous reputation (0–200) visible on drill-down |
+| Signet IQ | Continuous identity quality (0–200) visible on drill-down |
 
 ---
 
