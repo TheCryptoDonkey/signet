@@ -179,4 +179,19 @@ describe('credentials', () => {
       expect(result.expired).toBe(true);
     });
   });
+
+  it('has NIP-VA discoverability labels (not manual signet labels)', async () => {
+    const verifier = generateKeyPair();
+    const subject = generateKeyPair();
+    const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, {
+      profession: 'solicitor',
+      jurisdiction: 'GB',
+    });
+    expect(getTagValue(cred, 'L')).toBe('nip-va');
+    const lTag = cred.tags.find(t => t[0] === 'l' && t[2] === 'nip-va');
+    expect(lTag).toBeDefined();
+    expect(lTag![1]).toBe('credential');
+    const signetL = cred.tags.find(t => t[0] === 'l' && t[2] === 'signet');
+    expect(signetL).toBeUndefined();
+  });
 });

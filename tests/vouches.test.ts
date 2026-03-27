@@ -195,4 +195,21 @@ describe('vouches', () => {
       expect(vouchers).toContain(v2.publicKey);
     });
   });
+
+  it('has NIP-VA discoverability labels', async () => {
+    const voucher = generateKeyPair();
+    const subject = generateKeyPair();
+    const vouch = await createVouch(voucher.privateKey, {
+      subjectPubkey: subject.publicKey,
+      method: 'in-person',
+      voucherTier: 3,
+      voucherScore: 87,
+    });
+    expect(getTagValue(vouch, 'L')).toBe('nip-va');
+    const lTag = vouch.tags.find(t => t[0] === 'l' && t[2] === 'nip-va');
+    expect(lTag).toBeDefined();
+    expect(lTag![1]).toBe('vouch');
+    const signetL = vouch.tags.find(t => t[0] === 'l' && t[2] === 'signet');
+    expect(signetL).toBeUndefined();
+  });
 });

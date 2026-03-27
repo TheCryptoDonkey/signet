@@ -10,10 +10,12 @@ import {
   computeBridgeWeight,
   computeTrustScore,
   createProfessionalCredential,
+  getTagValue,
   MIN_BRIDGE_RING_SIZE,
   ATTESTATION_KIND,
   ATTESTATION_TYPES,
 } from '../src/index.js';
+import type { SignetTier } from '../src/types.js';
 import { generateKeypairs } from './fixtures.js';
 
 describe('selectDecoyRing', () => {
@@ -112,6 +114,26 @@ describe('createIdentityBridge', () => {
     await expect(
       createIdentityBridge(anon.privateKey, real.privateKey, ring, 0, 3)
     ).rejects.toThrow('at least');
+  });
+
+  it('has NIP-VA discoverability labels', async () => {
+    const anon = generateKeyPair();
+    const real = generateKeyPair();
+    const decoys = Array.from({ length: 4 }, () => generateKeyPair().publicKey);
+    const ring = [real.publicKey, ...decoys];
+    const bridge = await createIdentityBridge(
+      anon.privateKey,
+      real.privateKey,
+      ring,
+      0,
+      3 as SignetTier,
+    );
+    expect(getTagValue(bridge, 'L')).toBe('nip-va');
+    const lTag = bridge.tags.find(t => t[0] === 'l' && t[2] === 'nip-va');
+    expect(lTag).toBeDefined();
+    expect(lTag![1]).toBe('identity-bridge');
+    const signetL = bridge.tags.find(t => t[0] === 'l' && t[2] === 'signet');
+    expect(signetL).toBeUndefined();
   });
 });
 

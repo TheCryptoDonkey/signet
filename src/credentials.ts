@@ -2,7 +2,7 @@
 // Create, sign, verify, and parse Signet credentials for all 4 tiers
 
 import { createAttestation } from 'nostr-attestations';
-import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, DEFAULT_CREDENTIAL_EXPIRY_SECONDS, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, DEFAULT_CREDENTIAL_EXPIRY_SECONDS, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, verifyEvent, getPublicKey, hash } from './crypto.js';
 import { validateCredential, getTagValue, getTagValues } from './validation.js';
 import { ringSign, ringVerify, type RingSignature } from './ring-signature.js';
@@ -37,8 +37,6 @@ export function buildCredentialEvent(
     ['scope', params.scope],
     ['method', params.method],
     ['algo', DEFAULT_CRYPTO_ALGORITHM],
-    ['L', SIGNET_LABEL],
-    ['l', 'verification', SIGNET_LABEL],
   ];
 
   if (params.profession) signetTags.push(['profession', params.profession]);
@@ -855,8 +853,6 @@ export async function createGuardianDelegation(
     ['child', params.childPubkey],
     ['scope', params.scope],
     ['algo', DEFAULT_CRYPTO_ALGORITHM],
-    ['L', SIGNET_LABEL],
-    ['l', 'delegation', SIGNET_LABEL],
   ];
 
   const template = createAttestation({

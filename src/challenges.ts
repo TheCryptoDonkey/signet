@@ -3,7 +3,7 @@
 
 import { createAttestation } from 'nostr-attestations';
 import { parseAttestation } from 'nostr-attestations';
-import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, DEFAULT_REVOCATION_THRESHOLD, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, DEFAULT_REVOCATION_THRESHOLD, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
 import { getTagValue } from './validation.js';
 import type {
@@ -38,8 +38,6 @@ export function buildChallengeEvent(
       ['evidence-type', params.evidenceType],
       ['reporter-tier', String(params.reporterTier)],
       ['algo', DEFAULT_CRYPTO_ALGORITHM],
-      ['L', SIGNET_LABEL],
-      ['l', 'challenge', SIGNET_LABEL],
     ],
   });
 
@@ -98,8 +96,6 @@ export function buildRevocationEvent(
       ['scope', params.scope],
       ['effective', String(params.effectiveAt)],
       ['algo', DEFAULT_CRYPTO_ALGORITHM],
-      ['L', SIGNET_LABEL],
-      ['l', 'revocation', SIGNET_LABEL],
     ],
   });
 

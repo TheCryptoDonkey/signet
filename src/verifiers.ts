@@ -2,7 +2,7 @@
 // Professional verifier registration and cross-verification
 
 import { createAttestation, parseAttestation } from 'nostr-attestations';
-import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, VERIFIER_ACTIVATION, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, VERIFIER_ACTIVATION, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
 import { getTagValue } from './validation.js';
 import type {
@@ -24,8 +24,6 @@ export function buildVerifierEvent(
     ['licence', params.licenceHash],
     ['body', params.professionalBody],
     ['algo', DEFAULT_CRYPTO_ALGORITHM],
-    ['L', SIGNET_LABEL],
-    ['l', 'verifier', SIGNET_LABEL],
   ];
 
   const template = createAttestation({

@@ -204,4 +204,20 @@ describe('verifiers', () => {
       expect(isVerifierRevoked(verifier.publicKey, [revocation])).toBe(true);
     });
   });
+
+  it('has NIP-VA discoverability labels', async () => {
+    const verifier = generateKeyPair();
+    const event = await createVerifierCredential(verifier.privateKey, {
+      profession: 'solicitor',
+      jurisdiction: 'GB',
+      licenceHash: 'abc123',
+      professionalBody: 'Law Society',
+    });
+    expect(getTagValue(event, 'L')).toBe('nip-va');
+    const lTag = event.tags.find(t => t[0] === 'l' && t[2] === 'nip-va');
+    expect(lTag).toBeDefined();
+    expect(lTag![1]).toBe('verifier');
+    const signetL = event.tags.find(t => t[0] === 'l' && t[2] === 'signet');
+    expect(signetL).toBeUndefined();
+  });
 });

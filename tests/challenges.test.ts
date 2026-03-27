@@ -225,4 +225,40 @@ describe('revocations', () => {
       expect(count).toBe(0);
     });
   });
+
+  it('has NIP-VA discoverability labels on challenge', async () => {
+    const reporter = generateKeyPair();
+    const verifier = generateKeyPair();
+    const challenge = await createChallenge(reporter.privateKey, {
+      verifierPubkey: verifier.publicKey,
+      reason: 'anomalous-volume',
+      evidenceType: 'issuance-data',
+      reporterTier: 3,
+      evidence: 'Suspicious activity',
+    });
+    expect(getTagValue(challenge, 'L')).toBe('nip-va');
+    const lTag = challenge.tags.find(t => t[0] === 'l' && t[2] === 'nip-va');
+    expect(lTag).toBeDefined();
+    expect(lTag![1]).toBe('challenge');
+    const signetL = challenge.tags.find(t => t[0] === 'l' && t[2] === 'signet');
+    expect(signetL).toBeUndefined();
+  });
+
+  it('has NIP-VA discoverability labels on revocation', async () => {
+    const authority = generateKeyPair();
+    const verifier = generateKeyPair();
+    const revocation = await createRevocation(authority.privateKey, {
+      verifierPubkey: verifier.publicKey,
+      challengeEventId: 'abc123',
+      confirmations: 5,
+      bondAction: 'slashed',
+      scope: 'full',
+      effectiveAt: Math.floor(Date.now() / 1000),
+      summary: 'Revoked for cause',
+    });
+    expect(getTagValue(revocation, 'L')).toBe('nip-va');
+    const lTag = revocation.tags.find(t => t[0] === 'l' && t[2] === 'nip-va');
+    expect(lTag).toBeDefined();
+    expect(lTag![1]).toBe('revocation');
+  });
 });

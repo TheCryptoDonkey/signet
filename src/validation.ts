@@ -42,10 +42,12 @@ export function validateFieldSizeBounds(event: NostrEvent, errors: string[]): vo
   }
 }
 
-/** Check that the event has the signet protocol label */
+/** Check that the event has a NIP-VA discoverability label.
+ * Accepts both the current 'nip-va' label and the legacy 'signet' label
+ * for backwards compatibility with events created before v2.3.0. */
 function hasSignetLabel(event: NostrEvent): boolean {
   return event.tags.some(
-    (t) => t[0] === 'L' && t[1] === SIGNET_LABEL
+    (t) => t[0] === 'L' && (t[1] === 'nip-va' || t[1] === SIGNET_LABEL)
   );
 }
 

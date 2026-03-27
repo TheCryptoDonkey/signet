@@ -7,7 +7,7 @@
 
 import { createAttestation } from 'nostr-attestations';
 import { parseAttestation } from 'nostr-attestations';
-import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, MIN_BRIDGE_RING_SIZE, TRUST_WEIGHTS, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, MIN_BRIDGE_RING_SIZE, TRUST_WEIGHTS, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { getPublicKey, signEvent, verifyEvent } from './crypto.js';
 import { ringSign, ringVerify } from './ring-signature.js';
 import { getTagValue } from './validation.js';
@@ -137,8 +137,6 @@ export async function createIdentityBridge(
       ['ring-min-tier', String(ringMinTier)],
       ['ring-size', String(ring.length)],
       ['algo', DEFAULT_CRYPTO_ALGORITHM],
-      ['L', SIGNET_LABEL],
-      ['l', 'identity-bridge', SIGNET_LABEL],
     ],
     content: contentPayload,
   });

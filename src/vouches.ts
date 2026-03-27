@@ -3,7 +3,7 @@
 
 import { createAttestation } from 'nostr-attestations';
 import { parseAttestation } from 'nostr-attestations';
-import { ATTESTATION_KIND, ATTESTATION_TYPES, SIGNET_LABEL, DEFAULT_VOUCH_THRESHOLD, DEFAULT_VOUCHER_MIN_TIER, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, DEFAULT_VOUCH_THRESHOLD, DEFAULT_VOUCHER_MIN_TIER, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
 import { getTagValue } from './validation.js';
 import type {
@@ -26,8 +26,6 @@ export function buildVouchEvent(
     ['voucher-tier', String(params.voucherTier)],
     ['voucher-score', String(params.voucherScore)],
     ['algo', DEFAULT_CRYPTO_ALGORITHM],
-    ['L', SIGNET_LABEL],
-    ['l', 'vouch', SIGNET_LABEL],
   ];
 
   if (params.context) signetTags.push(['context', params.context]);
