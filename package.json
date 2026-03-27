@@ -55,7 +55,7 @@
     "@noble/hashes": "^2.0.1",
     "@scure/bip39": "^2.0.1",
     "jurisdiction-kit": "^1.0.0",
-    "nostr-attestations": "^2.1.0",
+    "nostr-attestations": "^2.3.1",
     "nsec-tree": "^1.4.1",
     "spoken-token": "^2.0.3"
   },
