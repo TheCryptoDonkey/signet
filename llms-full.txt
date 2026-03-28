@@ -1074,9 +1074,9 @@ The core peer-to-peer identity verification feature. Given a connection with a s
 
 **The solution:** "Signet me." Both users open each other's profiles. Both see the same words. The caller reads them out. Match → it's really them.
 
-**Algorithm (powered by canary-kit):**
+**Algorithm (powered by spoken-token):**
 
-Signet delegates word derivation to the [CANARY protocol](https://github.com/TheCryptoDonkey/canary-kit) for protocol alignment. Canary handles real-time spoken verification; Signet handles identity and trust.
+Signet delegates word derivation to [spoken-token](https://www.npmjs.com/package/spoken-token) for protocol alignment. spoken-token handles real-time spoken verification; Signet handles identity and trust.
 
 ```
 Inputs:
