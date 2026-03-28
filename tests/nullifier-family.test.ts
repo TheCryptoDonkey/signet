@@ -5,6 +5,7 @@ import {
   buildNullifierFamilyTags,
   checkNullifierFamilyDuplicate,
   generateKeyPair,
+  createSelfDeclaredCredential,
   createProfessionalCredential,
 } from '../src/index.js';
 import type { DocumentDescriptor, NullifierFamily } from '../src/credentials.js';
@@ -110,10 +111,11 @@ describe('multi-document nullifier families', () => {
       // Create a credential with the passport nullifier
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
+      const tier1 = await createSelfDeclaredCredential(subject.privateKey);
       const existingCred = await createProfessionalCredential(
         verifier.privateKey,
         subject.publicKey,
-        { profession: 'legal', jurisdiction: 'GB' }
+        { assertionEventId: tier1.id, profession: 'legal', jurisdiction: 'GB' }
       );
       // Manually add nullifier tag
       const nullifier = computeNullifier('passport', 'GB', '123456789');
@@ -130,10 +132,11 @@ describe('multi-document nullifier families', () => {
       // Create a credential with only the licence nullifier
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
+      const tier1 = await createSelfDeclaredCredential(subject.privateKey);
       const existingCred = await createProfessionalCredential(
         verifier.privateKey,
         subject.publicKey,
-        { profession: 'legal', jurisdiction: 'GB' }
+        { assertionEventId: tier1.id, profession: 'legal', jurisdiction: 'GB' }
       );
       const licenceNullifier = computeNullifier('driving_licence', 'GB', 'SMITH901150J99XX');
       (existingCred as any).tags.push(['nullifier-family', licenceNullifier, 'driving_licence']);
@@ -149,10 +152,11 @@ describe('multi-document nullifier families', () => {
       // Person A verified with passport
       const verifier = generateKeyPair();
       const subjectA = generateKeyPair();
+      const tier1A = await createSelfDeclaredCredential(subjectA.privateKey);
       const credA = await createProfessionalCredential(
         verifier.privateKey,
         subjectA.publicKey,
-        { profession: 'legal', jurisdiction: 'GB' }
+        { assertionEventId: tier1A.id, profession: 'legal', jurisdiction: 'GB' }
       );
       const familyA = computeNullifierFamily([passportDoc, licenceDoc]);
       const tagsA = buildNullifierFamilyTags(familyA);
@@ -171,10 +175,11 @@ describe('multi-document nullifier families', () => {
     it('no false positive for different people', async () => {
       const verifier = generateKeyPair();
       const subjectA = generateKeyPair();
+      const tier1A = await createSelfDeclaredCredential(subjectA.privateKey);
       const credA = await createProfessionalCredential(
         verifier.privateKey,
         subjectA.publicKey,
-        { profession: 'legal', jurisdiction: 'GB' }
+        { assertionEventId: tier1A.id, profession: 'legal', jurisdiction: 'GB' }
       );
       const passportA: DocumentDescriptor = {
         documentType: 'passport',

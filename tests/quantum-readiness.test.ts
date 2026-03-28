@@ -27,7 +27,7 @@ import {
   APP_DATA_KIND,
 } from '../src/index.js';
 import type { CryptoAlgorithm, NostrEvent } from '../src/index.js';
-import { TIER3_OPTS, generateKeypairs } from './fixtures.js';
+import { buildTier3Opts, generateKeypairs } from './fixtures.js';
 
 describe('quantum readiness — algo tag', () => {
   describe('algo tag is present on all event kinds', () => {
@@ -40,22 +40,26 @@ describe('quantum readiness — algo tag', () => {
     it('Tier 2 credential has algo tag', async () => {
       const issuer = generateKeyPair();
       const subject = generateKeyPair();
-      const event = await createPeerVouchedCredential(issuer.privateKey, subject.publicKey);
+      const tier1 = await createSelfDeclaredCredential(subject.privateKey);
+      const event = await createPeerVouchedCredential(issuer.privateKey, subject.publicKey, { assertionEventId: tier1.id });
       expect(getTagValue(event, 'algo')).toBe('secp256k1');
     });
 
     it('Tier 3 credential has algo tag', async () => {
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
-      const event = await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS);
+      const event = await createProfessionalCredential(verifier.privateKey, subject.publicKey, await buildTier3Opts(subject.privateKey));
       expect(getTagValue(event, 'algo')).toBe('secp256k1');
     });
 
     it('Tier 4 credential has algo tag', async () => {
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
+      const tier1 = await createSelfDeclaredCredential(subject.privateKey);
       const event = await createChildSafetyCredential(verifier.privateKey, subject.publicKey, {
-        ...TIER3_OPTS,
+        assertionEventId: tier1.id,
+        profession: 'solicitor',
+        jurisdiction: 'UK',
         ageRange: '8-12',
       });
       expect(getTagValue(event, 'algo')).toBe('secp256k1');

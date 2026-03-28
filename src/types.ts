@@ -76,6 +76,8 @@ export interface CredentialParams {
   guardianPubkeys?: string[];
   supersedes?: string; // event ID of superseded credential
   occurredAt?: number; // unix timestamp for when verification occurred (distinct from publication time)
+  assertionEventId?: string; // Tier 1 self-declaration event ID (REQUIRED for Tier 2-4, assertion-first pattern)
+  assertionRelay?: string; // relay hint for the assertion event
 }
 
 // --- Vouch Attestation (type: vouch) ---

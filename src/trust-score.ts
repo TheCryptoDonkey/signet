@@ -31,7 +31,13 @@ export function computeTrustScore(
     if (cred.kind !== ATTESTATION_KIND) continue;
     if (getTagValue(cred, 'type') !== ATTESTATION_TYPES.CREDENTIAL) continue;
     const dTag = getTagValue(cred, 'd') || '';
-    const subject = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
+    const pTag = getTagValue(cred, 'p');
+    let subject: string;
+    if (dTag.startsWith('assertion:') && pTag) {
+      subject = pTag;
+    } else {
+      subject = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
+    }
     if (subject !== subjectPubkey) continue;
 
     // Skip expired credentials — NaN must be treated as expired (not perpetually valid)

@@ -443,37 +443,65 @@ Voting kinds (30482-30484) are documented in `spec/voting.md`.
 All attestation events use kind 31000 with the following common tags:
 
 - `["type", "<attestation_type>"]` — one of: `credential`, `vouch`, `verifier`, `challenge`, `revocation`, `identity-bridge`, `delegation`
-- `["d", "<type>:<subject_identifier>"]` — type-prefixed d-tag for replaceable event semantics
+- `["d", "..."]` — d-tag format depends on the attestation pattern (see below)
 - `["summary", "<human-readable description>"]` — brief description of the attestation
 - `["algo", "secp256k1"]` — cryptographic algorithm
 - `["L", "signet"]` — protocol namespace label
 
+### Attestation Patterns
+
+Each attestation type uses the NIP-VA pattern that matches its speech act:
+
+- **Assertion-first (Tier 2-4 credentials):** The subject publishes a Tier 1 self-declaration. The verifier references it via `e` tag with `"assertion"` marker. d-tag: `assertion:<tier-1-event-id>`. The `type: credential` tag is included as a hybrid override for relay filtering and resilience.
+- **Direct claim (vouches, challenges):** The attestor originates the claim. d-tag: `<type>:<subject-pubkey>`.
+- **Self-attestation (Tier 1, verifier registration):** The publisher is also the subject. d-tag: `<type>:<own-pubkey>`.
+
 ### Attestation Type: Credential
 
-A replaceable event published by a verifier attesting to a subject's verification status.
+Tier 1 is a self-declaration (direct claim, `pubkey` equals `p` tag):
+
+```jsonc
+{
+  "kind": 31000,
+  "pubkey": "<subject_pubkey>",
+  "tags": [
+    ["d", "credential:<subject_pubkey>"],  // direct claim (self-issued)
+    ["p", "<subject_pubkey>"],
+    ["type", "credential"],
+    ["tier", "1"],
+    ["verification-type", "self"],
+    ["scope", "adult"],
+    ["method", "self-declaration"],
+    ["algo", "secp256k1"],
+    ["L", "signet"]
+  ],
+  "content": ""
+}
+```
+
+Tier 3 uses the assertion-first hybrid pattern, referencing the subject's Tier 1 self-declaration:
 
 ```jsonc
 {
   "kind": 31000,
   "pubkey": "<verifier_pubkey>",
   "tags": [
-    ["d", "credential:<subject_pubkey>"],  // type-prefixed d-tag
-    ["p", "<subject_pubkey>"],             // for queryability
-    ["type", "credential"],                // attestation type
-    ["tier", "3"],                          // 1, 2, 3, or 4
-    ["verification-type", "professional"], // "self", "peer", "professional"
-    ["scope", "adult"],                    // "adult" or "adult+child"
-    ["age-range", "8-12"],                // only for tier 4 (child age range)
-    ["method", "in-person-id"],            // verification method
-    ["profession", "solicitor"],           // verifier's profession
-    ["jurisdiction", "UK"],                // legal jurisdiction
-    ["expires", "<unix_timestamp>"],       // credential expiry
+    ["d", "assertion:<tier-1-event-id>"],  // assertion-first d-tag
+    ["e", "<tier-1-event-id>", "wss://relay.example.com", "assertion"],  // references Tier 1
+    ["type", "credential"],                // hybrid: explicit type for filtering
+    ["p", "<subject_pubkey>"],
+    ["tier", "3"],
+    ["verification-type", "professional"],
+    ["scope", "adult"],
+    ["method", "in-person-id"],
+    ["profession", "solicitor"],
+    ["jurisdiction", "GB"],
+    ["expiration", "<unix_timestamp>"],
     ["summary", "professional verification (tier 3) for abc123..."],
-    ["algo", "secp256k1"],                 // cryptographic algorithm (§9.5)
-    ["L", "signet"],                       // protocol namespace label
-    ["l", "verification", "signet"]        // protocol label
+    ["algo", "secp256k1"],
+    ["L", "signet"]
   ],
-  "content": "<zkp_proof_blob>"            // the actual zero-knowledge proof
+  "content": "<zkp_proof_blob>"
 }
 ```
 

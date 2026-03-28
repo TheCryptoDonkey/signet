@@ -73,7 +73,13 @@ export async function computeBadge(
     if (event.kind !== ATTESTATION_KIND) continue;
     if (getTagValue(event, 'type') !== ATTESTATION_TYPES.CREDENTIAL) continue;
     const dTag = getTagValue(event, 'd') || '';
-    const subject = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
+    const pTag = getTagValue(event, 'p');
+    let subject: string;
+    if (dTag.startsWith('assertion:') && pTag) {
+      subject = pTag;
+    } else {
+      subject = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
+    }
     if (subject !== pubkey) continue;
 
     // Check expiry — NaN must be treated as expired (not perpetually valid)

@@ -4,6 +4,7 @@ import { detectAnomalies, scanForAnomalies } from '../src/anomaly.js';
 import {
   createProfessionalCredential,
   createChildSafetyCredential,
+  createSelfDeclaredCredential,
   createVerifierCredential,
 } from '../src/index.js';
 import type { NostrEvent } from '../src/types.js';
@@ -19,16 +20,19 @@ describe('anomaly detection', () => {
 
     for (let i = 0; i < count; i++) {
       const subject = generateKeyPair();
+      const tier1 = await createSelfDeclaredCredential(subject.privateKey);
       let cred: NostrEvent;
 
       if (opts.tier4) {
         cred = await createChildSafetyCredential(verifierKey.privateKey, subject.publicKey, {
+          assertionEventId: tier1.id,
           profession: 'solicitor',
           jurisdiction: opts.jurisdiction || 'UK',
           ageRange: '8-12',
         });
       } else {
         cred = await createProfessionalCredential(verifierKey.privateKey, subject.publicKey, {
+          assertionEventId: tier1.id,
           profession: 'solicitor',
           jurisdiction: opts.jurisdiction || 'UK',
         });

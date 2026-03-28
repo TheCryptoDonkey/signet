@@ -14,7 +14,7 @@ import {
   ATTESTATION_TYPES,
 } from '../src/index.js';
 import type { NostrEvent } from '../src/types.js';
-import { TIER3_OPTS } from './fixtures.js';
+import { buildTier3Opts } from './fixtures.js';
 
 describe('challenges', () => {
   it('creates a valid challenge event', async () => {
@@ -153,7 +153,8 @@ describe('revocations', () => {
     it('returns 0 with no confirmation events', async () => {
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
-      const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS);
+      const tier3Opts = await buildTier3Opts(subject.privateKey);
+      const cred = await createProfessionalCredential(verifier.privateKey, subject.publicKey, tier3Opts);
 
       const count = countChallengeConfirmations('challenge-1', [], [cred]);
       expect(count).toBe(0);
@@ -165,11 +166,8 @@ describe('revocations', () => {
       const confirmer2 = generateKeyPair();
 
       // Create Tier 3 credentials for both confirmers
-      const cred1 = await createProfessionalCredential(verifier.privateKey, confirmer1.publicKey, TIER3_OPTS);
-      const cred2 = await createProfessionalCredential(verifier.privateKey, confirmer2.publicKey, {
-        profession: 'doctor',
-        jurisdiction: 'UK',
-      });
+      const cred1 = await createProfessionalCredential(verifier.privateKey, confirmer1.publicKey, await buildTier3Opts(confirmer1.privateKey));
+      const cred2 = await createProfessionalCredential(verifier.privateKey, confirmer2.publicKey, await buildTier3Opts(confirmer2.privateKey, { profession: 'doctor' }));
 
       const confirmations = [
         makeConfirmation(confirmer1.publicKey, 'ch-1'),
@@ -185,7 +183,7 @@ describe('revocations', () => {
       const tier3User = generateKeyPair();
       const tier1User = generateKeyPair();
 
-      const cred = await createProfessionalCredential(verifier.privateKey, tier3User.publicKey, TIER3_OPTS);
+      const cred = await createProfessionalCredential(verifier.privateKey, tier3User.publicKey, await buildTier3Opts(tier3User.privateKey));
 
       const confirmations = [
         makeConfirmation(tier3User.publicKey, 'ch-2'),
@@ -200,7 +198,7 @@ describe('revocations', () => {
       const verifier = generateKeyPair();
       const confirmer = generateKeyPair();
 
-      const cred = await createProfessionalCredential(verifier.privateKey, confirmer.publicKey, TIER3_OPTS);
+      const cred = await createProfessionalCredential(verifier.privateKey, confirmer.publicKey, await buildTier3Opts(confirmer.privateKey));
 
       const confirmations = [
         makeConfirmation(confirmer.publicKey, 'ch-3'),
@@ -215,7 +213,7 @@ describe('revocations', () => {
       const verifier = generateKeyPair();
       const confirmer = generateKeyPair();
 
-      const cred = await createProfessionalCredential(verifier.privateKey, confirmer.publicKey, TIER3_OPTS);
+      const cred = await createProfessionalCredential(verifier.privateKey, confirmer.publicKey, await buildTier3Opts(confirmer.privateKey));
 
       const confirmations = [
         makeConfirmation(confirmer.publicKey, 'ch-other'),

@@ -52,10 +52,18 @@ export function buildCredentialEvent(
   }
   if (params.supersedes) signetTags.push(['supersedes', params.supersedes]);
 
+  // Tier 2-4: assertion-first hybrid (references subject's Tier 1 self-declaration)
+  // Tier 1: direct claim (self-attestation, no assertion reference)
+  const useAssertionFirst = params.tier > 1 && params.assertionEventId;
+
   const template = createAttestation({
     type: ATTESTATION_TYPES.CREDENTIAL,
-    identifier: params.subjectPubkey,
+    identifier: useAssertionFirst ? undefined : params.subjectPubkey,
     subject: params.subjectPubkey,
+    assertion: useAssertionFirst ? {
+      id: params.assertionEventId!,
+      relay: params.assertionRelay,
+    } : undefined,
     expiration: params.expiresAt,
     occurredAt: params.occurredAt,
     summary: `${params.type} verification (tier ${params.tier}) for ${params.subjectPubkey.slice(0, 8)}...`,
@@ -89,11 +97,16 @@ export async function createSelfDeclaredCredential(
 }
 
 /** Create and sign a Tier 2 (web-of-trust vouched) credential.
- *  Typically issued by a community operator or aggregated from vouches. */
+ * Typically issued by an aggregator service when vouch threshold is met.
+ * Uses assertion-first hybrid pattern: references the subject's Tier 1 self-declaration. */
 export async function createPeerVouchedCredential(
   issuerPrivateKey: string,
   subjectPubkey: string,
-  expiresAt?: number
+  opts: {
+    assertionEventId: string;
+    assertionRelay?: string;
+    expiresAt?: number;
+  }
 ): Promise<NostrEvent> {
   const pubkey = getPublicKey(issuerPrivateKey);
   const event = buildCredentialEvent(pubkey, {
@@ -102,18 +115,23 @@ export async function createPeerVouchedCredential(
     type: 'peer',
     scope: 'adult',
     method: 'in-person',
-    expiresAt: expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
+    assertionEventId: opts.assertionEventId,
+    assertionRelay: opts.assertionRelay,
+    expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
   });
   return signEvent(event, issuerPrivateKey);
 }
 
-/** Create and sign a Tier 3 (professional verified adult) credential */
+/** Create and sign a Tier 3 (professional verified adult) credential.
+ * Uses assertion-first hybrid pattern: references the subject's Tier 1 self-declaration. */
 export async function createProfessionalCredential(
   verifierPrivateKey: string,
   subjectPubkey: string,
   opts: {
+    assertionEventId: string;
     profession: string;
     jurisdiction: string;
+    assertionRelay?: string;
     expiresAt?: number;
     occurredAt?: number;
     proofBlob?: string;
@@ -128,6 +146,8 @@ export async function createProfessionalCredential(
     method: 'in-person-id',
     profession: opts.profession,
     jurisdiction: opts.jurisdiction,
+    assertionEventId: opts.assertionEventId,
+    assertionRelay: opts.assertionRelay,
     expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
     occurredAt: opts.occurredAt,
     content: opts.proofBlob,
@@ -135,14 +155,17 @@ export async function createProfessionalCredential(
   return signEvent(event, verifierPrivateKey);
 }
 
-/** Create and sign a Tier 4 (professional verified adult+child) credential */
+/** Create and sign a Tier 4 (professional verified adult+child) credential.
+ * Uses assertion-first hybrid pattern: references the subject's Tier 1 self-declaration. */
 export async function createChildSafetyCredential(
   verifierPrivateKey: string,
   subjectPubkey: string,
   opts: {
+    assertionEventId: string;
     profession: string;
     jurisdiction: string;
     ageRange: string;
+    assertionRelay?: string;
     expiresAt?: number;
     occurredAt?: number;
     proofBlob?: string;
@@ -158,6 +181,8 @@ export async function createChildSafetyCredential(
     profession: opts.profession,
     jurisdiction: opts.jurisdiction,
     ageRange: opts.ageRange,
+    assertionEventId: opts.assertionEventId,
+    assertionRelay: opts.assertionRelay,
     expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
     occurredAt: opts.occurredAt,
     content: opts.proofBlob,
@@ -205,9 +230,16 @@ export function parseCredential(event: NostrEvent): ParsedCredential | null {
   const guardianValues = getTagValues(event, 'guardian');
   const algorithm = (getTagValue(event, 'algo') || DEFAULT_CRYPTO_ALGORITHM) as CryptoAlgorithm;
 
-  // Strip 'credential:' prefix from d-tag to get subject pubkey
+  // For assertion-first events (Tier 2-4), the subject pubkey is in the 'p' tag.
+  // For direct claims (Tier 1), strip 'credential:' prefix from d-tag.
   const dTag = getTagValue(event, 'd') || '';
-  const subjectPubkey = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
+  const pTag = getTagValue(event, 'p');
+  let subjectPubkey: string;
+  if (dTag.startsWith('assertion:') && pTag) {
+    subjectPubkey = pTag;
+  } else {
+    subjectPubkey = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
+  }
 
   return {
     subjectPubkey,

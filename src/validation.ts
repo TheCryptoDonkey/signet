@@ -91,9 +91,23 @@ export function validateCredential(event: NostrEvent): ValidationResult {
   const method = getTagValue(event, 'method');
   if (!method) errors.push('Missing "method" tag');
 
+  // V-SIG-07: nullifier, if present, must be a 64-character lowercase hex string (SHA-256)
+  const nullifier = getTagValue(event, 'nullifier');
+  if (nullifier !== undefined && !/^[0-9a-f]{64}$/.test(nullifier)) {
+    errors.push('Invalid "nullifier" tag (must be 64-character lowercase hex SHA-256)');
+  }
+
   // Tier-specific validations — use string comparison (tier is already whitelisted above)
   if (tier === '1' && verificationType !== 'self') {
     errors.push('Tier 1 must have verification-type "self"');
+  }
+
+  // V-SIG-03: Tier 1 self-declaration must be self-signed (pubkey === p tag)
+  if (tier === '1') {
+    const pTag = getTagValue(event, 'p');
+    if (pTag && event.pubkey !== pTag) {
+      errors.push('Tier 1 credential must be self-signed (pubkey must equal p tag)');
+    }
   }
 
   if (tier === '2' && verificationType !== 'peer') {

@@ -15,6 +15,7 @@ import {
   buildBadgeFilters,
 } from '../src/badge.js';
 import type { NostrEvent } from '../src/types.js';
+import { buildTier3Opts } from './fixtures.js';
 
 describe('badge display (Level 1)', () => {
   describe('computeBadge', () => {
@@ -46,7 +47,8 @@ describe('badge display (Level 1)', () => {
     it('computes badge for Tier 2 (peer-vouched) credential', async () => {
       const issuer = generateKeyPair();
       const subject = generateKeyPair();
-      const cred = await createPeerVouchedCredential(issuer.privateKey, subject.publicKey);
+      const tier1 = await createSelfDeclaredCredential(subject.privateKey);
+      const cred = await createPeerVouchedCredential(issuer.privateKey, subject.publicKey, { assertionEventId: tier1.id });
       const badge = await computeBadge(subject.publicKey, [cred]);
 
       expect(badge.isVerified).toBe(true);
@@ -60,7 +62,7 @@ describe('badge display (Level 1)', () => {
       const cred = await createProfessionalCredential(
         verifier.privateKey,
         subject.publicKey,
-        { profession: 'legal', jurisdiction: 'GB' }
+        await buildTier3Opts(subject.privateKey, { profession: 'legal', jurisdiction: 'GB' })
       );
       const badge = await computeBadge(subject.publicKey, [cred]);
 
@@ -79,7 +81,7 @@ describe('badge display (Level 1)', () => {
       const cred3 = await createProfessionalCredential(
         verifier.privateKey,
         kp.publicKey,
-        { profession: 'legal', jurisdiction: 'GB' }
+        await buildTier3Opts(kp.privateKey, { profession: 'legal', jurisdiction: 'GB' })
       );
 
       const badge = await computeBadge(kp.publicKey, [cred1, cred3]);
@@ -172,7 +174,7 @@ describe('badge display (Level 1)', () => {
       const cred = await createProfessionalCredential(
         verifier.privateKey,
         subject.publicKey,
-        { profession: 'legal', jurisdiction: 'GB' }
+        await buildTier3Opts(subject.privateKey, { profession: 'legal', jurisdiction: 'GB' })
       );
       const badge = await computeBadge(subject.publicKey, [cred]);
       expect(getTrustLevel(badge)).toBe('professional');
@@ -192,7 +194,7 @@ describe('badge display (Level 1)', () => {
       const cred = await createProfessionalCredential(
         verifier.privateKey,
         subject.publicKey,
-        { profession: 'legal', jurisdiction: 'GB' }
+        await buildTier3Opts(subject.privateKey, { profession: 'legal', jurisdiction: 'GB' })
       );
       const badge = await computeBadge(subject.publicKey, [cred]);
       expect(meetsMinimumTier(badge, 1)).toBe(true);

@@ -12,7 +12,7 @@ import {
   ATTESTATION_TYPES,
   getTagValue,
 } from '../src/index.js';
-import { TIER3_OPTS } from './fixtures.js';
+import { buildTier3Opts } from './fixtures.js';
 
 describe('SignetStore', () => {
   it('adds and retrieves events', async () => {
@@ -104,8 +104,8 @@ describe('SignetStore', () => {
     const subject = generateKeyPair();
     const other = generateKeyPair();
 
-    store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS));
-    store.add(await createProfessionalCredential(verifier.privateKey, other.publicKey, TIER3_OPTS));
+    store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, await buildTier3Opts(subject.privateKey)));
+    store.add(await createProfessionalCredential(verifier.privateKey, other.publicKey, await buildTier3Opts(other.privateKey)));
 
     const results = store.query({ subjects: [subject.publicKey] });
     expect(results).toHaveLength(1);
@@ -117,7 +117,7 @@ describe('SignetStore', () => {
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
 
-      store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS));
+      store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, await buildTier3Opts(subject.privateKey)));
 
       const creds = store.getCredentials(subject.publicKey);
       expect(creds).toHaveLength(1);
@@ -129,7 +129,7 @@ describe('SignetStore', () => {
       const verifier = generateKeyPair();
 
       store.add(await createSelfDeclaredCredential(subject.privateKey));
-      store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS));
+      store.add(await createProfessionalCredential(verifier.privateKey, subject.publicKey, await buildTier3Opts(subject.privateKey)));
 
       const highest = store.getHighestCredential(subject.publicKey);
       expect(highest).not.toBeNull();

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateKeyPair } from '../src/crypto.js';
-import { createProfessionalCredential, createChildSafetyCredential } from '../src/credentials.js';
+import { createProfessionalCredential, createChildSafetyCredential, createSelfDeclaredCredential } from '../src/credentials.js';
 import {
   checkCredentialCompliance,
   checkCrossBorderCompliance,
@@ -19,7 +19,9 @@ async function createTestCredential(opts?: {
 }) {
   const verifier = generateKeyPair();
   const subject = generateKeyPair();
+  const tier1 = await createSelfDeclaredCredential(subject.privateKey);
   return createProfessionalCredential(verifier.privateKey, subject.publicKey, {
+    assertionEventId: tier1.id,
     profession: opts?.profession ?? 'solicitor',
     jurisdiction: opts?.jurisdiction ?? 'GB',
     expiresAt: opts?.expiresAt,
@@ -410,7 +412,9 @@ describe('compliance', () => {
       // GB consent age is 13. Age range "8-12" is entirely below — should flag.
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
+      const tier1 = await createSelfDeclaredCredential(subject.privateKey);
       const cred = await createChildSafetyCredential(verifier.privateKey, subject.publicKey, {
+        assertionEventId: tier1.id,
         profession: 'solicitor',
         jurisdiction: 'GB',
         ageRange: '8-12',
@@ -424,7 +428,9 @@ describe('compliance', () => {
     it('does not flag age ranges entirely above consent age', async () => {
       const verifier = generateKeyPair();
       const subject = generateKeyPair();
+      const tier1 = await createSelfDeclaredCredential(subject.privateKey);
       const cred = await createChildSafetyCredential(verifier.privateKey, subject.publicKey, {
+        assertionEventId: tier1.id,
         profession: 'solicitor',
         jurisdiction: 'GB',
         ageRange: '13-17',

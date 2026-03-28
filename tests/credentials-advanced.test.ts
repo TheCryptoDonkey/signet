@@ -10,20 +10,21 @@ import {
   createProfessionalCredential,
   getTagValue,
 } from '../src/index.js';
-import { TIER3_OPTS, generateKeypairs } from './fixtures.js';
+import { buildTier3Opts, generateKeypairs } from './fixtures.js';
 
 describe('ring-protected credentials', () => {
   it('creates a Tier 3 ring-protected credential', async () => {
     const verifiers = generateKeypairs(5);
     const subject = generateKeyPair();
     const signerIdx = 2;
+    const tier3Opts = await buildTier3Opts(subject.privateKey);
 
     const cred = await createRingProtectedCredential(
       verifiers[signerIdx].privateKey,
       subject.publicKey,
       verifiers.map((v) => v.publicKey),
       signerIdx,
-      TIER3_OPTS
+      tier3Opts
     );
 
     expect(getTagValue(cred, 'tier')).toBe('3');
@@ -121,8 +122,9 @@ describe('credential renewal', () => {
   it('renews an existing credential', async () => {
     const verifier = generateKeyPair();
     const subject = generateKeyPair();
+    const tier3Opts = await buildTier3Opts(subject.privateKey);
 
-    const original = await createProfessionalCredential(verifier.privateKey, subject.publicKey, TIER3_OPTS);
+    const original = await createProfessionalCredential(verifier.privateKey, subject.publicKey, tier3Opts);
 
     const renewed = await renewCredential(verifier.privateKey, original);
 
@@ -141,10 +143,8 @@ describe('credential renewal', () => {
 
     // Create credential expiring in 10 days
     const tenDays = Math.floor(Date.now() / 1000) + 10 * 24 * 60 * 60;
-    const cred = await createProfessionalCredential(kp.privateKey, subject.publicKey, {
-      ...TIER3_OPTS,
-      expiresAt: tenDays,
-    });
+    const tier3Opts = await buildTier3Opts(subject.privateKey, { expiresAt: tenDays });
+    const cred = await createProfessionalCredential(kp.privateKey, subject.publicKey, tier3Opts);
 
     expect(needsRenewal(cred, 30)).toBe(true);  // within 30 days
     expect(needsRenewal(cred, 5)).toBe(false);   // not within 5 days

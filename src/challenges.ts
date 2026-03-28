@@ -152,7 +152,13 @@ export function countChallengeConfirmations(
     const tierNum = tier ? parseInt(tier, 10) : NaN;
     if (!isNaN(tierNum) && tierNum >= 3) {
       const dTag = getTagValue(cred, 'd') || '';
-      const subject = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
+      const pTag = getTagValue(cred, 'p');
+      let subject: string;
+      if (dTag.startsWith('assertion:') && pTag) {
+        subject = pTag;
+      } else {
+        subject = dTag.startsWith('credential:') ? dTag.slice('credential:'.length) : dTag;
+      }
       if (subject) tier3Plus.add(subject);
     }
   }

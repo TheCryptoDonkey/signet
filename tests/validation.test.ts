@@ -128,7 +128,9 @@ describe('validation', () => {
     it('rejects Tier 4 without age-range', async () => {
       const verifier = generateKeyPair();
       const parent = generateKeyPair();
+      const tier1 = await createSelfDeclaredCredential(parent.privateKey);
       const cred = await createChildSafetyCredential(verifier.privateKey, parent.publicKey, {
+        assertionEventId: tier1.id,
         profession: 'notary',
         jurisdiction: 'US',
         ageRange: '8-12',
