@@ -48,8 +48,8 @@
     "url": "https://github.com/forgesworn/signet-protocol.git"
   },
   "dependencies": {
-    "@forgesworn/range-proof": "^1.0.0",
-    "@forgesworn/ring-sig": "^1.0.2",
+    "@forgesworn/range-proof": "^2.0.0",
+    "@forgesworn/ring-sig": "^3.0.0",
     "@forgesworn/shamir-words": "^1.0.0",
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",

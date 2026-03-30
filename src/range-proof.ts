@@ -52,7 +52,7 @@ export function verifyRangeProof(
   if (expectedMin < 0 || expectedMax < 0 || expectedMax < expectedMin) return false;
   if (proof.min !== expectedMin || proof.max !== expectedMax) return false;
   if (normalizeBindingContext(proof.context) !== normalizeBindingContext(expectedBindingContext)) return false;
-  return verifyRangeProofUpstream(proof);
+  return verifyRangeProofUpstream(proof, expectedMin, expectedMax, expectedBindingContext);
 }
 
 export function verifyAgeRangeProof(
@@ -62,6 +62,5 @@ export function verifyAgeRangeProof(
 ): boolean {
   const parsed = parseAgeRange(expectedAgeRange);
   if (!parsed) return false;
-  return verifyRangeProof(proof, parsed.min, parsed.max, expectedSubjectPubkey)
-    && verifyAgeRangeProofUpstream(proof);
+  return verifyRangeProof(proof, parsed.min, parsed.max, expectedSubjectPubkey);
 }
