@@ -41,6 +41,12 @@ export type {
   GuardianDelegationParams,
   GuardianDelegationScope,
   SimpleEntityType,
+  // Bond types
+  BitcoinAddressType,
+  BondProof,
+  BondStatus,
+  BondVerificationResult,
+  BIP322Verifier,
 } from './types.js';
 
 // Entity display labels (value export from types)
@@ -66,6 +72,10 @@ export {
   DELEGATION_CONSTRAINTS,
   ENTITY_LABELS,
   DEFAULT_CRYPTO_ALGORITHM,
+  // Bond constants
+  BOND_DOMAIN_SEPARATOR,
+  DEFAULT_BOND_MAX_AGE_SECS,
+  VALID_BOND_ADDRESS_TYPES,
 } from './constants.js';
 
 // Crypto
@@ -143,6 +153,19 @@ export {
   checkCrossVerification,
   isVerifierRevoked,
 } from './verifiers.js';
+
+// Bonds (proof-of-reserve bond attestation)
+export {
+  buildBondMessage,
+  createBondProof,
+  verifyBondProof,
+  isBondStale,
+  bondProofToTags,
+  parseBondProof,
+  checkBondCompliance,
+} from './bonds.js';
+
+export type { CreateBondProofParams, VerifyBondProofOptions } from './bonds.js';
 
 // Challenges & Revocations (attestation types: challenge, revocation)
 export {

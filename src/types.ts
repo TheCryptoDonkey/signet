@@ -114,6 +114,38 @@ export interface PolicyCheckResult {
   actualScore?: number;
 }
 
+// --- Proof-of-Reserve Bond ---
+
+/** Bitcoin address type for bond proofs */
+export type BitcoinAddressType = 'p2wpkh' | 'p2sh' | 'p2tr' | 'p2pkh';
+
+/** A proof-of-reserve bond attestation */
+export interface BondProof {
+  address: string;
+  addressType: BitcoinAddressType;
+  amountSats: number;
+  timestamp: number;
+  message: string;
+  signature: string;
+}
+
+export type BondStatus = 'valid' | 'stale' | 'invalid' | 'unverified';
+
+export interface BondVerificationResult {
+  status: BondStatus;
+  signatureValid: boolean | null;
+  fresh: boolean;
+  ageSecs: number;
+  meetsThreshold: boolean | null;
+  errors: string[];
+}
+
+export type BIP322Verifier = (
+  address: string,
+  message: string,
+  signature: string,
+) => boolean | Promise<boolean>;
+
 // --- Verifier Credential (type: verifier) ---
 
 export interface VerifierParams {
@@ -122,6 +154,7 @@ export interface VerifierParams {
   licenceHash: string;
   professionalBody: string;
   statement?: string;
+  bondProof?: BondProof;
 }
 
 // --- Verifier Challenge (type: challenge) ---
@@ -230,6 +263,7 @@ export interface ParsedVerifier {
   licenceHash: string;
   professionalBody: string;
   algorithm: CryptoAlgorithm;
+  bondProof?: BondProof;
 }
 
 export interface ParsedChallenge {

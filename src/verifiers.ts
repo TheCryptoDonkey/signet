@@ -5,6 +5,7 @@ import { createAttestation, parseAttestation } from 'nostr-attestations';
 import { ATTESTATION_KIND, ATTESTATION_TYPES, VERIFIER_ACTIVATION, DEFAULT_CRYPTO_ALGORITHM } from './constants.js';
 import { signEvent, getPublicKey } from './crypto.js';
 import { getTagValue } from './validation.js';
+import { bondProofToTags, parseBondProof } from './bonds.js';
 import type {
   NostrEvent,
   UnsignedEvent,
@@ -25,6 +26,10 @@ export function buildVerifierEvent(
     ['body', params.professionalBody],
     ['algo', DEFAULT_CRYPTO_ALGORITHM],
   ];
+
+  if (params.bondProof) {
+    signetTags.push(...bondProofToTags(params.bondProof));
+  }
 
   const template = createAttestation({
     type: ATTESTATION_TYPES.VERIFIER,
@@ -64,6 +69,7 @@ export function parseVerifier(event: NostrEvent): ParsedVerifier | null {
     licenceHash: getTagValue(event, 'licence') || '',
     professionalBody: getTagValue(event, 'body') || '',
     algorithm,
+    bondProof: parseBondProof(event) ?? undefined,
   };
 }
 

@@ -2,7 +2,7 @@
 // Validates structure and required fields for all 6 event kinds
 
 import { validateAttestation } from 'nostr-attestations';
-import { ATTESTATION_KIND, ATTESTATION_TYPES, APP_DATA_KIND, SIGNET_LABEL } from './constants.js';
+import { ATTESTATION_KIND, ATTESTATION_TYPES, APP_DATA_KIND, SIGNET_LABEL, VALID_BOND_ADDRESS_TYPES } from './constants.js';
 import type { NostrEvent } from './types.js';
 
 export const MAX_CONTENT_LENGTH = 65536;
@@ -243,6 +243,37 @@ export function validateVerifier(event: NostrEvent): ValidationResult {
 
   if (!getTagValue(event, 'body')) {
     errors.push('Missing "body" tag (professional body)');
+  }
+
+  // Bond tag validation (only when bond-address is present — all 6 tags must be present together)
+  const bondAddress = getTagValue(event, 'bond-address');
+  if (bondAddress !== undefined) {
+    const bondAddressType = getTagValue(event, 'bond-address-type');
+    const bondAmount = getTagValue(event, 'bond-amount');
+    const bondTimestamp = getTagValue(event, 'bond-timestamp');
+    const bondMessage = getTagValue(event, 'bond-message');
+    const bondSignature = getTagValue(event, 'bond-signature');
+
+    if (!bondAddressType) errors.push('Missing "bond-address-type" tag (required when bond-address is present)');
+    if (!bondAmount) errors.push('Missing "bond-amount" tag (required when bond-address is present)');
+    if (!bondTimestamp) errors.push('Missing "bond-timestamp" tag (required when bond-address is present)');
+    if (!bondMessage) errors.push('Missing "bond-message" tag (required when bond-address is present)');
+    if (!bondSignature) errors.push('Missing "bond-signature" tag (required when bond-address is present)');
+
+    if (bondAddressType && !(VALID_BOND_ADDRESS_TYPES as readonly string[]).includes(bondAddressType)) {
+      errors.push(`Invalid "bond-address-type" tag (must be one of: ${VALID_BOND_ADDRESS_TYPES.join(', ')})`);
+    }
+
+    if (bondAmount) {
+      const amountNum = parseInt(bondAmount, 10);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        errors.push('Invalid "bond-amount" tag (must be a positive integer)');
+      }
+    }
+
+    if (bondMessage && !bondMessage.startsWith('signet:bond:')) {
+      errors.push('Invalid "bond-message" tag (must start with "signet:bond:")');
+    }
   }
 
   return { valid: errors.length === 0, errors };

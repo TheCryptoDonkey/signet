@@ -104,6 +104,15 @@ export const ENTITY_LABELS: Record<string, string> = {
   unlinked_agent: 'Unlinked Agent',
 };
 
+/** Domain separator for bond proof messages */
+export const BOND_DOMAIN_SEPARATOR = 'signet:bond';
+
+/** Default maximum age for bond proofs: 30 days in seconds */
+export const DEFAULT_BOND_MAX_AGE_SECS = 30 * 24 * 60 * 60;
+
+/** Valid Bitcoin address types for bond proofs */
+export const VALID_BOND_ADDRESS_TYPES = ['p2wpkh', 'p2sh', 'p2tr', 'p2pkh'] as const;
+
 /** Default asymmetric cryptographic algorithm (Nostr standard secp256k1).
  * Tagged on events so future parsers can distinguish pre- and post-quantum events. */
 export const DEFAULT_CRYPTO_ALGORITHM = 'secp256k1' as const;
