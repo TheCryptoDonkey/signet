@@ -80,7 +80,7 @@ Layer 3: General-purpose ZK (future, if needed)
 
 ## Status
 
-**v0.1.0** — spec complete, TypeScript library implemented, reference apps functional. Seeking community feedback.
+**v1.0.0** — spec complete, TypeScript library implemented, reference apps functional. Seeking community feedback.
 
 Kind numbers are placeholders pending NIP allocation.
 
