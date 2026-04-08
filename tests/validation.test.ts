@@ -134,6 +134,7 @@ describe('validation', () => {
         profession: 'notary',
         jurisdiction: 'US',
         ageRange: '8-12',
+        actualAge: 10,
       });
       // Remove age-range tag
       const tampered = {

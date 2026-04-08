@@ -30,6 +30,7 @@ export async function buildTier3Opts(subjectPrivateKey: string, extra?: {
     expiresAt: extra?.expiresAt,
     occurredAt: extra?.occurredAt,
     proofBlob: extra?.proofBlob,
+    actualAge: 25,
   };
 }
 

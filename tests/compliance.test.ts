@@ -25,6 +25,7 @@ async function createTestCredential(opts?: {
     profession: opts?.profession ?? 'solicitor',
     jurisdiction: opts?.jurisdiction ?? 'GB',
     expiresAt: opts?.expiresAt,
+    actualAge: 25,
   });
 }
 
@@ -418,6 +419,7 @@ describe('compliance', () => {
         profession: 'solicitor',
         jurisdiction: 'GB',
         ageRange: '8-12',
+        actualAge: 10,
       });
       const result = checkCredentialCompliance(cred, 'GB');
       const consentIssue = result.issues.find((i) => i.code === 'BELOW_CONSENT_AGE');
@@ -434,6 +436,7 @@ describe('compliance', () => {
         profession: 'solicitor',
         jurisdiction: 'GB',
         ageRange: '13-17',
+        actualAge: 15,
       });
       const result = checkCredentialCompliance(cred, 'GB');
       const consentIssue = result.issues.find((i) => i.code === 'BELOW_CONSENT_AGE');

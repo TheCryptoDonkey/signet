@@ -131,6 +131,7 @@ export async function createProfessionalCredential(
     assertionEventId: string;
     profession: string;
     jurisdiction: string;
+    actualAge: number;
     assertionRelay?: string;
     expiresAt?: number;
     occurredAt?: number;
@@ -138,6 +139,10 @@ export async function createProfessionalCredential(
   }
 ): Promise<NostrEvent> {
   const pubkey = getPublicKey(verifierPrivateKey);
+  const rangeProof = createAgeRangeProof(opts.actualAge, '18+', subjectPubkey);
+  const content = opts.proofBlob
+    ? JSON.stringify({ ...JSON.parse(opts.proofBlob), rangeProof })
+    : JSON.stringify({ rangeProof });
   const event = buildCredentialEvent(pubkey, {
     subjectPubkey,
     tier: 3,
@@ -146,12 +151,14 @@ export async function createProfessionalCredential(
     method: 'in-person-id',
     profession: opts.profession,
     jurisdiction: opts.jurisdiction,
+    ageRange: '18+',
     assertionEventId: opts.assertionEventId,
     assertionRelay: opts.assertionRelay,
     expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
     occurredAt: opts.occurredAt,
-    content: opts.proofBlob,
+    content,
   });
+  event.tags.push(['zk-age', '1']);
   return signEvent(event, verifierPrivateKey);
 }
 
@@ -165,6 +172,7 @@ export async function createChildSafetyCredential(
     profession: string;
     jurisdiction: string;
     ageRange: string;
+    actualAge: number;
     assertionRelay?: string;
     expiresAt?: number;
     occurredAt?: number;
@@ -172,6 +180,10 @@ export async function createChildSafetyCredential(
   }
 ): Promise<NostrEvent> {
   const pubkey = getPublicKey(verifierPrivateKey);
+  const rangeProof = createAgeRangeProof(opts.actualAge, opts.ageRange, subjectPubkey);
+  const content = opts.proofBlob
+    ? JSON.stringify({ ...JSON.parse(opts.proofBlob), rangeProof })
+    : JSON.stringify({ rangeProof });
   const event = buildCredentialEvent(pubkey, {
     subjectPubkey,
     tier: 4,
@@ -185,8 +197,9 @@ export async function createChildSafetyCredential(
     assertionRelay: opts.assertionRelay,
     expiresAt: opts.expiresAt || Math.floor(Date.now() / 1000) + DEFAULT_CREDENTIAL_EXPIRY_SECONDS,
     occurredAt: opts.occurredAt,
-    content: opts.proofBlob,
+    content,
   });
+  event.tags.push(['zk-age', '1']);
   return signEvent(event, verifierPrivateKey);
 }
 
@@ -553,7 +566,13 @@ export async function createTwoCredentialCeremony(
   const tier: SignetTier = isChild ? 4 : 3;
   const scope: VerificationScope = isChild ? 'adult+child' : 'adult';
 
-  // 5. Issue Natural Person credential (keypair A)
+  // 5. Generate range proofs for both credentials, bound to subject pubkeys
+  const actualAge = computeAge(opts.dateOfBirth);
+  const npRangeProof = createAgeRangeProof(actualAge, ageRange, naturalPersonPubkey);
+  const personaRangeProof = createAgeRangeProof(actualAge, ageRange, personaPubkey);
+
+  // 6. Issue Natural Person credential (keypair A)
+  const npContent = JSON.stringify({ rangeProof: npRangeProof });
   const npEvent = buildCredentialEvent(verifierPubkey, {
     subjectPubkey: naturalPersonPubkey,
     tier,
@@ -569,10 +588,13 @@ export async function createTwoCredentialCeremony(
     guardianPubkeys: opts.guardianPubkeys,
     expiresAt,
     occurredAt: opts.occurredAt,
+    content: npContent,
   });
+  npEvent.tags.push(['zk-age', '1']);
   const naturalPerson = await signEvent(npEvent, verifierPrivateKey);
 
-  // 6. Issue Persona credential (keypair B) — NO nullifier, NO merkle-root
+  // 7. Issue Persona credential (keypair B) — NO nullifier, NO merkle-root
+  const personaContent = JSON.stringify({ rangeProof: personaRangeProof });
   const personaEvent = buildCredentialEvent(verifierPubkey, {
     subjectPubkey: personaPubkey,
     tier,
@@ -586,7 +608,9 @@ export async function createTwoCredentialCeremony(
     guardianPubkeys: opts.guardianPubkeys,
     expiresAt,
     occurredAt: opts.occurredAt,
+    content: personaContent,
   });
+  personaEvent.tags.push(['zk-age', '1']);
   const persona = await signEvent(personaEvent, verifierPrivateKey);
 
   // 7. Generate Merkle proofs for all leaves
@@ -600,6 +624,22 @@ export async function createTwoCredentialCeremony(
     merkleLeaves,
     merkleProofs,
   };
+}
+
+/** Compute integer age in years from ISO date of birth */
+export function computeAge(dateOfBirth: string): number {
+  const dob = new Date(dateOfBirth);
+  if (isNaN(dob.getTime())) throw new SignetValidationError('Invalid date of birth: value is not a parseable ISO date');
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const monthDiff = now.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < dob.getDate())) {
+    age--;
+  }
+  if (age < 0 || age > 150) {
+    throw new SignetValidationError(`Implausible age ${age} computed from date of birth`);
+  }
+  return age;
 }
 
 /** Compute age range string from ISO date of birth */

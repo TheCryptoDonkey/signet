@@ -115,7 +115,7 @@ describe('multi-document nullifier families', () => {
       const existingCred = await createProfessionalCredential(
         verifier.privateKey,
         subject.publicKey,
-        { assertionEventId: tier1.id, profession: 'legal', jurisdiction: 'GB' }
+        { assertionEventId: tier1.id, profession: 'legal', jurisdiction: 'GB', actualAge: 25 }
       );
       // Manually add nullifier tag
       const nullifier = computeNullifier('passport', 'GB', '123456789');
@@ -136,7 +136,7 @@ describe('multi-document nullifier families', () => {
       const existingCred = await createProfessionalCredential(
         verifier.privateKey,
         subject.publicKey,
-        { assertionEventId: tier1.id, profession: 'legal', jurisdiction: 'GB' }
+        { assertionEventId: tier1.id, profession: 'legal', jurisdiction: 'GB', actualAge: 25 }
       );
       const licenceNullifier = computeNullifier('driving_licence', 'GB', 'SMITH901150J99XX');
       (existingCred as any).tags.push(['nullifier-family', licenceNullifier, 'driving_licence']);
@@ -156,7 +156,7 @@ describe('multi-document nullifier families', () => {
       const credA = await createProfessionalCredential(
         verifier.privateKey,
         subjectA.publicKey,
-        { assertionEventId: tier1A.id, profession: 'legal', jurisdiction: 'GB' }
+        { assertionEventId: tier1A.id, profession: 'legal', jurisdiction: 'GB', actualAge: 25 }
       );
       const familyA = computeNullifierFamily([passportDoc, licenceDoc]);
       const tagsA = buildNullifierFamilyTags(familyA);
@@ -179,7 +179,7 @@ describe('multi-document nullifier families', () => {
       const credA = await createProfessionalCredential(
         verifier.privateKey,
         subjectA.publicKey,
-        { assertionEventId: tier1A.id, profession: 'legal', jurisdiction: 'GB' }
+        { assertionEventId: tier1A.id, profession: 'legal', jurisdiction: 'GB', actualAge: 25 }
       );
       const passportA: DocumentDescriptor = {
         documentType: 'passport',

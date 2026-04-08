@@ -61,6 +61,7 @@ describe('quantum readiness — algo tag', () => {
         profession: 'solicitor',
         jurisdiction: 'UK',
         ageRange: '8-12',
+        actualAge: 10,
       });
       expect(getTagValue(event, 'algo')).toBe('secp256k1');
     });

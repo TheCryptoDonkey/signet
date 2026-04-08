@@ -95,6 +95,7 @@ describe('credentials', () => {
         assertionEventId: tier1.id,
         profession: 'solicitor',
         jurisdiction: 'GB',
+        actualAge: 25,
       });
 
       // d-tag uses assertion: prefix (assertion-first)
@@ -131,6 +132,7 @@ describe('credentials', () => {
         profession: 'notary',
         jurisdiction: 'US',
         ageRange: '8-12',
+        actualAge: 10,
       });
 
       expect(getTagValue(cred, 'tier')).toBe('4');
@@ -150,6 +152,7 @@ describe('credentials', () => {
         profession: 'notary',
         jurisdiction: 'US',
         ageRange: '8-12',
+        actualAge: 10,
       });
       const result = await verifyCredential(cred);
 
@@ -168,6 +171,7 @@ describe('credentials', () => {
         profession: 'doctor',
         jurisdiction: 'AU',
         ageRange: '5-7',
+        actualAge: 5,
       });
 
       const parsed = parseCredential(cred);

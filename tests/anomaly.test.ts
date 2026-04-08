@@ -29,12 +29,14 @@ describe('anomaly detection', () => {
           profession: 'solicitor',
           jurisdiction: opts.jurisdiction || 'UK',
           ageRange: '8-12',
+          actualAge: 10,
         });
       } else {
         cred = await createProfessionalCredential(verifierKey.privateKey, subject.publicKey, {
           assertionEventId: tier1.id,
           profession: 'solicitor',
           jurisdiction: opts.jurisdiction || 'UK',
+          actualAge: 25,
         });
       }
 
@@ -55,7 +57,7 @@ describe('anomaly detection', () => {
     });
 
     expect(flags.some((f) => f.type === 'volume')).toBe(true);
-  });
+  }, 60000);
 
   it('flags hourly burst', async () => {
     const verifier = generateKeyPair();
@@ -126,5 +128,5 @@ describe('anomaly detection', () => {
     // v1 should be flagged, v2 should not
     expect(results.has(v1.publicKey)).toBe(true);
     expect(results.has(v2.publicKey)).toBe(false);
-  });
+  }, 60000);
 });
