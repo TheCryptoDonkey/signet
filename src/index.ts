@@ -109,6 +109,8 @@ export {
   needsRenewal,
   // Two-credential ceremony
   createTwoCredentialCeremony,
+  // Age computation
+  computeAge,
   // Credential chains
   supersedeCredential,
   resolveCredentialChain,
@@ -451,3 +453,38 @@ export {
 } from './cold-call.js';
 
 export type { InstitutionKeys, InstitutionPubkey } from './types.js';
+
+// Presentation Protocol (verification requests/responses)
+export {
+  parseVerifyRequest,
+  buildVerifyResponse,
+  credentialSatisfiesRequest,
+  VALID_AGE_RANGES,
+  type VerifyRequest,
+  type VerifyResponse,
+} from './presentation.js';
+
+// QR Router (QR code type detection and routing)
+export {
+  routeQR,
+  QR_MAX_PAYLOAD_SIZE,
+  type QRAction,
+  type AuthRequest,
+  type LoginRequest,
+} from './qr-router.js';
+
+// URL Auth (Sign in with Signet redirect flow)
+export {
+  parseUrlAuthParams,
+  buildAuthCallbackUrl,
+  buildAuthDeniedUrl,
+  getUrlAuthSiteName,
+} from './url-auth.js';
+
+// Relay Event Builders (unsigned kind 29999 event templates)
+export {
+  buildVerifyEventTemplate,
+  buildRejectionEventTemplate,
+  buildAuthResponseEventTemplate,
+  type AuthResponse,
+} from './relay-events.js';
