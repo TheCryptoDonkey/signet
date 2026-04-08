@@ -488,3 +488,18 @@ export {
   buildAuthResponseEventTemplate,
   type AuthResponse,
 } from './relay-events.js';
+
+// Signet Me (directional verification words)
+export {
+  getSignetMeDisplay,
+  verifySignetMe,
+  SIGNET_ME_ROTATION_SECONDS,
+  SIGNET_ME_TOLERANCE,
+  type SignetMeDisplay,
+} from './signet-me.js';
+
+// Venue Entry (kind 21235 event builder)
+export {
+  buildVenueEntryEventTemplate,
+  VENUE_ENTRY_KIND,
+} from './venue-entry.js';
