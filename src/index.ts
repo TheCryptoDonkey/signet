@@ -506,3 +506,10 @@ export {
 
 // Signing Backend (interface and type)
 export type { SigningBackend, SigningMode } from './signing-backend.js';
+
+// Migration (kind 31000, type: migration — see spec/protocol.md §21.4.3)
+export {
+  createMigrationEvent,
+  parseMigrationEvent,
+  followMigrationChain,
+} from './migration.js';
