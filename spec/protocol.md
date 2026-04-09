@@ -2052,12 +2052,110 @@ The `["guardian", "<parent_pubkey>"]` tag is:
 
 #### 21.4.3 Child to Adult Transition
 
-When a child turns 18:
+The transition from dependant to independent identity involves two separate decisions that may happen together or independently.
+
+**Decision 1 — Remove guardian authority (credential supersession):**
+
 1. Subject visits a professional verifier with current identity documents
 2. Verifier issues new Tier 3 credential with `["age-range", "18+"]` and `["supersedes", "<child_credential_id>"]`
 3. New credential has NO guardian tag
-4. Same keypair preserved — all history and connections maintained
-5. Persona credential also superseded with updated age-range and no guardian tag
+4. Persona credential also superseded with updated age-range and no guardian tag
+5. Guardian's delegation events revoked
+
+**Decision 2 — Sever key derivation (optional key rotation):**
+
+When the dependant's keys were derived from the guardian's mnemonic (e.g. via nsec-tree sub-identity derivation), the guardian can re-derive those keys indefinitely. Key rotation severs this ability:
+
+1. Subject generates a fresh, independently rooted mnemonic on their own device
+2. New mnemonic derives new keypairs (natural-person + persona)
+3. Old identity publishes a migration event (kind 31000, `type: migration`) linking old pubkeys to new pubkeys, signed by the old keys
+4. New credentials issued against new pubkeys with `["supersedes", "<old_credential_id>"]`
+5. Guardian's key server (e.g. Heartwood Pi) deletes the derived master secret
+6. Old keys become dead — credentials superseded, delegation revoked
+
+**Key rotation is optional.** The subject may choose to retain the guardian's derivation capability as a recovery mechanism. Clients MUST clearly communicate the implications:
+
+> "Your guardian can still derive your private keys from their mnemonic. They could sign events as you. Choose this only if you trust them with recovery access."
+
+| Guardian removed? | Keys rotated? | Result |
+|:-:|:-:|---------|
+| Yes | Yes | Fully sovereign identity — complete independence |
+| Yes | No | Independent but recoverable — guardian retains recovery capability as a safety net |
+| No | Yes | Guardian retains legal authority but cannot derive keys — used when court restricts direct key access |
+| No | No | Continuing dependant relationship (e.g. adult with permanent cognitive impairment) |
+
+**Migration event format:**
+
+```json
+{
+  "kind": 31000,
+  "pubkey": "<old-pubkey>",
+  "tags": [
+    ["d", "migration:<old-pubkey>"],
+    ["type", "migration"],
+    ["p", "<new-pubkey>"],
+    ["L", "nip-va"],
+    ["l", "migration", "nip-va"]
+  ],
+  "content": ""
+}
+```
+
+The migration event MUST be signed by the old key. Clients encountering a migration event SHOULD:
+- Follow the `p` tag to the new pubkey
+- Display credentials on the new pubkey as continuing the old identity's trust history
+- Mark the old pubkey as migrated (not revoked — migration is a positive transition)
+
+#### 21.4.3a Transfer of Guardianship
+
+Guardianship may transfer due to foster care, adoption, bereavement, or court order. The protocol supports three transfer patterns:
+
+**Temporary delegation (guardian retains parental responsibility):**
+- Credential layer unchanged — guardian tag stays as original guardian
+- Guardian delegates specific scopes to the temporary carer via kind 31000 `type: delegation`
+- Key derivation unchanged — original guardian retains derived keys
+- Example: temporary foster placement, grandparent caring during hospital stay
+
+**Permanent transfer (parental responsibility transferred by court order):**
+- Professional issues new credential with new guardian tag (court order required as documentary evidence)
+- Old guardian's delegation revoked
+- Key rotation MUST occur — a person whose parental responsibility has been legally removed MUST NOT retain cryptographic access to the dependant's identity
+- New keys are either independently rooted (professional generates fresh mnemonic for the dependant) or derived from the new guardian's mnemonic
+- Nullifier chain links old and new identities via `["nullifier-chain", "<old_nullifier>"]`
+- Old credentials superseded; old keys become dead
+
+**Bereavement:**
+- Court-appointed guardian added via superseding credential (existing §21.6 provisions)
+- If deceased guardian's key server is inaccessible, key rotation occurs by necessity
+- Nullifier chain preserves identity continuity
+
+**Duplicate identity resolution:**
+
+When key rotation creates a new identity, two pubkeys may temporarily claim the same person on relays. The nullifier system resolves this:
+
+1. Professional computes nullifier from the dependant's identity documents (same documents → same nullifier)
+2. Nullifier matches the old identity
+3. Old credential receives a revocation event from the professional
+4. `["nullifier-chain", "<old_nullifier>"]` on the new credential links old and new
+5. Clients follow the chain: old identity revoked → new identity active → same person confirmed
+
+The old guardian cannot prevent this — revocation and new issuance are performed by a professional with legal authority (court order).
+
+#### 21.4.3b Graduated Autonomy
+
+Delegation scopes control what a dependant can sign without guardian approval. The guardian adjusts scopes as the dependant matures:
+
+| Stage | Signing behaviour | Guardian visibility |
+|-------|-------------------|---------------------|
+| Full control | Guardian signs everything | N/A |
+| Request/approve | Dependant requests, guardian approves via NIP-46 | Real-time approval prompts |
+| Autonomous with alerts | Dependant signs autonomously | Real-time notifications |
+| Autonomous with logging | Dependant signs autonomously | Audit log only |
+| Full autonomy | No restrictions | No visibility (unless opted in) |
+
+Scope transitions are enacted by the guardian updating the delegation event. The dependant's device requires no reconfiguration — the key server (Heartwood Pi or guardian's device) enforces the current scope on each signing request.
+
+When a signing request falls outside the dependant's permitted scope, the key server SHOULD forward the request to the guardian's device for approval rather than rejecting outright. This allows the dependant to request exceptions without requiring a permanent scope change.
 
 #### 21.4.4 Age-Appropriate Tiers
 
