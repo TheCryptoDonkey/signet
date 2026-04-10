@@ -104,9 +104,9 @@ export function getTagValue(tags: string[][], key: string): string | undefined {
 }
 
 // BIP-340 Schnorr signature verification via @noble/curves (bundled by esbuild)
-import { schnorr } from '@noble/curves/secp256k1';
-import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex } from '@noble/hashes/utils';
+import { schnorr } from '@noble/curves/secp256k1.js';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex } from '@noble/hashes/utils.js';
 import { generateQRSvg } from './qr-svg';
 
 function hexToBytes(hex: string): Uint8Array {

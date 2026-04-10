@@ -11,6 +11,7 @@
   "scripts": {
     "build": "esbuild src/signet-verify.ts --bundle --format=iife --global-name=Signet --outfile=dist/signet-verify.js --minify --target=es2020",
     "build:esm": "esbuild src/signet-verify.ts --bundle --format=esm --outfile=dist/signet-verify.esm.js --minify --target=es2020",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
