@@ -1,3 +1,22 @@
+# [1.1.0](https://github.com/forgesworn/signet/compare/v1.0.0...v1.1.0) (2026-04-10)
+
+
+### Bug Fixes
+
+* add per-signal-type caps to IQ score computation ([2bc22bb](https://github.com/forgesworn/signet/commit/2bc22bbe6af4276d1fe552d7942ebdade0917540)), closes [hi#score](https://github.com/hi/issues/score) [forgesworn/signet-app-internal#80](https://github.com/forgesworn/signet-app-internal/issues/80)
+
+
+### Features
+
+* accept .well-known/signet.json version 2 ([fbe7a07](https://github.com/forgesworn/signet/commit/fbe7a07bc6ac6a381da4ff180cd0b336556bd870)), closes [signet-app-internal#79](https://github.com/signet-app-internal/issues/79)
+* export presentation, QR router, URL auth, relay events, and computeAge ([5a02514](https://github.com/forgesworn/signet/commit/5a02514ddee7958a565058ded1fb1151569cf0c3)), closes [signet-app-internal#70](https://github.com/signet-app-internal/issues/70) [signet-app-internal#71](https://github.com/signet-app-internal/issues/71) [signet-app-internal#73](https://github.com/signet-app-internal/issues/73) [signet-app-internal#58](https://github.com/signet-app-internal/issues/58)
+* export SigningBackend interface and SigningMode type ([19229bd](https://github.com/forgesworn/signet/commit/19229bdd8d24809ae338ec9842eae51127fa92d3)), closes [signet-app-internal#74](https://github.com/signet-app-internal/issues/74)
+* extract presentation, QR router, URL auth, and relay event builders ([620fdb0](https://github.com/forgesworn/signet/commit/620fdb04b8936d2dd3d60ebf806933f7cc5b0034)), closes [signet-app-internal#70](https://github.com/signet-app-internal/issues/70) [signet-app-internal#71](https://github.com/signet-app-internal/issues/71) [signet-app-internal#73](https://github.com/signet-app-internal/issues/73)
+* extract signet-me directional words and venue entry builder ([cb8f601](https://github.com/forgesworn/signet/commit/cb8f601234fd16a82fb6dc8364f391c40b7a1c50)), closes [signet-app-internal#72](https://github.com/signet-app-internal/issues/72) [signet-app-internal#76](https://github.com/signet-app-internal/issues/76)
+* include entityType in computeBadge return value ([5b572fc](https://github.com/forgesworn/signet/commit/5b572fc5451f89450a9e680538e7f89b669fe6d5)), closes [signet-app-internal#75](https://github.com/signet-app-internal/issues/75)
+* migration event type for cross-keypair identity continuity ([43882b6](https://github.com/forgesworn/signet/commit/43882b627894877d9adda473e27a235b27cd1ebf)), closes [signet-app-internal#83](https://github.com/signet-app-internal/issues/83)
+* wire ZK age range proofs into all credential builders ([2e9420f](https://github.com/forgesworn/signet/commit/2e9420fe077a42a48b338c1bbacfa7071e7b25dd)), closes [signet-app-internal#58](https://github.com/signet-app-internal/issues/58)
+
 # 1.0.0 (2026-04-09)
 
 
