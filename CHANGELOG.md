@@ -1,3 +1,16 @@
+# [1.2.0](https://github.com/forgesworn/signet/compare/v1.1.0...v1.2.0) (2026-04-11)
+
+
+### Bug Fixes
+
+* **verify:** noble imports and test script ([869ac82](https://github.com/forgesworn/signet/commit/869ac82b3669503e90928bb589b2f891c1d18e29))
+
+
+### Features
+
+* add personas field to ContactInfo for multi-persona QR sharing ([0e7d0fd](https://github.com/forgesworn/signet/commit/0e7d0fd512d3a86746eb0f34e9e0128ad4da8032))
+* **spec:** lock attestation kind 31000 as canonical ([1ab041a](https://github.com/forgesworn/signet/commit/1ab041a03ee78b74d6a918744214fd62ad531cea))
+
 # [1.2.0](https://github.com/forgesworn/signet/compare/v1.1.0...v1.2.0) (2026-04-10)
 
 
