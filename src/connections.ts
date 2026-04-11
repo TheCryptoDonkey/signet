@@ -14,6 +14,8 @@ export interface ContactInfo {
   email?: string;
   address?: string;
   childPubkeys?: string[];
+  /** Additional personas — each is a pubkey with an optional label. */
+  personas?: Array<{ pubkey: string; label?: string }>;
 }
 
 /** SECURITY NOTE: sharedSecret is stored as a plain hex string in memory.
@@ -79,6 +81,7 @@ export function serializeQRPayload(payload: QRPayload): string {
 
 const MAX_CONTACT_FIELD_LENGTH = 256;
 const MAX_CHILD_PUBKEYS = 20;
+const MAX_PERSONAS = 20;
 
 /** Validate ContactInfo field sizes to prevent oversized payloads from untrusted sources. */
 function validateContactInfo(info: unknown): void {
@@ -102,6 +105,27 @@ function validateContactInfo(info: unknown): void {
     for (const pk of ci.childPubkeys) {
       if (typeof pk !== 'string' || !/^[0-9a-f]{64}$/i.test(pk)) {
         throw new SignetValidationError('Invalid ContactInfo: childPubkeys must contain valid 64-char hex pubkeys');
+      }
+    }
+  }
+  if (ci.personas !== undefined) {
+    if (!Array.isArray(ci.personas)) throw new SignetValidationError('Invalid ContactInfo: personas must be an array');
+    if (ci.personas.length > MAX_PERSONAS) {
+      throw new SignetValidationError(`Invalid ContactInfo: personas exceeds ${MAX_PERSONAS} entries`);
+    }
+    for (const entry of ci.personas) {
+      if (typeof entry !== 'object' || entry === null) {
+        throw new SignetValidationError('Invalid ContactInfo: each persona must be an object');
+      }
+      const e = entry as Record<string, unknown>;
+      if (typeof e.pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(e.pubkey)) {
+        throw new SignetValidationError('Invalid ContactInfo: persona pubkey must be a valid 64-char hex pubkey');
+      }
+      if (e.label !== undefined) {
+        if (typeof e.label !== 'string') throw new SignetValidationError('Invalid ContactInfo: persona label must be a string');
+        if (e.label.length > MAX_CONTACT_FIELD_LENGTH) {
+          throw new SignetValidationError(`Invalid ContactInfo: persona label exceeds ${MAX_CONTACT_FIELD_LENGTH} characters`);
+        }
       }
     }
   }

@@ -253,6 +253,84 @@ describe('connections', () => {
     });
   });
 
+  // ── ContactInfo — personas field ─────────────────────────────────────────
+
+  describe('ContactInfo — personas field', () => {
+    it('roundtrips a payload with personas', () => {
+      const kp = generateKeyPair();
+      const p1 = generateKeyPair();
+      const p2 = generateKeyPair();
+      const info: ContactInfo = {
+        name: 'Alice',
+        personas: [
+          { pubkey: p1.publicKey, label: 'Gaming' },
+          { pubkey: p2.publicKey },
+        ],
+      };
+      const payload = createQRPayload(kp.publicKey, info);
+      const serialized = serializeQRPayload(payload);
+      const parsed = parseQRPayload(serialized);
+      expect(parsed.info?.personas).toEqual(info.personas);
+    });
+
+    it('accepts personas with no label', () => {
+      const kp = generateKeyPair();
+      const p1 = generateKeyPair();
+      const data = JSON.stringify({
+        pubkey: kp.publicKey,
+        nonce: 'a'.repeat(64),
+        info: { personas: [{ pubkey: p1.publicKey }] },
+      });
+      expect(() => parseQRPayload(data)).not.toThrow();
+    });
+
+    it('rejects personas that is not an array', () => {
+      const data = JSON.stringify({
+        pubkey: 'a'.repeat(64),
+        nonce: 'b'.repeat(32),
+        info: { personas: 'not-an-array' },
+      });
+      expect(() => parseQRPayload(data)).toThrow('personas must be an array');
+    });
+
+    it('rejects personas exceeding 20 entries', () => {
+      const entries = Array.from({ length: 21 }, () => ({ pubkey: 'c'.repeat(64) }));
+      const data = JSON.stringify({
+        pubkey: 'a'.repeat(64),
+        nonce: 'b'.repeat(32),
+        info: { personas: entries },
+      });
+      expect(() => parseQRPayload(data)).toThrow('exceeds');
+    });
+
+    it('rejects persona entry with invalid pubkey', () => {
+      const data = JSON.stringify({
+        pubkey: 'a'.repeat(64),
+        nonce: 'b'.repeat(32),
+        info: { personas: [{ pubkey: 'not-hex' }] },
+      });
+      expect(() => parseQRPayload(data)).toThrow('valid 64-char hex pubkey');
+    });
+
+    it('rejects persona entry with non-string label', () => {
+      const data = JSON.stringify({
+        pubkey: 'a'.repeat(64),
+        nonce: 'b'.repeat(32),
+        info: { personas: [{ pubkey: 'c'.repeat(64), label: 123 }] },
+      });
+      expect(() => parseQRPayload(data)).toThrow('label must be a string');
+    });
+
+    it('rejects persona entry with oversized label', () => {
+      const data = JSON.stringify({
+        pubkey: 'a'.repeat(64),
+        nonce: 'b'.repeat(32),
+        info: { personas: [{ pubkey: 'c'.repeat(64), label: 'x'.repeat(300) }] },
+      });
+      expect(() => parseQRPayload(data)).toThrow('label exceeds');
+    });
+  });
+
   // ── ConnectionStore ─────────────────────────────────────────────────────
 
   describe('ConnectionStore', () => {
