@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/forgesworn/signet/compare/v1.2.0...v1.2.1) (2026-04-12)
+
+
+### Bug Fixes
+
+* **deps:** bump vite, picomatch, and esbuild across manifests (security) ([0d3db23](https://github.com/forgesworn/signet/commit/0d3db231e40943a840bdef1a1f89a34fce644457))
+
 # [1.2.0](https://github.com/forgesworn/signet/compare/v1.1.0...v1.2.0) (2026-04-12)
 
 
