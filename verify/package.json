@@ -20,7 +20,7 @@
     "uqr": "^0.1.2"
   },
   "devDependencies": {
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.25.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.0"
   },
