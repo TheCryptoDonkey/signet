@@ -7,6 +7,14 @@
 
 # [1.2.0](https://github.com/forgesworn/signet/compare/v1.1.0...v1.2.0) (2026-04-12)
 
+## 1.3.0 (2026-04-18)
+
+### Features
+
+- cross-device Sign-in-with-Signet via relay delivery
+
+
+
 ## 1.2.3 (2026-04-16)
 
 ### Bug Fixes
