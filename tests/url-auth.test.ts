@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseUrlAuthParams } from '../src/index.js';
+import { parseUrlAuthParams, buildAuthCallbackUrl } from '../src/index.js';
 
 // Helper to build an auth query string with the current timestamp.
 function buildAuthSearch(extra: Record<string, string> = {}, overrides: Partial<Record<'auth' | 'challenge' | 'origin' | 'name' | 'callback' | 't', string>> = {}): string {
@@ -106,5 +106,40 @@ describe('parseUrlAuthParams — relay delivery mode', () => {
   it('still enforces all redirect-mode validations when relay params present', () => {
     expect(parseUrlAuthParams(buildAuthSearch({ relay: VALID_RELAY, sessionPubkey: VALID_SESSION_PUBKEY }, { challenge: 'too-short' }))).toBeNull();
     expect(parseUrlAuthParams(buildAuthSearch({ relay: VALID_RELAY, sessionPubkey: VALID_SESSION_PUBKEY }, { callback: 'https://attacker.com/cb' }))).toBeNull();
+  });
+});
+
+describe('buildAuthCallbackUrl', () => {
+  const callbackUrl = 'https://example.com/auth/callback';
+  const pubkey = 'a'.repeat(64);
+  const npub = 'npub1' + 'q'.repeat(58);
+  const signature = 'b'.repeat(128);
+  const eventId = 'c'.repeat(64);
+
+  it('builds a URL with the expected params (no createdAt)', () => {
+    const url = new URL(buildAuthCallbackUrl(callbackUrl, pubkey, npub, signature, eventId));
+    expect(url.searchParams.get('pubkey')).toBe(pubkey);
+    expect(url.searchParams.get('npub')).toBe(npub);
+    expect(url.searchParams.get('signature')).toBe(signature);
+    expect(url.searchParams.get('eventId')).toBe(eventId);
+    // Backward compatibility: no `t` when createdAt is omitted.
+    expect(url.searchParams.has('t')).toBe(false);
+  });
+
+  it('includes t when createdAt is supplied', () => {
+    const createdAt = 1_700_000_000;
+    const url = new URL(buildAuthCallbackUrl(callbackUrl, pubkey, npub, signature, eventId, createdAt));
+    expect(url.searchParams.get('t')).toBe(String(createdAt));
+  });
+
+  it('throws on non-integer or negative createdAt', () => {
+    expect(() => buildAuthCallbackUrl(callbackUrl, pubkey, npub, signature, eventId, 1.5)).toThrow();
+    expect(() => buildAuthCallbackUrl(callbackUrl, pubkey, npub, signature, eventId, -1)).toThrow();
+    expect(() => buildAuthCallbackUrl(callbackUrl, pubkey, npub, signature, eventId, NaN)).toThrow();
+  });
+
+  it('rejects an invalid callback URL scheme', () => {
+    expect(() => buildAuthCallbackUrl('javascript:alert(1)', pubkey, npub, signature, eventId)).toThrow();
+    expect(() => buildAuthCallbackUrl('http://attacker.com/cb', pubkey, npub, signature, eventId)).toThrow();
   });
 });

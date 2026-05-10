@@ -103,6 +103,14 @@ export function parseUrlAuthParams(search: string): LoginRequest | null {
 /**
  * Build the callback redirect URL after successful auth.
  * Uses the URL API to safely append params (no string concatenation).
+ *
+ * `createdAt` is the unix-seconds `created_at` field of the kind-21236 event
+ * that produced `signature`. Optional for backward compatibility — older
+ * callers that don't supply it get the historical URL shape (no `t` param).
+ * When supplied, consumers can reconstruct the exact event (and verify the
+ * signature against it) without extra round-trips, since the rest of the
+ * event tags are derivable from the request URL params (`challenge`,
+ * `origin`, `name`).
  */
 export function buildAuthCallbackUrl(
   callbackUrl: string,
@@ -110,6 +118,7 @@ export function buildAuthCallbackUrl(
   npub: string,
   signature: string,
   eventId: string,
+  createdAt?: number,
 ): string {
   if (!isValidAuthUrl(callbackUrl)) throw new Error('Invalid callback URL scheme');
   const url = new URL(callbackUrl);
@@ -117,6 +126,12 @@ export function buildAuthCallbackUrl(
   url.searchParams.set('npub', npub);
   url.searchParams.set('signature', signature);
   url.searchParams.set('eventId', eventId);
+  if (createdAt !== undefined) {
+    if (!Number.isInteger(createdAt) || createdAt < 0) {
+      throw new Error('createdAt must be a non-negative integer (unix seconds)');
+    }
+    url.searchParams.set('t', String(createdAt));
+  }
   return url.toString();
 }
 
