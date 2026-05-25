@@ -29,7 +29,7 @@ Signet is split into focused libraries, each with one job. This page is the orie
 
 ### Credentials & attestations
 
-**[`signet-credentials`](https://www.npmjs.com/package/signet-credentials)** — Consumer SDK for the Signet credential profile. Publish, fetch, parse, validate display-name credentials (the `persona-name` profile shipped first; `age-scope`, `professional`, `supersession` planned). Bring-your-own transport. See [`docs/integrations/axenstax-migration.md`](https://github.com/forgesworn/signet-credentials/blob/main/docs/integrations/axenstax-migration.md) for a worked example of porting a hand-rolled consumer.
+**[`signet-credentials`](https://www.npmjs.com/package/signet-credentials)** — Consumer SDK for the Signet credential profile. Publish, fetch, parse, validate display-name credentials (the `persona-name` profile shipped first; `age-scope`, `professional`, `supersession` planned). Bring-your-own transport.
 
 **[`nostr-attestations`](https://www.npmjs.com/package/nostr-attestations)** — Reference implementation of NIP-VA (kind-31000 verifiable attestations). Profile-agnostic — for the Signet credential profile, prefer `signet-credentials`, which composes on top.
 
@@ -41,7 +41,7 @@ Signet is split into focused libraries, each with one job. This page is the orie
 
 ### Sub-protocols
 
-**[`@forgesworn/charter`](https://www.npmjs.com/package/@forgesworn/charter)** — Parent-led, libre game account management. Consumer SDK exports `evaluateSchedule` (pure clause evaluation), `createPairingStore` (IDB-backed NIP-46 bunker pairings), and `createCharterEvaluator` (live subscribe → decrypt → cache → sync gate). Phase 1α shipped at v0.1.0; budget/spend/content clauses planned. See [`docs/integrations/axenstax-migration.md`](https://github.com/forgesworn/charter/blob/main/docs/integrations/axenstax-migration.md) for a worked example.
+**[`@forgesworn/charter`](https://www.npmjs.com/package/@forgesworn/charter)** — Parent-led, libre game account management. Consumer SDK exports `evaluateSchedule` (pure clause evaluation), `createPairingStore` (IDB-backed NIP-46 bunker pairings), and `createCharterEvaluator` (live subscribe → decrypt → cache → sync gate). Phase 1α shipped at v0.3.0; budget/spend/content clauses planned.
 
 **[`attestation-bridge`](https://github.com/forgesworn/attestation-bridge)** — Neutral adapter boundary for Nostr attestation formats used by Signet, Trott, and nostr-veil. Internal tooling — consumers shouldn't normally need it.
 
@@ -96,7 +96,7 @@ nostr-attestations    # generic NIP-VA tooling for non-Signet kind-31000
 
 ## Rust crates (planned)
 
-The TypeScript libs above cover browser + Node consumers. Rust-side Signet support is on the roadmap as **`signet-rs`** — Schnorr verification, kind-21236 challenge handling, credential parse/build — with a thin `signet-credentials-rs` companion for the credential profile. Engine and embedded consumers (axenstax, heartwood, bark) currently hand-roll these primitives; the crate consolidates that work.
+The TypeScript libs above cover browser + Node consumers. Rust-side Signet support is on the roadmap as **`signet-rs`** — Schnorr verification, kind-21236 challenge handling, credential parse/build — with a thin `signet-credentials-rs` companion for the credential profile. Engine and embedded consumers currently hand-roll these primitives; the crate consolidates that work.
 
 ## Audit finding (2026-05-25)
 
