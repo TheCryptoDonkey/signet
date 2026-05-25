@@ -12,10 +12,10 @@ Signet is split into focused libraries, each with one job. This page is the orie
 | **Display a verification badge** (tier 1–4 + Signet IQ) | [`signet-protocol`](https://www.npmjs.com/package/signet-protocol) | `computeBadge(pubkey, events)` |
 | **Build a credential** (display-name today; age scope, profession planned) | [`signet-credentials`](https://www.npmjs.com/package/signet-credentials) | `buildPersonaNameCredential(...)` (caller publishes) |
 | **Enforce a community verification policy** (min tier to post) | [`signet-protocol`](https://www.npmjs.com/package/signet-protocol) | `PolicyChecker` |
-| **Build a parent-controlled child account** | [`nsec-tree`](https://www.npmjs.com/package/nsec-tree) + [`charter`](https://www.npmjs.com/package/charter) | `derivePersona` + Charter clause subscription |
+| **Build a parent-controlled child account** | [`nsec-tree`](https://www.npmjs.com/package/nsec-tree) + [`@forgesworn/charter`](https://www.npmjs.com/package/@forgesworn/charter) | `derivePersona` + Charter clause subscription |
 | **Issue blinded reputation scores** (privacy-preserving WoT) | [`nostr-veil`](https://www.npmjs.com/package/nostr-veil) | Ring-signature group scoring |
 | **Implement NIP-VA** (kind-31000 attestations) in your own protocol | [`nostr-attestations`](https://www.npmjs.com/package/nostr-attestations) | Reference impl, profile-agnostic |
-| **Time-grant signing approvals to an app** (NIP-46 with policy) | [`charter`](https://www.npmjs.com/package/charter) | Clause evaluator + pairing storage |
+| **Time-grant signing approvals to an app** (NIP-46 with policy) | [`@forgesworn/charter`](https://www.npmjs.com/package/@forgesworn/charter) | Clause evaluator + pairing storage |
 
 ## The libraries
 
@@ -41,7 +41,7 @@ Signet is split into focused libraries, each with one job. This page is the orie
 
 ### Sub-protocols
 
-**[`charter`](https://www.npmjs.com/package/charter)** — Parent-led, libre game account management. Consumer SDK exports `evaluateSchedule` (pure clause evaluation), `createPairingStore` (IDB-backed NIP-46 bunker pairings), and `createCharterEvaluator` (live subscribe → decrypt → cache → sync gate). Phase 1α shipped at v0.1.0; budget/spend/content clauses planned. See [`docs/integrations/axenstax-migration.md`](https://github.com/forgesworn/charter/blob/main/docs/integrations/axenstax-migration.md) for a worked example.
+**[`@forgesworn/charter`](https://www.npmjs.com/package/@forgesworn/charter)** — Parent-led, libre game account management. Consumer SDK exports `evaluateSchedule` (pure clause evaluation), `createPairingStore` (IDB-backed NIP-46 bunker pairings), and `createCharterEvaluator` (live subscribe → decrypt → cache → sync gate). Phase 1α shipped at v0.1.0; budget/spend/content clauses planned. See [`docs/integrations/axenstax-migration.md`](https://github.com/forgesworn/charter/blob/main/docs/integrations/axenstax-migration.md) for a worked example.
 
 **[`attestation-bridge`](https://github.com/forgesworn/attestation-bridge)** — Neutral adapter boundary for Nostr attestation formats used by Signet, Trott, and nostr-veil. Internal tooling — consumers shouldn't normally need it.
 
