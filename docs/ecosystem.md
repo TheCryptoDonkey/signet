@@ -10,7 +10,7 @@ Signet is split into focused libraries, each with one job. This page is the orie
 | **Show a user's display name** in my app | [`signet-credentials`](https://www.npmjs.com/package/signet-credentials) | `fetchPersonaHandle(pubkey)` returns the current handle |
 | **Verify a sign-in event server-side** | [`signet-protocol`](https://www.npmjs.com/package/signet-protocol) | `verifyAuthEvent(event, challenge, origin)` |
 | **Display a verification badge** (tier 1–4 + Signet IQ) | [`signet-protocol`](https://www.npmjs.com/package/signet-protocol) | `computeBadge(pubkey, events)` |
-| **Publish a credential** (display-name today; age scope, profession planned) | [`signet-credentials`](https://www.npmjs.com/package/signet-credentials) | `publishPersonaNameCredential(...)` |
+| **Build a credential** (display-name today; age scope, profession planned) | [`signet-credentials`](https://www.npmjs.com/package/signet-credentials) | `buildPersonaNameCredential(...)` (caller publishes) |
 | **Enforce a community verification policy** (min tier to post) | [`signet-protocol`](https://www.npmjs.com/package/signet-protocol) | `PolicyChecker` |
 | **Build a parent-controlled child account** | [`nsec-tree`](https://www.npmjs.com/package/nsec-tree) + [`charter`](https://github.com/forgesworn/charter) | `derivePersona` + Charter clause subscription |
 | **Issue blinded reputation scores** (privacy-preserving WoT) | [`nostr-veil`](https://www.npmjs.com/package/nostr-veil) | Ring-signature group scoring |
