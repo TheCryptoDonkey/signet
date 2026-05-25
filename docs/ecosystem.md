@@ -7,10 +7,10 @@ Signet is split into focused libraries, each with one job. This page is the orie
 | Goal | Install | Reach for |
 |---|---|---|
 | **Let users sign in with Signet** (one click, QR or same-device) | [`signet-login`](https://www.npmjs.com/package/signet-login) | `Signet.login()` returns a verified kind-21236 event |
-| **Show a user's display name** in my app | [`signet-credentials`](https://github.com/forgesworn/signet-credentials) | `fetchPersonaHandle(pubkey)` returns the current handle |
+| **Show a user's display name** in my app | [`signet-credentials`](https://www.npmjs.com/package/signet-credentials) | `fetchPersonaHandle(pubkey)` returns the current handle |
 | **Verify a sign-in event server-side** | [`signet-protocol`](https://www.npmjs.com/package/signet-protocol) | `verifyAuthEvent(event, challenge, origin)` |
 | **Display a verification badge** (tier 1–4 + Signet IQ) | [`signet-protocol`](https://www.npmjs.com/package/signet-protocol) | `computeBadge(pubkey, events)` |
-| **Publish a credential** (display-name today; age scope, profession planned) | [`signet-credentials`](https://github.com/forgesworn/signet-credentials) | `publishPersonaNameCredential(...)` |
+| **Publish a credential** (display-name today; age scope, profession planned) | [`signet-credentials`](https://www.npmjs.com/package/signet-credentials) | `publishPersonaNameCredential(...)` |
 | **Enforce a community verification policy** (min tier to post) | [`signet-protocol`](https://www.npmjs.com/package/signet-protocol) | `PolicyChecker` |
 | **Build a parent-controlled child account** | [`nsec-tree`](https://www.npmjs.com/package/nsec-tree) + [`charter`](https://github.com/forgesworn/charter) | `derivePersona` + Charter clause subscription |
 | **Issue blinded reputation scores** (privacy-preserving WoT) | [`nostr-veil`](https://www.npmjs.com/package/nostr-veil) | Ring-signature group scoring |
@@ -29,7 +29,7 @@ Signet is split into focused libraries, each with one job. This page is the orie
 
 ### Credentials & attestations
 
-**[`signet-credentials`](https://github.com/forgesworn/signet-credentials)** — Consumer SDK for the Signet credential profile. Publish, fetch, parse, validate display-name credentials (the `persona-name` profile shipped first; `age-scope`, `professional`, `supersession` planned). Bring-your-own transport. See [`docs/integrations/axenstax-migration.md`](https://github.com/forgesworn/signet-credentials/blob/main/docs/integrations/axenstax-migration.md) for a worked example of porting a hand-rolled consumer.
+**[`signet-credentials`](https://www.npmjs.com/package/signet-credentials)** — Consumer SDK for the Signet credential profile. Publish, fetch, parse, validate display-name credentials (the `persona-name` profile shipped first; `age-scope`, `professional`, `supersession` planned). Bring-your-own transport. See [`docs/integrations/axenstax-migration.md`](https://github.com/forgesworn/signet-credentials/blob/main/docs/integrations/axenstax-migration.md) for a worked example of porting a hand-rolled consumer.
 
 **[`nostr-attestations`](https://www.npmjs.com/package/nostr-attestations)** — Reference implementation of NIP-VA (kind-31000 verifiable attestations). Profile-agnostic — for the Signet credential profile, prefer `signet-credentials`, which composes on top.
 
